@@ -48,7 +48,7 @@ export function HomePage() {
 
       <section
         id="how-it-works"
-        className="mt-10 space-y-4 text-center"
+        className="mt-10 space-y-4 text-center crayon-text"
         aria-label={t('howItWorks')}
       >
         <p className="text-xs font-medium uppercase tracking-[0.25em] text-slate-400">
@@ -70,7 +70,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="mt-8 flex flex-col items-center gap-3 text-xs text-slate-500 md:flex-row md:justify-center">
+      <section className="mt-8 flex flex-col items-center gap-3 text-xs text-slate-500 md:flex-row md:justify-center crayon-text">
         <div className="how-safety-chip flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600">
           <span>🪐 {t('whatItIsTitle')}</span>
           <span className="hidden text-slate-300 md:inline">•</span>
