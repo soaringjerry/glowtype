@@ -1,7 +1,7 @@
 {
   "heroBadge": "给年轻人的趣味情绪小测试",
   "heroTitle": "你的 Glowtype 是什么？✨",
-  "heroSubtitle": "大概 2 分钟的小问题，把你最近的感受变成一张好玩的 Glowtype 小卡片。",
+  "heroSubtitle": "大概 2 分钟的小问题，把你最近的感受变成一张 Glowtype 小卡片。",
   "heroHint": "不用注册，也不是诊断，只是给你的情绪一个可爱的名字。",
   "startQuiz": "开始测试",
   "learnGlowtype": "了解 Glowtype 是什么",
@@ -15,13 +15,13 @@
   "step2Title": "系统画出你的情绪轨迹",
   "step2Body": "根据你的选择，拼出一个大概的「情绪节奏」。",
   "step3Title": "你会得到一张 Glowtype 卡片",
-  "step3Body": "一张可以保存、截图、发给朋友的趣味类型卡。",
+  "step3Body": "一张可以保存、截图、发给朋友的小卡片。",
 
   "whatItIsTitle": "这个测试是什么 / 不是什么",
-  "whatItIsBody": "Glowtype 是一个轻量的自我观察小工具，不是医学建议或心理诊断。它更像帮你给感受起个好玩的名字，而不是给你贴标签。",
+  "whatItIsBody": "Glowtype 是一个轻量的自我观察小工具，更像帮你给感受起个名字，而不是给你贴标签或做诊断。",
 
   "safetyPreviewTitle": "关于隐私和安全感",
-  "safetyPreviewBody": "你可以在不登录、不留名字的情况下使用 Glowtype。我们尽量避免广告追踪，并在合理范围内保护你在这里输入的内容。",
-  "safetyPreviewExtra": "如果有一天你不想继续，只要关掉页面就好，没有打卡和任务。",
+  "safetyPreviewBody": "你可以在不登录、不留名字的情况下使用 Glowtype，也不会被广告追着跑。",
+  "safetyPreviewExtra": "如果哪天不想继续，只要关掉页面就好，没有打卡和任务。",
   "seeSafetyPage": "查看安全与隐私说明"
 }

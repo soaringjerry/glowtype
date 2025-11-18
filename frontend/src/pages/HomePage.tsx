@@ -25,12 +25,6 @@ export function HomePage() {
             >
               {t('startQuiz')}
             </Link>
-            <Link
-              to="#how-it-works"
-              className="text-sm text-slate-600 underline-offset-4 hover:underline"
-            >
-              {t('learnGlowtype')}
-            </Link>
           </div>
         </div>
         <div className="mt-4 flex w-full justify-center md:mt-0 md:w-auto">
