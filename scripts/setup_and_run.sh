@@ -71,11 +71,16 @@ echo "[STEP] Pulling latest images (if available)..."
   ${COMPOSE_CMD} pull || true
 )
 
-echo "[STEP] Building images (this may take a while on first run)..."
-(
-  cd "${ROOT_DIR}"
-  ${COMPOSE_CMD} build
-)
+if [ "${GLOWTYPE_LOCAL_BUILD:-0}" = "1" ]; then
+  echo "[STEP] Locally building images because GLOWTYPE_LOCAL_BUILD=1 ..."
+  (
+    cd "${ROOT_DIR}"
+    ${COMPOSE_CMD} build
+  )
+else
+  echo "[INFO] Skipping local image build; will use registry images if available."
+  echo "       (Set GLOWTYPE_LOCAL_BUILD=1 to force local docker-compose build.)"
+fi
 
 echo "[STEP] Starting services in the background..."
 (
@@ -91,5 +96,4 @@ echo "=== Glowtype.me is starting via Docker Compose ==="
 echo "Frontend:  http://localhost:${FRONTEND_PORT}"
 echo "Backend:   http://localhost:${BACKEND_PORT}/api/v1"
 echo
-echo "重新运行本脚本将执行 pull/build/up，可用于更新到最新镜像。"
-
+echo "重新运行本脚本将执行 pull/up，可用于更新到最新镜像。"

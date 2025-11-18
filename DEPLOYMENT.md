@@ -72,9 +72,9 @@ docker-compose 使用根目录 `.env` 做变量替换；后端容器使用 `back
 ### 后端镜像（Dockerfile.backend）
 
 - 基于 `golang:1.24` 构建阶段，编译 `glowtype-api` 二进制；
-- 使用 `gcr.io/distroless/base-nonroot-debian12` 作为运行阶段镜像；
+- 使用轻量的 `alpine:3.20` 作为运行阶段镜像，并创建非 root 用户；
 - 将 `backend/config` 一并复制到容器中；
-- 默认暴露 `8080` 端口，使用非 root 用户运行。
+- 默认暴露 `8080` 端口。
 
 ### 前端镜像（Dockerfile.frontend）
 
@@ -103,6 +103,8 @@ docker-compose 使用根目录 `.env` 做变量替换；后端容器使用 `back
   - 依赖 `backend`；
   - 暴露 `${GLOWTYPE_FRONTEND_PORT_HOST:-5173}:80`；
   - 重启策略 `unless-stopped`。
+
+说明：在生产部署场景下，推荐依赖 GHCR 中由 CI/CD 构建好的镜像，`scripts/setup_and_run.sh` 默认只执行 `docker compose pull` + `docker compose up -d`。如需在本机从源码构建镜像，可设置环境变量 `GLOWTYPE_LOCAL_BUILD=1` 再运行脚本。
 
 ---
 
@@ -186,4 +188,3 @@ GHCR 使用 `GITHUB_TOKEN` 进行登录；无需额外凭证。
    - 自动跑测试与构建；
    - 自动构建并推送 Docker 镜像到 GHCR；
    - 自动通过 SSH 触发服务器 `docker compose pull && docker compose up -d` 更新服务。
-
