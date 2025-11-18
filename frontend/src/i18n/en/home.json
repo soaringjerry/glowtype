@@ -1,27 +1,23 @@
 {
   "heroBadge": "Playful emotional type quiz",
   "heroTitle": "What’s your Glowtype? ✨",
-  "heroSubtitle": "A 2‑minute quiz that turns how you’ve been feeling into a Glowtype card.",
+  "heroSubtitle": "A tiny 2‑minute quiz that turns how you’ve been feeling into a Glowtype star card.",
   "heroHint": "No login, no diagnosis, just something light to play with.",
   "startQuiz": "Start the quiz",
   "learnGlowtype": "Learn what Glowtype is",
 
-  "heroCardTitle": "Your emotional constellation",
-  "heroCardSubtitle": "Answer a few questions and get a shareable Glowtype card at the end.",
+  "heroCardTitle": "Glowtype star card",
+  "heroCardSubtitle": "Answer a few soft questions, get a card you can keep or share.",
 
   "howItWorks": "How it works",
-  "step1Title": "Pick what feels most like you",
-  "step1Body": "Short everyday situations, not heavy questions.",
-  "step2Title": "We sketch your emotional orbit",
-  "step2Body": "Your choices sketch a soft picture of your emotional orbit.",
-  "step3Title": "You get a Glowtype card",
-  "step3Body": "A little card you can keep or screenshot.",
+  "step1Title": "Tap through a few mini questions",
+  "step2Title": "We trace your emotional orbit",
+  "step3Title": "You get a Glowtype star card",
 
-  "whatItIsTitle": "What this is (and isn’t)",
-  "whatItIsBody": "Glowtype is a playful reflection tool to give words to your inner world, not a label or medical advice.",
+  "whatItIsTitle": "Light, not a diagnosis",
+  "whatItIsBody": "Glowtype is a playful reflection, not a medical test or serious assessment.",
 
   "safetyPreviewTitle": "Privacy & feeling safe",
-  "safetyPreviewBody": "You can use Glowtype without logging in. No ads, no streaks, no pressure.",
-  "safetyPreviewExtra": "If anything feels too much, you can always just close the tab.",
+  "safetyPreviewBody": "No login, no ads, no streaks. Close the tab any time.",
   "seeSafetyPage": "Read safety & privacy"
 }

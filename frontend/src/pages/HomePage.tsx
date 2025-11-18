@@ -48,45 +48,41 @@ export function HomePage() {
 
       <section
         id="how-it-works"
-        className="grid gap-6 md:grid-cols-3"
+        className="mt-10 space-y-3 text-center"
         aria-label={t('howItWorks')}
       >
-        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-          <p className="text-xs text-sky-500">1 · {t('step1Title')}</p>
-          <p className="mt-2 text-sm text-slate-700">{t('step1Body')}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-          <p className="text-xs text-sky-500">2 · {t('step2Title')}</p>
-          <p className="mt-2 text-sm text-slate-700">{t('step2Body')}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-          <p className="text-xs text-sky-500">3 · {t('step3Title')}</p>
-          <p className="mt-2 text-sm text-slate-700">{t('step3Body')}</p>
+        <p className="text-xs font-medium uppercase tracking-[0.25em] text-slate-400">
+          {t('howItWorks')}
+        </p>
+        <div className="flex flex-col items-center gap-3 text-sm text-slate-700 md:flex-row md:justify-center">
+          <div>
+            <span className="mr-1">1️⃣</span>
+            {t('step1Title')}
+          </div>
+          <div className="hidden h-[1px] w-8 bg-slate-200 md:block" />
+          <div>
+            <span className="mr-1">2️⃣</span>
+            {t('step2Title')}
+          </div>
+          <div className="hidden h-[1px] w-8 bg-slate-200 md:block" />
+          <div>
+            <span className="mr-1">3️⃣</span>
+            {t('step3Title')}
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-[2fr,1.4fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-          <h2 className="text-sm font-semibold text-slate-900">
-            {t('whatItIsTitle')}
-          </h2>
-          <p className="mt-2 text-sm text-slate-700">{t('whatItIsBody')}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
-          <h2 className="text-sm font-semibold text-slate-900">
-            {t('safetyPreviewTitle')}
-          </h2>
-          <p className="mt-2 text-sm text-slate-700">
-            {t('safetyPreviewBody')}
-          </p>
-          <p className="mt-2 text-xs text-slate-500">{t('safetyPreviewExtra')}</p>
-          <Link
-            to="/safety"
-            className="mt-3 inline-flex text-xs font-medium text-sky-300 underline-offset-4 hover:underline"
-          >
-            {t('seeSafetyPage')}
-          </Link>
-        </div>
+      <section className="mt-8 flex flex-col items-center gap-2 text-xs text-slate-500 md:flex-row md:justify-center">
+        <span>🪐 {t('whatItIsTitle')}</span>
+        <span className="hidden text-slate-300 md:inline">•</span>
+        <span className="md:max-w-md md:text-center">{t('whatItIsBody')}</span>
+        <span className="hidden text-slate-300 md:inline">•</span>
+        <button
+          type="button"
+          className="mt-1 text-xs font-medium text-sky-500 underline-offset-4 hover:underline md:mt-0"
+        >
+          <Link to="/safety">🔐 {t('safetyPreviewTitle')}</Link>
+        </button>
       </section>
     </div>
   );
