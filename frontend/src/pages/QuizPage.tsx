@@ -77,7 +77,7 @@ export function QuizPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 text-sm text-slate-300">
+      <div className="mx-auto max-w-3xl px-4 py-8 text-sm text-slate-500">
         {t('loading')}
       </div>
     );
@@ -85,7 +85,7 @@ export function QuizPage() {
 
   if (!quiz || error) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 text-sm text-slate-300">
+      <div className="mx-auto max-w-3xl px-4 py-8 text-sm text-slate-500">
         {t('error')}
       </div>
     );
@@ -100,19 +100,19 @@ export function QuizPage() {
   const progressFraction = total > 0 ? (currentIndex + 1) / total : 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="quiz-orbit-bg mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-xl font-semibold text-slate-950">{t('title')}</h1>
       <p className="mt-1 text-xs text-slate-500">
         {t('progress', { current: currentIndex + 1, total })}
       </p>
-      <div className="mt-3 h-1.5 w-full rounded-full bg-slate-200">
+      <div className="mt-3 h-1.5 w-full rounded-full bg-slate-200/70">
         <div
           className="h-1.5 rounded-full bg-gradient-to-r from-sky-400 via-fuchsia-400 to-sky-400 transition-[width]"
           style={{ width: `${Math.max(5, progressFraction * 100)}%` }}
         />
       </div>
 
-      <div className="mt-6 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+      <div className="mt-6 rounded-3xl border border-slate-200/80 bg-white/70 p-5 shadow-[0_4px_20px_rgba(150,150,255,0.15)] backdrop-blur-xl">
         <p className="text-xs uppercase tracking-[0.2em] text-sky-500">
           {t('questionLabel', { index: currentIndex + 1 })}
         </p>
@@ -127,8 +127,8 @@ export function QuizPage() {
               onClick={() => handleChoose(currentQuestion.id, opt.id)}
               className={`rounded-2xl border px-4 py-3 text-left text-sm transition-transform ${
                 selected === opt.id
-                  ? 'border-sky-400 bg-sky-50 shadow-[0_18px_45px_rgba(56,189,248,0.25)]'
-                  : 'border-slate-200 bg-white/80 hover:border-sky-300/80 hover:bg-sky-50/80 hover:shadow-[0_18px_40px_rgba(56,189,248,0.2)]'
+                  ? 'border-sky-400 bg-sky-50 shadow-[0_0_24px_rgba(150,200,255,0.35)]'
+                  : 'border-slate-200 bg-white/70 hover:border-sky-300/80 hover:bg-sky-50/80 hover:shadow-[0_0_20px_rgba(150,200,255,0.3)]'
               }`}
             >
               {opt.text}

@@ -6,6 +6,14 @@
   min-height: 100vh;
 }
 
+/* Soft starfield background for the whole app */
+.app-starfield {
+  background:
+    radial-gradient(circle at 70% 20%, rgba(196, 181, 253, 0.25), transparent 60%),
+    radial-gradient(circle at 20% 70%, rgba(147, 197, 253, 0.25), transparent 60%),
+    #f8faff;
+}
+
 @keyframes glow-orbit {
   0% {
     transform: translateY(0px) translateX(0px) rotate(0deg);
@@ -19,5 +27,85 @@
 }
 
 .glow-orbit {
-  animation: glow-orbit 14s ease-in-out infinite alternate;
+  animation: glow-orbit 16s ease-in-out infinite alternate;
+}
+
+@keyframes orbit-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Shared glassmorphism card for Glowtype star cards */
+.glowtype-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 0 40px rgba(200, 160, 255, 0.3),
+    0 0 80px rgba(160, 200, 255, 0.2) inset;
+}
+
+.glowtype-card::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(147, 197, 253, 0.38), transparent 55%),
+    radial-gradient(circle at 70% 60%, rgba(196, 181, 253, 0.32), transparent 65%),
+    radial-gradient(circle at 50% 90%, rgba(251, 207, 232, 0.3), transparent 70%);
+  opacity: 1;
+}
+
+.glowtype-card::after {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  border-radius: 9999px;
+  border: 1px solid rgba(148, 163, 253, 0.5);
+  opacity: 0.35;
+  transform-origin: center;
+  animation: orbit-spin 48s linear infinite;
+}
+
+.glowtype-card-inner {
+  position: relative;
+}
+
+/* Quiz / result background orbits */
+.quiz-orbit-bg {
+  position: relative;
+}
+
+.quiz-orbit-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(148, 163, 253, 0.18), transparent 55%),
+    radial-gradient(circle at 0% 40%, rgba(147, 197, 253, 0.12), transparent 60%);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.result-orbit-bg {
+  position: relative;
+}
+
+.result-orbit-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(196, 181, 253, 0.2), transparent 60%),
+    radial-gradient(circle at 0% 80%, rgba(147, 197, 253, 0.16), transparent 60%);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: -1;
 }
