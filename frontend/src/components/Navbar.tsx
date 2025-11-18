@@ -20,18 +20,24 @@ export function Navbar() {
         : 'text-slate-500 hover:text-slate-900',
     ].join(' ');
 
+  const siteName = t('siteName');
+  const [brandMain, brandSuffixRaw] = siteName.split('.');
+  const brandSuffix = brandSuffixRaw ? `.${brandSuffixRaw}` : '';
+
   return (
     <header className="border-b border-slate-100 bg-white/80 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-400 shadow-[0_0_18px_rgba(56,189,248,0.6)]" />
-          <div className="flex flex-col leading-tight">
+          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-sky-400/90 to-fuchsia-400/90 shadow-[0_0_14px_rgba(56,189,248,0.45)]" />
+          <div className="flex items-baseline gap-1 leading-tight">
             <span className="text-[15px] font-semibold tracking-tight text-slate-900">
-              {t('siteName')}
+              {brandMain}
             </span>
-            <span className="text-[10px] uppercase tracking-[0.25em] text-slate-400">
-              {t('brandTagline')}
-            </span>
+            {brandSuffix && (
+              <span className="rounded-full border border-slate-200/70 bg-slate-50 px-1.5 py-[1px] text-[10px] font-medium text-slate-500">
+                {brandSuffix}
+              </span>
+            )}
           </div>
         </Link>
         <nav className="flex items-center gap-4">
