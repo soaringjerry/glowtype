@@ -13,47 +13,62 @@ export function Navbar() {
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `px-3 py-2 text-sm ${
-      isActive ? 'text-slate-900' : 'text-slate-500 hover:text-slate-900'
-    }`;
+    [
+      'relative px-3 py-2 text-sm transition-colors',
+      isActive
+        ? 'text-slate-900'
+        : 'text-slate-500 hover:text-slate-900',
+    ].join(' ');
 
   return (
-    <header className="border-b border-slate-200/80 bg-white/80 backdrop-blur">
+    <header className="border-b border-slate-100 bg-white/80 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <span className="text-base font-semibold text-slate-900">{t('siteName')}</span>
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-400 text-[11px] font-semibold text-white shadow-[0_0_18px_rgba(56,189,248,0.6)]">
+            GT
+          </div>
+          <span className="text-sm font-semibold tracking-wide text-slate-900">
+            {t('siteName')}
+          </span>
         </Link>
         <nav className="flex items-center gap-4">
-          <NavLink to="/" className={navLinkClass}>
-            {t('nav.home')}
-          </NavLink>
-          <NavLink to="/quiz" className={navLinkClass}>
-            {t('nav.quiz')}
-          </NavLink>
-          <NavLink to="/chat" className={navLinkClass}>
-            {t('nav.chat')}
-          </NavLink>
-          <NavLink to="/help" className={navLinkClass}>
-            {t('nav.help')}
-          </NavLink>
-          <NavLink to="/safety" className={navLinkClass}>
-            {t('nav.safety')}
-          </NavLink>
-          <div className="ml-2 flex items-center gap-1 rounded-full bg-slate-100 p-1 text-xs">
+          <div className="hidden items-center gap-1 rounded-full bg-slate-100/80 px-1 py-0.5 text-xs text-slate-600 md:flex">
+            <NavLink to="/" className={navLinkClass}>
+              {t('nav.home')}
+            </NavLink>
+            <NavLink to="/quiz" className={navLinkClass}>
+              {t('nav.quiz')}
+            </NavLink>
+            <NavLink to="/chat" className={navLinkClass}>
+              {t('nav.chat')}
+            </NavLink>
+            <NavLink to="/help" className={navLinkClass}>
+              {t('nav.help')}
+            </NavLink>
+            <NavLink to="/safety" className={navLinkClass}>
+              {t('nav.safety')}
+            </NavLink>
+          </div>
+          <div className="ml-2 flex items-center gap-2 text-xs text-slate-500">
             <button
               type="button"
               onClick={() => switchLang('en')}
-              className={`px-2 py-1 rounded-full ${
-                currentLang === 'en' ? 'bg-slate-900 text-slate-50' : 'text-slate-600'
+              className={`transition-colors ${
+                currentLang === 'en'
+                  ? 'font-semibold text-slate-900'
+                  : 'hover:text-slate-700'
               }`}
             >
               {t('language.en')}
             </button>
+            <span className="text-slate-300">/</span>
             <button
               type="button"
               onClick={() => switchLang('zh-CN')}
-              className={`px-2 py-1 rounded-full ${
-                currentLang === 'zh-CN' ? 'bg-slate-900 text-slate-50' : 'text-slate-600'
+              className={`transition-colors ${
+                currentLang === 'zh-CN'
+                  ? 'font-semibold text-slate-900'
+                  : 'hover:text-slate-700'
               }`}
             >
               {t('language.zh')}
