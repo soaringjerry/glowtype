@@ -51,44 +51,64 @@ export function ResultPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-xl font-semibold">
-        {t('title')}: {data.name}
+    <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-8">
+      <h1 className="text-xs uppercase tracking-[0.3em] text-sky-300">
+        {t('title')}
       </h1>
-      <p className="mt-2 text-sm text-slate-300">{data.tagline}</p>
 
-      <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-        <h2 className="text-sm font-semibold">{t('tagline')}</h2>
-        <div className="mt-2 space-y-2 text-sm text-slate-300">
+      <div className="mt-4 w-full max-w-md">
+        <div className="relative overflow-hidden rounded-[32px] border border-sky-400/50 bg-slate-950/80 px-6 py-6 text-center shadow-[0_0_60px_rgba(56,189,248,0.4)] backdrop-blur">
+          <div className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-sky-400/30 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 right-[-30px] h-44 w-44 rounded-full bg-fuchsia-400/25 blur-3xl" />
+
+          <div className="relative space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-200">
+              Glowtype
+            </p>
+            <p className="text-3xl font-semibold tracking-tight text-slate-50">
+              {data.name}
+            </p>
+            <p className="text-sm text-sky-100">{data.tagline}</p>
+          </div>
+        </div>
+      </div>
+
+      <section className="mt-6 w-full max-w-3xl rounded-3xl border border-slate-800/80 bg-slate-950/70 p-5 shadow-[0_0_32px_rgba(15,23,42,0.8)]">
+        <h2 className="text-sm font-semibold text-slate-50">
+          {t('vibeTitle')}
+        </h2>
+        <div className="mt-2 space-y-2 text-sm text-slate-200">
           {data.description.map((line, idx) => (
             <p key={idx}>{line}</p>
           ))}
         </div>
       </section>
 
-      <section className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-        <h2 className="text-sm font-semibold">{t('selfCareTips')}</h2>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
+      <section className="mt-4 w-full max-w-3xl rounded-3xl border border-slate-800/80 bg-slate-950/70 p-5 shadow-[0_0_32px_rgba(15,23,42,0.8)]">
+        <h2 className="text-sm font-semibold text-slate-50">
+          {t('selfCareTips')}
+        </h2>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
           {data.selfCareTips.map((tip, idx) => (
             <li key={idx}>{tip}</li>
           ))}
         </ul>
       </section>
 
-      <section className="mt-4 text-xs text-slate-400">
-        <p>{data.disclaimer}</p>
+      <section className="mt-4 w-full max-w-3xl text-xs text-slate-400">
+        <p>{t('disclaimer')}</p>
       </section>
 
-      <div className="mt-6 flex flex-wrap gap-3 text-sm">
+      <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
         <Link
           to="/chat"
-          className="rounded-full bg-sky-400 px-4 py-2 text-slate-900 hover:bg-sky-300"
+          className="rounded-full bg-sky-400 px-4 py-2 text-slate-950 shadow-[0_0_24px_rgba(56,189,248,0.5)] transition hover:bg-sky-300 hover:shadow-[0_0_32px_rgba(125,211,252,0.7)] active:scale-95"
         >
           {t('chatAboutThis')}
         </Link>
         <Link
           to="/help"
-          className="rounded-full border border-slate-700 px-4 py-2 text-slate-100"
+          className="rounded-full border border-slate-700 px-4 py-2 text-slate-100 transition hover:border-sky-300 active:scale-95"
         >
           {t('helpAndHotlines')}
         </Link>
@@ -96,4 +116,3 @@ export function ResultPage() {
     </div>
   );
 }
-

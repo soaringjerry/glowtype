@@ -1,14 +1,27 @@
 {
-  "heroTitle": "你的 Glowtype 是什么？",
-  "heroSubtitle": "一个给青年的趣味情绪类型小测试，不是诊断，只是帮你轻松认识自己。",
+  "heroBadge": "给年轻人的趣味情绪小测试",
+  "heroTitle": "你的 Glowtype 是什么？🌙",
+  "heroSubtitle": "大概 2 分钟的小问题，帮你把最近的感受变成一张可以分享的「情绪类型卡片」。",
+  "heroDisclaimer": "为青年设计，不是诊断，没有考试氛围，也不需要注册账号。",
   "startQuiz": "开始测试",
-  "howItWorks": "测试流程",
-  "isItSafe": "安全吗？",
-  "howItWorksBody": "回答几个关于你平时感觉和反应的小问题，最后会得到一个温和的 “Glowtype” 描述。",
+  "learnGlowtype": "了解 Glowtype 是什么",
+
+  "heroCardTitle": "你的情绪星体",
+  "heroCardSubtitle": "回答几个轻松的小问题，最后会生成一张可以截图分享的 Glowtype 卡片。",
+
+  "howItWorks": "怎么玩",
+  "step1Title": "选几个最像你的情况",
+  "step1Body": "题目更像日常小场景，而不是严肃问卷。",
+  "step2Title": "系统画出你的情绪轨迹",
+  "step2Body": "根据你的选择，拼出一个大概的「情绪节奏」。",
+  "step3Title": "你会得到一张 Glowtype 卡片",
+  "step3Body": "一张可以保存、截图、发给朋友的趣味类型卡。",
+
   "whatItIsTitle": "这个测试是什么 / 不是什么",
-  "whatItIsBody": "Glowtype 不是医学建议或诊断，只是一个帮你给自己内心体验起名字的小工具。",
-  "safetyPreviewTitle": "你的安全永远更重要",
-  "safetyPreviewBody": "无需注册账号，我们尽量避免广告追踪，并在合理范围内保护你在这里分享的内容。",
+  "whatItIsBody": "Glowtype 是一个轻量的自我观察小工具，不是医学建议或心理诊断。它更像帮你给感受起个好玩的名字，而不是给你贴标签。",
+
+  "safetyPreviewTitle": "关于隐私和安全感",
+  "safetyPreviewBody": "你可以在不登录、不留名字的情况下使用 Glowtype。我们尽量避免广告追踪，并在合理范围内保护你在这里输入的内容。",
+  "safetyPreviewExtra": "如果有一天你不想继续，只要关掉页面就好，没有打卡和任务。",
   "seeSafetyPage": "查看安全与隐私说明"
 }
-

@@ -97,26 +97,38 @@ export function QuizPage() {
 
   const total = quiz.questions.length;
   const selected = answers[currentQuestion.id];
+  const progressFraction = total > 0 ? (currentIndex + 1) / total : 0;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-xl font-semibold">{t('title')}</h1>
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="mt-1 text-xs text-slate-400">
         {t('progress', { current: currentIndex + 1, total })}
       </p>
+      <div className="mt-3 h-1.5 w-full rounded-full bg-slate-800">
+        <div
+          className="h-1.5 rounded-full bg-gradient-to-r from-sky-400 via-fuchsia-400 to-sky-400 transition-[width]"
+          style={{ width: `${Math.max(5, progressFraction * 100)}%` }}
+        />
+      </div>
 
-      <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-        <p className="text-base font-medium">{currentQuestion.question}</p>
+      <div className="mt-6 rounded-3xl border border-slate-800/80 bg-slate-950/70 p-5 shadow-[0_0_32px_rgba(15,23,42,0.8)]">
+        <p className="text-xs uppercase tracking-[0.2em] text-sky-300">
+          {t('questionLabel', { index: currentIndex + 1 })}
+        </p>
+        <p className="mt-2 text-base font-medium text-slate-50">
+          {currentQuestion.question}
+        </p>
         <div className="mt-4 flex flex-col gap-3">
           {currentQuestion.options.map((opt) => (
             <button
               key={opt.id}
               type="button"
               onClick={() => handleChoose(currentQuestion.id, opt.id)}
-              className={`rounded-xl border px-4 py-2 text-left text-sm transition ${
+              className={`rounded-2xl border px-4 py-3 text-left text-sm transition-transform ${
                 selected === opt.id
-                  ? 'border-sky-400 bg-sky-400/10'
-                  : 'border-slate-700 hover:border-sky-300'
+                  ? 'border-sky-400 bg-sky-400/10 shadow-[0_0_24px_rgba(56,189,248,0.4)]'
+                  : 'border-slate-700/80 bg-slate-900/60 hover:border-sky-300/80 hover:bg-slate-900/80 hover:shadow-[0_0_20px_rgba(56,189,248,0.35)]'
               }`}
             >
               {opt.text}
@@ -130,14 +142,14 @@ export function QuizPage() {
           type="button"
           onClick={handlePrev}
           disabled={currentIndex === 0}
-          className="rounded-full border border-slate-700 px-4 py-2 text-slate-200 disabled:opacity-40"
+          className="rounded-full border border-slate-700/90 px-4 py-2 text-slate-200 transition active:scale-95 disabled:opacity-40"
         >
           {t('previous')}
         </button>
         <button
           type="button"
           onClick={handleNext}
-          className="rounded-full bg-sky-400 px-4 py-2 text-slate-900"
+          className="rounded-full bg-sky-400 px-5 py-2 text-slate-950 shadow-[0_0_24px_rgba(56,189,248,0.5)] transition hover:bg-sky-300 hover:shadow-[0_0_32px_rgba(125,211,252,0.7)] active:scale-95"
         >
           {currentIndex === total - 1 ? t('submit') : t('next')}
         </button>
@@ -145,4 +157,3 @@ export function QuizPage() {
     </div>
   );
 }
-

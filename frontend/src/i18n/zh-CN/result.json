@@ -1,9 +1,9 @@
 {
   "title": "你的 Glowtype",
-  "tagline": "这是你最近状态的一种轻量描述，不是标签也不是诊断。",
+  "tagline": "这是你最近情绪状态的一张轻量「小卡片」，不是标签也不是诊断。",
+  "vibeTitle": "这种 Glowtype 大概的感觉是",
   "selfCareTips": "可以尝试的小照顾",
   "chatAboutThis": "想聊聊这个结果",
   "helpAndHotlines": "帮助与热线",
-  "disclaimer": "这不是医学诊断。如果你正处于严重危险或强烈自伤想法中，请尽快联系当地急救电话或心理热线。"
+  "disclaimer": "Glowtype 不是医学诊断，也不能替代专业帮助。如果你觉得自己处在严重危险中，请优先联系身边可信任的大人或当地急救电话 / 心理热线。"
 }
-
