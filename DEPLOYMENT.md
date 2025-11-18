@@ -57,7 +57,7 @@ chmod +x scripts/setup_and_run.sh
 
 后端 `backend/.env`（示例见 `backend/.env.example`）：
 
-- `PORT` – 容器内后端监听端口（默认 8080）。
+- `PORT` – 容器内后端监听端口（默认 8080；本地直接运行时默认使用 18080）。
 - `ENV` – `development` / `production`。
 - `ALLOWED_ORIGINS` – CORS 允许的前端来源（生产环境请设置为你的前端域名）。
 - `LOG_LEVEL` – 日志级别。
@@ -94,14 +94,14 @@ docker-compose 使用根目录 `.env` 做变量替换；后端容器使用 `back
 - `backend`：
   - 构建自 `Dockerfile.backend`；
   - 使用 `backend/.env` 作为环境变量；
-  - 暴露 `${GLOWTYPE_BACKEND_PORT_HOST:-8080}:8080`；
+  - 暴露 `${GLOWTYPE_BACKEND_PORT_HOST:-18080}:8080`；
   - 重启策略 `unless-stopped`。
 
 - `frontend`：
   - 构建自 `Dockerfile.frontend`；
   - 构建参数 `VITE_API_BASE_URL` 默认 `http://backend:8080/api/v1`，可通过根 `.env` 覆盖；
   - 依赖 `backend`；
-  - 暴露 `${GLOWTYPE_FRONTEND_PORT_HOST:-5173}:80`；
+  - 暴露 `${GLOWTYPE_FRONTEND_PORT_HOST:-18081}:80`；
   - 重启策略 `unless-stopped`。
 
 说明：在生产部署场景下，推荐依赖 GHCR 中由 CI/CD 构建好的镜像，`scripts/setup_and_run.sh` 默认只执行 `docker compose pull` + `docker compose up -d`。如需在本机从源码构建镜像，可设置环境变量 `GLOWTYPE_LOCAL_BUILD=1` 再运行脚本。
