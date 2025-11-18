@@ -22,7 +22,8 @@ The script will:
 
 - clone (or update) this repository to `~/glowtype` by default;
 - ensure `.env` and `backend/.env` exist;
-- pull/build and start the Dockerized backend + frontend via `docker-compose`.
+- pull/build and start the Dockerized backend + frontend via `docker-compose`;
+- start a small Watchtower container that automatically pulls new backend/frontend images from GHCR and restarts them.
 
 You can override defaults with environment variables:
 

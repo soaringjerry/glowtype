@@ -11,6 +11,8 @@ services:
     ports:
       - "${GLOWTYPE_BACKEND_PORT_HOST:-18080}:8080"
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   frontend:
     image: ghcr.io/soaringjerry/glowtype-frontend:latest
@@ -24,3 +26,15 @@ services:
     ports:
       - "${GLOWTYPE_FRONTEND_PORT_HOST:-18081}:80"
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - "--label-enable"
+      - "--interval=300"
+      - "--cleanup"

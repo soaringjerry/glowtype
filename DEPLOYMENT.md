@@ -87,24 +87,37 @@ docker-compose 使用根目录 `.env` 做变量替换；后端容器使用 `back
   - SPA 模式下所有路径回退到 `index.html`；
   - 使用精简日志格式，不记录客户端 IP。
 
-### docker-compose.yml
+### docker-compose.yml + Watchtower 自动更新
 
-两项服务：
+服务：
 
 - `backend`：
   - 构建自 `Dockerfile.backend`；
   - 使用 `backend/.env` 作为环境变量；
   - 暴露 `${GLOWTYPE_BACKEND_PORT_HOST:-18080}:8080`；
-  - 重启策略 `unless-stopped`。
+  - 重启策略 `unless-stopped`；
+  - 带有标签 `com.centurylinklabs.watchtower.enable=true`，供 Watchtower 识别。
 
 - `frontend`：
   - 构建自 `Dockerfile.frontend`；
   - 构建参数 `VITE_API_BASE_URL` 默认 `http://backend:8080/api/v1`，可通过根 `.env` 覆盖；
   - 依赖 `backend`；
   - 暴露 `${GLOWTYPE_FRONTEND_PORT_HOST:-18081}:80`；
-  - 重启策略 `unless-stopped`。
+  - 重启策略 `unless-stopped`；
+  - 同样带有 `com.centurylinklabs.watchtower.enable=true` 标签。
 
-说明：在生产部署场景下，推荐依赖 GHCR 中由 CI/CD 构建好的镜像，`scripts/setup_and_run.sh` 默认只执行 `docker compose pull` + `docker compose up -d`。如需在本机从源码构建镜像，可设置环境变量 `GLOWTYPE_LOCAL_BUILD=1` 再运行脚本。
+- `watchtower`：
+  - 镜像：`containrrr/watchtower:latest`；
+  - 通过挂载 `/var/run/docker.sock` 访问 Docker 守护进程；
+  - 启动参数：
+    - `--label-enable`：只监控带 Watchtower 标签的容器（即后端和前端）；
+    - `--interval=300`：每 300 秒检查一次镜像更新；
+    - `--cleanup`：更新后清理旧镜像。
+
+说明：
+
+- 生产环境推荐依赖 CI/CD 推送到 GHCR 的 `:latest` 镜像；Watchtower 会自动拉取新镜像并重启对应容器，实现全自动滚动更新。
+- 如需从源码本机构建镜像，可设置环境变量 `GLOWTYPE_LOCAL_BUILD=1` 再运行 `scripts/setup_and_run.sh`，此时 docker-compose 会执行本地 `build`。
 
 ---
 
