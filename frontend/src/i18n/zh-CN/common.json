@@ -1,5 +1,6 @@
 {
-  "siteName": "Glowtype.me",
+  "siteName": "Glowtype",
+  "brandTagline": "情绪类型小测试",
   "nav": {
     "home": "首页",
     "quiz": "测试",
@@ -17,4 +18,3 @@
   },
   "safetyNoticeShort": "如果你觉得自己很不安全或接近危机，请查看下方帮助资源。"
 }
-

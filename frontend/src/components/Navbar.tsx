@@ -24,12 +24,15 @@ export function Navbar() {
     <header className="border-b border-slate-100 bg-white/80 backdrop-blur-md shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-400 text-[11px] font-semibold text-white shadow-[0_0_18px_rgba(56,189,248,0.6)]">
-            GT
+          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-400 shadow-[0_0_18px_rgba(56,189,248,0.6)]" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-[15px] font-semibold tracking-tight text-slate-900">
+              {t('siteName')}
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.25em] text-slate-400">
+              {t('brandTagline')}
+            </span>
           </div>
-          <span className="text-sm font-semibold tracking-wide text-slate-900">
-            {t('siteName')}
-          </span>
         </Link>
         <nav className="flex items-center gap-4">
           <div className="hidden items-center gap-1 rounded-full bg-slate-100/80 px-1 py-0.5 text-xs text-slate-600 md:flex">
