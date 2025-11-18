@@ -10,7 +10,27 @@ This repository contains:
 
 ### Quick start
 
-#### Backend
+#### One‑liner remote setup (recommended)
+
+On a fresh Linux server with Docker + docker-compose available:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/soaringjerry/glowtype/main/scripts/remote_setup.sh | bash
+```
+
+The script will:
+
+- clone (or update) this repository to `~/glowtype` by default;
+- ensure `.env` and `backend/.env` exist;
+- build and start the Dockerized backend + frontend via `docker-compose`.
+
+You can override defaults with environment variables:
+
+- `GLOWTYPE_INSTALL_DIR` – installation directory (default `~/glowtype`);
+- `GLOWTYPE_BRANCH` – git branch to use (default `main`);
+- `GLOWTYPE_REPO_URL` – repository URL (default GitHub repo).
+
+#### Manual backend start (development)
 
 ```bash
 cd backend
@@ -19,7 +39,7 @@ go run ./cmd/glowtype-api
 
 The API listens on `:8080` by default with the main prefix `/api/v1`.
 
-#### Frontend
+#### Manual frontend start (development)
 
 ```bash
 cd frontend
@@ -46,4 +66,3 @@ In development, the frontend uses `VITE_API_BASE_URL` (default `http://localhost
   - `src/components/` – Navbar, Footer and shared UI pieces
   - `src/i18n/` – English / Chinese JSON translation files
   - `src/api/` – small fetch helpers for the backend API
-
