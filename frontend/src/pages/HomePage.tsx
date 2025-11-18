@@ -48,41 +48,41 @@ export function HomePage() {
 
       <section
         id="how-it-works"
-        className="mt-10 space-y-3 text-center"
+        className="mt-10 space-y-4 text-center"
         aria-label={t('howItWorks')}
       >
         <p className="text-xs font-medium uppercase tracking-[0.25em] text-slate-400">
           {t('howItWorks')}
         </p>
-        <div className="flex flex-col items-center gap-3 text-sm text-slate-700 md:flex-row md:justify-center">
-          <div>
-            <span className="mr-1">1️⃣</span>
-            {t('step1Title')}
+        <div className="how-wave flex flex-col items-center gap-3 text-sm text-slate-700 md:flex-row md:justify-center">
+          <div className="how-step-card how-step-card--1">
+            <span>1️⃣</span>
+            <span>{t('step1Title')}</span>
           </div>
-          <div className="hidden h-[1px] w-8 bg-slate-200 md:block" />
-          <div>
-            <span className="mr-1">2️⃣</span>
-            {t('step2Title')}
+          <div className="how-step-card how-step-card--2">
+            <span>2️⃣</span>
+            <span>{t('step2Title')}</span>
           </div>
-          <div className="hidden h-[1px] w-8 bg-slate-200 md:block" />
-          <div>
-            <span className="mr-1">3️⃣</span>
-            {t('step3Title')}
+          <div className="how-step-card how-step-card--3">
+            <span>3️⃣</span>
+            <span>{t('step3Title')}</span>
           </div>
         </div>
       </section>
 
-      <section className="mt-8 flex flex-col items-center gap-2 text-xs text-slate-500 md:flex-row md:justify-center">
-        <span>🪐 {t('whatItIsTitle')}</span>
-        <span className="hidden text-slate-300 md:inline">•</span>
-        <span className="md:max-w-md md:text-center">{t('whatItIsBody')}</span>
-        <span className="hidden text-slate-300 md:inline">•</span>
-        <button
-          type="button"
-          className="mt-1 text-xs font-medium text-sky-500 underline-offset-4 hover:underline md:mt-0"
-        >
-          <Link to="/safety">🔐 {t('safetyPreviewTitle')}</Link>
-        </button>
+      <section className="mt-8 flex flex-col items-center gap-3 text-xs text-slate-500 md:flex-row md:justify-center">
+        <div className="how-safety-chip flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600">
+          <span>🪐 {t('whatItIsTitle')}</span>
+          <span className="hidden text-slate-300 md:inline">•</span>
+          <span className="md:max-w-md md:text-center">{t('whatItIsBody')}</span>
+          <span className="hidden text-slate-300 md:inline">•</span>
+          <Link
+            to="/safety"
+            className="font-medium text-sky-500 underline-offset-4 hover:underline"
+          >
+            🔐 {t('safetyPreviewTitle')}
+          </Link>
+        </div>
       </section>
     </div>
   );
