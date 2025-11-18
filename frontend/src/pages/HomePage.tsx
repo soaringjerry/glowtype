@@ -18,8 +18,8 @@ export function HomePage() {
           <p className="mt-1 text-sm text-slate-700 sm:text-base">
             {t('heroSubtitle')}
           </p>
-          <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-            {t('heroDisclaimer')}
+          <p className="mt-2 text-xs text-slate-500 sm:text-sm">
+            {t('heroHint')}
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
