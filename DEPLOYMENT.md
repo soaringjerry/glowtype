@@ -130,7 +130,7 @@ on:
   - 使用 Node 22；
   - 执行 `cd frontend && npm ci && npm run build`。
 
-### Job 2：docker-build-and-push
+### Job 2：docker-build-and-push（仅构建 & 推送镜像）
 
 - 使用 Docker Buildx；
 - 登录 GHCR（`ghcr.io`），镜像命名：
@@ -140,26 +140,11 @@ on:
   - `Dockerfile.backend`
   - `Dockerfile.frontend`（传入 `VITE_API_BASE_URL` 构建参数，默认 `https://api.glowtype.me/api/v1`，可在 workflow 中修改）。
 
-### Job 3：deploy（方案 B：SSH）
-
-- 使用 `webfactory/ssh-agent` 加载服务器 SSH 私钥；
-- 通过 `SSH_USER` / `SSH_HOST` / `DEPLOY_PATH` 连接服务器并执行：
-
-```bash
-cd $DEPLOY_PATH
-git pull origin main    # 可选，用于同步 compose 配置
-docker compose pull     # 或 docker-compose pull
-docker compose up -d    # 或 docker-compose up -d
-```
-
-### 所需 GitHub Secrets
-
-- `SSH_PRIVATE_KEY` – 部署用户的私钥（对应服务器上的公钥）。
-- `SSH_USER` – 部署用户（例如 `deploy`）。
-- `SSH_HOST` – 服务器域名或 IP。
-- `DEPLOY_PATH` – 服务器上 `glowtype` 仓库所在目录（例如 `/opt/glowtype`）。
-
-GHCR 使用 `GITHUB_TOKEN` 进行登录；无需额外凭证。
+> CI/CD 只负责把最新镜像推送到 GHCR，不再通过 SSH 直接登录服务器做部署。  
+> 服务器端可以通过以下方式自动更新：
+>
+> - 使用 watchtower 等工具监测 GHCR 镜像更新并自动 `pull + restart`；
+> - 或由运维周期性执行 `docker compose pull && docker compose up -d`。
 
 ---
 
@@ -182,9 +167,7 @@ GHCR 使用 `GITHUB_TOKEN` 进行登录；无需额外凭证。
    chmod +x scripts/setup_and_run.sh
    ./scripts/setup_and_run.sh
    ```
-6. 在 GitHub 仓库 Settings 中配置 Secrets：
-   - `SSH_PRIVATE_KEY`、`SSH_USER`、`SSH_HOST`、`DEPLOY_PATH`。
-7. 之后每次 push 到 `main`：
+6. 之后每次 push 到 `main`：
    - 自动跑测试与构建；
    - 自动构建并推送 Docker 镜像到 GHCR；
-   - 自动通过 SSH 触发服务器 `docker compose pull && docker compose up -d` 更新服务。
+   - 服务器可由 watchtower 或人工执行 `docker compose pull && docker compose up -d` 完成更新。
