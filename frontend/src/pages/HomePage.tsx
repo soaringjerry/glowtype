@@ -57,15 +57,15 @@ export function HomePage() {
         <div className="how-wave flex flex-col items-center gap-3 text-sm text-slate-700 md:flex-row md:justify-center">
           <div className="how-step-card how-step-card--1">
             <span>1️⃣</span>
-            <span>{t('step1Title')}</span>
+            <span className="mt-0.5 leading-snug">{t('step1Title')}</span>
           </div>
           <div className="how-step-card how-step-card--2">
             <span>2️⃣</span>
-            <span>{t('step2Title')}</span>
+            <span className="mt-0.5 leading-snug">{t('step2Title')}</span>
           </div>
           <div className="how-step-card how-step-card--3">
             <span>3️⃣</span>
-            <span>{t('step3Title')}</span>
+            <span className="mt-0.5 leading-snug">{t('step3Title')}</span>
           </div>
         </div>
       </section>
