@@ -5,3 +5,19 @@
 #root {
   min-height: 100vh;
 }
+
+@keyframes glow-orbit {
+  0% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) translateX(6px) rotate(1deg);
+  }
+  100% {
+    transform: translateY(4px) translateX(-4px) rotate(-1deg);
+  }
+}
+
+.glow-orbit {
+  animation: glow-orbit 14s ease-in-out infinite alternate;
+}
