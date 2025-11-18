@@ -51,16 +51,26 @@ export function ResultPage() {
   }
 
   return (
-    <div className="result-orbit-bg mx-auto flex max-w-3xl flex-col items-center px-4 py-8">
+    <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-8">
       <h1 className="text-xs uppercase tracking-[0.3em] text-sky-500">
         {t('title')}
       </h1>
 
       <div className="mt-4 w-full max-w-md">
-        <GlowtypeCard
-          title={data.name}
-          subtitle={data.tagline}
-        />
+        <div className="relative overflow-hidden rounded-[32px] border border-sky-300/70 bg-white/90 px-6 py-6 text-center shadow-[0_18px_45px_rgba(56,189,248,0.25)] backdrop-blur">
+          <div className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-sky-200/70 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 right-[-30px] h-44 w-44 rounded-full bg-fuchsia-200/60 blur-3xl" />
+
+          <div className="relative space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+              Glowtype
+            </p>
+            <p className="text-3xl font-semibold tracking-tight text-slate-950">
+              {data.name}
+            </p>
+            <p className="text-sm text-slate-700">{data.tagline}</p>
+          </div>
+        </div>
       </div>
 
       <section className="mt-6 w-full max-w-3xl rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
@@ -106,4 +116,3 @@ export function ResultPage() {
     </div>
   );
 }
-import { GlowtypeCard } from '../components/GlowtypeCard';
