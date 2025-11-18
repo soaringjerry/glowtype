@@ -42,11 +42,11 @@
 /* Giant emotional planet for hero */
 .hero-planet {
   position: absolute;
-  right: -8rem;
+  right: -5rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 30rem;
-  height: 30rem;
+  width: min(24rem, 55vw);
+  height: min(24rem, 55vw);
   border-radius: 9999px;
   background:
     radial-gradient(circle at 30% 25%, rgba(147, 197, 253, 0.95), transparent 55%),
@@ -80,6 +80,15 @@
     radial-gradient(circle at 50% 90%, rgba(248, 250, 252, 0.4), transparent 60%);
   mix-blend-mode: screen;
   opacity: 0.75;
+}
+
+@media (max-width: 768px) {
+  .hero-planet {
+    right: -6rem;
+    top: 40%;
+    width: 18rem;
+    height: 18rem;
+  }
 }
 
 /* Shared glassmorphism card for Glowtype star cards */
