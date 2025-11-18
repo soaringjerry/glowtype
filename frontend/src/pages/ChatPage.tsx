@@ -86,33 +86,33 @@ export function ChatPage() {
     <div className="mx-auto flex max-w-3xl flex-col px-4 py-8">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-sky-300">
+          <p className="text-xs uppercase tracking-[0.25em] text-sky-500">
             {i18n.language.startsWith('zh')
               ? '匿名聊天 · 无需注册'
               : 'Anonymous chat · no account'}
           </p>
-          <p className="mt-1 text-sm text-slate-200">
+          <p className="mt-1 text-sm text-slate-700">
             {i18n.language.startsWith('zh')
               ? '这里更像一个可以试着说说心里话的小树洞。'
               : 'A small space to try putting feelings into words.'}
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-slate-500">
             {i18n.language.startsWith('zh')
               ? '不是专业咨询，如果你觉得自己处在危险中，请优先联系身边的大人或紧急热线。'
               : 'This is not therapy. If you feel unsafe, please reach out to a trusted adult or local hotline first.'}
           </p>
         </div>
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-400 text-xs text-slate-950 shadow-[0_0_18px_rgba(56,189,248,0.7)]">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-400 text-xs text-slate-950 shadow-[0_0_18px_rgba(56,189,248,0.6)]">
           💬
         </span>
       </div>
 
       <div
         ref={scrollRef}
-        className="mt-4 flex min-h-[260px] flex-1 flex-col gap-3 overflow-y-auto rounded-3xl border border-slate-800/80 bg-slate-950/70 p-4 shadow-[0_0_32px_rgba(15,23,42,0.9)]"
+        className="mt-4 flex min-h-[260px] flex-1 flex-col gap-3 overflow-y-auto rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
       >
         {messages.length === 0 && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             {i18n.language.startsWith('zh')
               ? '可以从一句简单的感受开始，比如 “最近老是睡不着”。'
               : 'You can start with a short sentence about how you feel, like “I’ve been tired but can’t sleep.”'}
@@ -123,8 +123,8 @@ export function ChatPage() {
             key={m.id}
             className={`max-w-[80%] rounded-3xl px-3 py-2 text-xs leading-relaxed ${
               m.from === 'user'
-                ? 'ml-auto bg-sky-500 text-slate-950 shadow-[0_0_20px_rgba(56,189,248,0.7)]'
-                : 'mr-auto bg-slate-800 text-slate-100'
+                ? 'ml-auto bg-sky-500 text-slate-950 shadow-[0_0_20px_rgba(56,189,248,0.4)]'
+                : 'mr-auto bg-slate-100 text-slate-900'
             }`}
           >
             {m.text.split('\n').map((line, idx) => (
@@ -139,7 +139,7 @@ export function ChatPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           rows={2}
-          className="flex-1 resize-none rounded-3xl border border-slate-700 bg-slate-900/60 p-2 text-sm text-slate-100 outline-none focus:border-sky-400"
+          className="flex-1 resize-none rounded-3xl border border-slate-300 bg-white/80 p-2 text-sm text-slate-900 outline-none focus:border-sky-400"
           placeholder={
             i18n.language.startsWith('zh')
               ? '想聊点什么？'

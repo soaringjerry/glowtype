@@ -28,21 +28,21 @@ export function HelpPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
-      <p className="mt-2 text-sm text-slate-300">{t('intro')}</p>
+      <h1 className="text-xl font-semibold text-slate-950">{t('title')}</h1>
+      <p className="mt-2 text-sm text-slate-700">{t('intro')}</p>
 
       {data && (
         <div className="mt-6 space-y-4">
-          <p className="text-sm text-slate-200">{data.crisisDisclaimer}</p>
-          <ul className="space-y-3 text-sm text-slate-200">
+          <p className="text-sm text-slate-800">{data.crisisDisclaimer}</p>
+          <ul className="space-y-3 text-sm text-slate-800">
             {data.hotlines.map((h) => (
               <li
                 key={h.name}
-                className="rounded-2xl border border-slate-800 bg-slate-900/40 p-3"
+                className="rounded-2xl border border-slate-200 bg-white/80 p-3 shadow-[0_18px_45px_rgba(15,23,42,0.05)]"
               >
                 <p className="font-medium">{h.name}</p>
-                <p className="mt-1 text-slate-300">{h.phone}</p>
-                <p className="mt-1 text-slate-400">{h.note}</p>
+                <p className="mt-1 text-slate-700">{h.phone}</p>
+                <p className="mt-1 text-slate-500">{h.note}</p>
                 {h.website && (
                   <a
                     href={h.website}
@@ -61,4 +61,3 @@ export function HelpPage() {
     </div>
   );
 }
-

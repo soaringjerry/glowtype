@@ -101,22 +101,22 @@ export function QuizPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
-      <p className="mt-1 text-xs text-slate-400">
+      <h1 className="text-xl font-semibold text-slate-950">{t('title')}</h1>
+      <p className="mt-1 text-xs text-slate-500">
         {t('progress', { current: currentIndex + 1, total })}
       </p>
-      <div className="mt-3 h-1.5 w-full rounded-full bg-slate-800">
+      <div className="mt-3 h-1.5 w-full rounded-full bg-slate-200">
         <div
           className="h-1.5 rounded-full bg-gradient-to-r from-sky-400 via-fuchsia-400 to-sky-400 transition-[width]"
           style={{ width: `${Math.max(5, progressFraction * 100)}%` }}
         />
       </div>
 
-      <div className="mt-6 rounded-3xl border border-slate-800/80 bg-slate-950/70 p-5 shadow-[0_0_32px_rgba(15,23,42,0.8)]">
-        <p className="text-xs uppercase tracking-[0.2em] text-sky-300">
+      <div className="mt-6 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+        <p className="text-xs uppercase tracking-[0.2em] text-sky-500">
           {t('questionLabel', { index: currentIndex + 1 })}
         </p>
-        <p className="mt-2 text-base font-medium text-slate-50">
+        <p className="mt-2 text-base font-medium text-slate-900">
           {currentQuestion.question}
         </p>
         <div className="mt-4 flex flex-col gap-3">
@@ -127,8 +127,8 @@ export function QuizPage() {
               onClick={() => handleChoose(currentQuestion.id, opt.id)}
               className={`rounded-2xl border px-4 py-3 text-left text-sm transition-transform ${
                 selected === opt.id
-                  ? 'border-sky-400 bg-sky-400/10 shadow-[0_0_24px_rgba(56,189,248,0.4)]'
-                  : 'border-slate-700/80 bg-slate-900/60 hover:border-sky-300/80 hover:bg-slate-900/80 hover:shadow-[0_0_20px_rgba(56,189,248,0.35)]'
+                  ? 'border-sky-400 bg-sky-50 shadow-[0_18px_45px_rgba(56,189,248,0.25)]'
+                  : 'border-slate-200 bg-white/80 hover:border-sky-300/80 hover:bg-sky-50/80 hover:shadow-[0_18px_40px_rgba(56,189,248,0.2)]'
               }`}
             >
               {opt.text}

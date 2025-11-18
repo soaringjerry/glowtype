@@ -13,13 +13,15 @@ export function Navbar() {
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `px-3 py-2 text-sm ${isActive ? 'text-white' : 'text-slate-300 hover:text-white'}`;
+    `px-3 py-2 text-sm ${
+      isActive ? 'text-slate-900' : 'text-slate-500 hover:text-slate-900'
+    }`;
 
   return (
-    <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+    <header className="border-b border-slate-200/80 bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <span className="text-base font-semibold text-white">{t('siteName')}</span>
+          <span className="text-base font-semibold text-slate-900">{t('siteName')}</span>
         </Link>
         <nav className="flex items-center gap-4">
           <NavLink to="/" className={navLinkClass}>
@@ -37,12 +39,12 @@ export function Navbar() {
           <NavLink to="/safety" className={navLinkClass}>
             {t('nav.safety')}
           </NavLink>
-          <div className="ml-2 flex items-center gap-1 rounded-full bg-slate-800 p-1 text-xs">
+          <div className="ml-2 flex items-center gap-1 rounded-full bg-slate-100 p-1 text-xs">
             <button
               type="button"
               onClick={() => switchLang('en')}
               className={`px-2 py-1 rounded-full ${
-                currentLang === 'en' ? 'bg-slate-100 text-slate-900' : 'text-slate-200'
+                currentLang === 'en' ? 'bg-slate-900 text-slate-50' : 'text-slate-600'
               }`}
             >
               {t('language.en')}
@@ -51,7 +53,7 @@ export function Navbar() {
               type="button"
               onClick={() => switchLang('zh-CN')}
               className={`px-2 py-1 rounded-full ${
-                currentLang === 'zh-CN' ? 'bg-slate-100 text-slate-900' : 'text-slate-200'
+                currentLang === 'zh-CN' ? 'bg-slate-900 text-slate-50' : 'text-slate-600'
               }`}
             >
               {t('language.zh')}
@@ -62,4 +64,3 @@ export function Navbar() {
     </header>
   );
 }
-

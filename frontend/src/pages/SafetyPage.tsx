@@ -5,8 +5,8 @@ export function SafetyPage() {
   const zh = i18n.language.startsWith('zh');
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 text-sm text-slate-200">
-      <h1 className="text-xl font-semibold">
+    <div className="mx-auto max-w-3xl px-4 py-8 text-sm text-slate-800">
+      <h1 className="text-xl font-semibold text-slate-950">
         {zh ? '安全与隐私' : 'Safety & privacy'}
       </h1>
       <div className="mt-4 space-y-3">
@@ -34,4 +34,3 @@ export function SafetyPage() {
     </div>
   );
 }
-
