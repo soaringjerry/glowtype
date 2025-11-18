@@ -1,0 +1,34 @@
+[
+  {
+    "id": "quiet-comet",
+    "translations": {
+      "en": {
+        "name": "Quiet Comet",
+        "tagline": "Calm on the outside, racing thoughts inside.",
+        "description": [
+          "Many young people feel like this when they carry everything alone.",
+          "You might often look fine, but feel overwhelmed inside."
+        ],
+        "selfCareTips": [
+          "Try sharing one small thing with someone you trust.",
+          "Give yourself permission to rest without feeling guilty."
+        ],
+        "disclaimer": "This is not a diagnosis. If you are in crisis, please contact a hotline."
+      },
+      "zh-CN": {
+        "name": "静默彗星",
+        "tagline": "外表很冷静，内心在高速旋转。",
+        "description": [
+          "很多年轻人在把压力都放在自己身上的时候，会有这样的感觉。",
+          "你看起来也许一切正常，但心里可能已经很累。"
+        ],
+        "selfCareTips": [
+          "可以尝试只分享一件小事给你信任的人，而不是一次说完所有。",
+          "允许自己真正休息一下，而不是一直“撑着”。"
+        ],
+        "disclaimer": "这只是一个轻量的情绪小测试，并不是医学诊断。如果你处于严重危险中，请尽快联系当地紧急电话或心理热线。"
+      }
+    }
+  }
+]
+

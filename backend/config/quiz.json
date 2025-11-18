@@ -1,0 +1,50 @@
+{
+  "id": "v1-core",
+  "questions": [
+    {
+      "id": "q1",
+      "order": 1,
+      "translations": {
+        "en": {
+          "question": "When you feel stressed, what do you usually do first?",
+          "options": [
+            "Talk to a close friend",
+            "Keep it to yourself",
+            "Play games or scroll on your phone"
+          ]
+        },
+        "zh-CN": {
+          "question": "当你感到压力很大时，你通常会先做什么？",
+          "options": [
+            "找好朋友聊一聊",
+            "自己扛，不跟人说",
+            "打游戏 / 刷手机"
+          ]
+        }
+      }
+    },
+    {
+      "id": "q2",
+      "order": 2,
+      "translations": {
+        "en": {
+          "question": "On a normal day, how loud is your inner world?",
+          "options": [
+            "Very calm, not much going on",
+            "Sometimes a bit busy",
+            "Often loud or racing thoughts"
+          ]
+        },
+        "zh-CN": {
+          "question": "在普通的一天里，你内心世界的“声音”有多吵？",
+          "options": [
+            "很平静，没什么太多想法",
+            "有时候有点忙",
+            "经常很吵 / 想法停不下来"
+          ]
+        }
+      }
+    }
+  ]
+}
+

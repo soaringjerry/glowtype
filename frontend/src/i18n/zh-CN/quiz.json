@@ -1,0 +1,10 @@
+{
+  "title": "Glowtype 小测试",
+  "progress": "第 {{current}} / {{total}} 题",
+  "next": "下一题",
+  "previous": "上一题",
+  "submit": "查看我的 Glowtype",
+  "loading": "正在载入题目…",
+  "error": "暂时无法载入题目，请稍后再试。"
+}
+

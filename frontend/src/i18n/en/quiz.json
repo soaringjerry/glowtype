@@ -1,0 +1,10 @@
+{
+  "title": "Glowtype quiz",
+  "progress": "Question {{current}} of {{total}}",
+  "next": "Next",
+  "previous": "Previous",
+  "submit": "See my Glowtype",
+  "loading": "Loading quiz...",
+  "error": "Could not load the quiz. Please try again in a bit."
+}
+

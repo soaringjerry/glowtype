@@ -1,0 +1,20 @@
+{
+  "siteName": "Glowtype.me",
+  "nav": {
+    "home": "Home",
+    "quiz": "Quiz",
+    "chat": "Chat",
+    "help": "Help",
+    "safety": "Safety & Privacy"
+  },
+  "language": {
+    "en": "EN",
+    "zh": "中文"
+  },
+  "cta": {
+    "startQuiz": "Start the quiz",
+    "backHome": "Back to home"
+  },
+  "safetyNoticeShort": "If you feel unsafe or in crisis, please check the help resources below."
+}
+

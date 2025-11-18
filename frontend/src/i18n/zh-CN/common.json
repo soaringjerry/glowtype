@@ -1,0 +1,20 @@
+{
+  "siteName": "Glowtype.me",
+  "nav": {
+    "home": "首页",
+    "quiz": "测试",
+    "chat": "聊天",
+    "help": "帮助",
+    "safety": "安全与隐私"
+  },
+  "language": {
+    "en": "EN",
+    "zh": "中文"
+  },
+  "cta": {
+    "startQuiz": "开始测试",
+    "backHome": "返回首页"
+  },
+  "safetyNoticeShort": "如果你觉得自己很不安全或接近危机，请查看下方帮助资源。"
+}
+
