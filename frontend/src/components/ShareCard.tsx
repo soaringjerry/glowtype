@@ -39,7 +39,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({
             <div className="absolute bottom-[-10%] right-[-10%] w-[800px] h-[800px] bg-blue-200/40 rounded-full blur-[120px] mix-blend-multiply" />
 
             {/* Content Container */}
-            <div className="relative z-10 flex flex-col items-center justify-between h-full py-32 px-24">
+            <div className="relative z-10 flex flex-col items-center justify-between h-full py-20 px-12">
 
                 {/* Header */}
                 <div className="flex flex-col items-center gap-6">
@@ -57,7 +57,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({
                 </div>
 
                 {/* Main Card Visual */}
-                <div className="relative w-full max-w-[800px] aspect-[3/4.5]">
+                <div className="relative w-full max-w-[900px] aspect-[3/4.5]">
                     <div className={`relative h-full w-full rounded-[64px] overflow-hidden bg-gradient-to-br ${cardAccent} shadow-2xl border-[12px] border-white/80`}>
                         {/* Card Aura */}
                         <div className="absolute top-0 left-0 w-full h-[60%] flex items-center justify-center overflow-hidden">
@@ -65,8 +65,8 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({
                         </div>
 
                         {/* Card Content */}
-                        <div className="absolute bottom-0 left-0 w-full p-16 flex flex-col justify-end h-full">
-                            <div className="bg-white/40 backdrop-blur-xl rounded-[48px] p-12 border border-white/50 shadow-lg">
+                        <div className="absolute bottom-0 left-0 w-full p-8 flex flex-col justify-end h-full z-20">
+                            <div className="bg-white/40 backdrop-blur-xl rounded-[48px] p-8 border border-white/50 shadow-lg">
                                 <h2 className={`text-7xl font-bold ${textColor} mb-6 leading-tight`}>{title}</h2>
                                 <p className="text-2xl uppercase tracking-widest text-gray-600 font-bold mb-10">{tagline}</p>
 
