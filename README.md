@@ -15,7 +15,7 @@ This repository contains:
 On a fresh Linux server with Docker + docker-compose available:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/soaringjerry/glowtype/main/scripts/remote_setup.sh | bash
+GEMINI_API_KEY=your_key_here curl -fsSL https://raw.githubusercontent.com/soaringjerry/glowtype/main/scripts/remote_setup.sh | bash
 ```
 
 The script will:
@@ -43,13 +43,6 @@ You can change these by editing the root `.env`:
 ```env
 GLOWTYPE_BACKEND_PORT_HOST=18080
 GLOWTYPE_FRONTEND_PORT_HOST=18081
-```
-
-For local development (running without Docker), you can change the backend port by setting `PORT`:
-
-```bash
-cd backend
-PORT=19080 go run ./cmd/glowtype-api
 ```
 
 And update the frontend API base URL accordingly:

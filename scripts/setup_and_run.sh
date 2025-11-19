@@ -7,7 +7,7 @@ echo "=== Glowtype.me – setup & run (Docker) ==="
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "[ERROR] Docker is not installed or not in PATH."
-  echo "请先安装 Docker，然后重新运行 scripts/setup_and_run.sh。"
+  echo "Please install Docker first, then re-run scripts/setup_and_run.sh."
   exit 1
 fi
 
@@ -17,7 +17,7 @@ elif command -v docker-compose >/dev/null 2>&1; then
   COMPOSE_CMD="docker-compose"
 else
   echo "[ERROR] Neither 'docker compose' nor 'docker-compose' was found."
-  echo "请安装 docker-compose 或升级到支持 'docker compose' 的 Docker 版本。"
+  echo "Please install docker-compose or upgrade to a Docker version that supports 'docker compose'."
   exit 1
 fi
 
@@ -36,7 +36,21 @@ VITE_API_BASE_URL=http://backend:8080/api/v1
 EOF
     echo "[INFO] Created a minimal .env at project root."
   fi
-  echo "      请根据需要编辑 .env（端口、VITE_API_BASE_URL 等）。"
+  echo "      Please edit .env as needed (ports, VITE_API_BASE_URL, etc.)."
+fi
+
+# Inject GEMINI_API_KEY if provided via environment (e.g. from one-line install command)
+if [ -n "${GEMINI_API_KEY:-}" ]; then
+  if [ -f "${ROOT_DIR}/.env" ]; then
+    # Remove existing key if present (including empty ones from example) to avoid duplicates
+    # Using temp file for cross-platform compatibility
+    grep -v "^GEMINI_API_KEY=" "${ROOT_DIR}/.env" > "${ROOT_DIR}/.env.tmp" || true
+    mv "${ROOT_DIR}/.env.tmp" "${ROOT_DIR}/.env"
+    
+    # Append the new key
+    echo "GEMINI_API_KEY=${GEMINI_API_KEY}" >> "${ROOT_DIR}/.env"
+    echo "[INFO] Configured GEMINI_API_KEY from environment variable."
+  fi
 fi
 
 # Ensure backend/.env exists (backend settings)
@@ -44,7 +58,7 @@ if [ ! -f "${ROOT_DIR}/backend/.env" ]; then
   if [ -f "${ROOT_DIR}/backend/.env.example" ]; then
     cp "${ROOT_DIR}/backend/.env.example" "${ROOT_DIR}/backend/.env"
     echo "[INFO] Created backend/.env from backend/.env.example."
-    echo "      默认 ALLOWED_ORIGINS 可能是 https://glowtype.me，如在本地运行请根据前端地址调整。"
+    echo "      Default ALLOWED_ORIGINS might be https://glowtype.me. Adjust if running locally."
   else
     cat > "${ROOT_DIR}/backend/.env" <<EOF
 PORT=8080
@@ -96,4 +110,4 @@ echo "=== Glowtype.me is starting via Docker Compose ==="
 echo "Frontend:  http://localhost:${FRONTEND_PORT}"
 echo "Backend:   http://localhost:${BACKEND_PORT}/api/v1"
 echo
-echo "重新运行本脚本将执行 pull/up，可用于更新到最新镜像。"
+echo "Rerun this script to pull/up and update to the latest images."

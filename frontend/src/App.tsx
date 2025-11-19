@@ -29,7 +29,7 @@ import {
 
 // --- GEMINI API UTILITIES ---
 
-const apiKey = ""; // System will inject the key at runtime
+const apiKey = (window as any).ENV?.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || ""; // Load from runtime config or build env
 
 const callGemini = async (prompt, systemInstruction) => {
   try {
