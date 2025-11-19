@@ -419,7 +419,7 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
             <div className="absolute bottom-0 left-0 w-full h-[45%] z-10">
               <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/70 to-transparent backdrop-blur-[2px]" />
               <div className="relative z-20 p-6 h-full flex flex-col justify-end">
-                <div className="pt-6 border-t border-white/40">
+                <div className="pt-6">
                   <h3 className={`text-2xl font-serif ${data.textColor} mb-1`}>{data.title[lang]}</h3>
                   <p className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-4">{data.tagline[lang]}</p>
                   <style>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
