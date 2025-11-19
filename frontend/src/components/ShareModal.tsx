@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState, type FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Copy, Check, Loader2, Share2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -12,7 +12,7 @@ interface ShareModalProps {
     lang: 'en' | 'zh';
 }
 
-export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, data, insight, lang }) => {
+export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight, lang }) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [hasCopied, setHasCopied] = useState(false);

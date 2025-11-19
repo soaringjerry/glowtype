@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -156,7 +156,7 @@ const APP_CONFIG = {
 
 // --- COMPONENTS ---
 
-const GlobalBackground = React.memo(() => (
+const GlobalBackground = memo(() => (
   <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#FDFCFE]">
     <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-darken" />
     <motion.div
@@ -218,7 +218,7 @@ const GlassCard = ({ children, className = '', delay = 0 }) => (
 );
 
 // Meteor Component for Crisis View
-const Meteor = React.memo(({ delay, duration, style }) => (
+const Meteor = memo(({ delay, duration, style }) => (
   <motion.div
     initial={{ top: -100, left: '120%', opacity: 0 }}
     animate={{ top: '120%', left: '-20%', opacity: [0, 1, 0] }}
@@ -808,7 +808,7 @@ const CrisisView = ({ onBack, lang }) => {
 };
 
 // 3. Layout Shell
-const Navbar = React.memo(({ view, setView, lang, toggleLang, tNav }) => {
+const Navbar = memo(({ view, setView, lang, toggleLang, tNav }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
