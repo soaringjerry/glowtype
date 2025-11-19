@@ -26,6 +26,7 @@ import {
   MessageSquare,
   ExternalLink
 } from 'lucide-react';
+import { ShareModal } from './components/ShareModal';
 
 // --- GEMINI API UTILITIES ---
 
@@ -378,6 +379,7 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
   const t = TRANSLATIONS[lang].result;
   const [insight, setInsight] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => { setInsight(null); }, [lang]);
 
@@ -452,8 +454,12 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="p-2.5 bg-white border border-gray-100 rounded-xl text-gray-500 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-sm transition-all active:scale-95" onClick={() => alert("Simulated: Image Saved")}><Download size={18} /></button>
-              <button className="p-2.5 bg-white border border-gray-100 rounded-xl text-gray-500 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-sm transition-all active:scale-95" onClick={() => alert("Simulated: Link Copied")}><Copy size={18} /></button>
+              <button
+                className="px-4 py-2.5 bg-white border border-gray-100 rounded-xl text-indigo-600 font-bold text-xs hover:border-indigo-200 hover:bg-indigo-50 hover:shadow-sm transition-all active:scale-95 flex items-center gap-2"
+                onClick={() => setShowShareModal(true)}
+              >
+                {t.shareTitle}
+              </button>
             </div>
           </div>
           {!insight && (
@@ -467,6 +473,13 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
             </button>
           </div>
         </div>
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          data={data}
+          insight={insight}
+          lang={lang}
+        />
       </motion.div >
     </div >
   );
