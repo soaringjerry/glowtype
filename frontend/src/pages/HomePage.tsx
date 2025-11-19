@@ -6,7 +6,7 @@ export function HomePage() {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-12 px-4 py-16">
-      <section className="relative flex min-h-[60vh] flex-col-reverse items-center gap-10 md:flex-row md:items-center md:justify-between">
+      <section className="relative flex min-h-[auto] flex-col-reverse items-center gap-10 py-8 md:min-h-[60vh] md:flex-row md:items-center md:justify-between md:py-0">
         <div className="pointer-events-none absolute -right-10 top-0 hidden h-40 w-40 rounded-full bg-sky-200/60 blur-3xl md:block" />
         <div className="mt-6 flex w-full justify-center md:mt-0 md:w-auto">
           <div className="glow-orbit relative h-52 w-52 overflow-hidden rounded-[32px] border border-sky-300/70 bg-white/80 shadow-[0_0_40px_rgba(59,130,246,0.35)] backdrop-blur">

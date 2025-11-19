@@ -24,33 +24,40 @@ import {
   Coffee,
   Moon,
   MessageSquare,
-  ExternalLink
+  ExternalLink,
+  Settings
 } from 'lucide-react';
+import { SettingsProvider, useSettings } from './contexts/SettingsContext';
+import { SettingsModal } from './components/SettingsModal';
 
 // --- GEMINI API UTILITIES ---
 
-const apiKey = (window as any).ENV?.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || ""; // Load from runtime config or build env
+const callAI = async (prompt, systemInstruction, settings) => {
+  const { apiKey, baseUrl, model } = settings;
+  if (!apiKey) return "Please set your API Key in Settings.";
 
-const callGemini = async (prompt, systemInstruction) => {
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-        }),
-      }
-    );
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: prompt }
+        ],
+      }),
+    });
 
     if (!response.ok) throw new Error(`API Error: ${response.status}`);
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Connection interrupted.";
+    return data.choices?.[0]?.message?.content || "Connection interrupted.";
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "I'm having a little trouble connecting. Please try again.";
+    console.error("AI API Error:", error);
+    return "I'm having a little trouble connecting. Please check your API settings.";
   }
 };
 
@@ -366,11 +373,13 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
 
   useEffect(() => { setInsight(null); }, [lang]);
 
+  const settings = useSettings();
+
   const handleGenerateInsight = async () => {
     setIsGenerating(true);
     const systemPrompt = `You are a poetic, gentle companion... ${t.promptContext}`;
     const userPrompt = `Archetype: ${data.title[lang]}. ${data.description[lang]}. Insight?`;
-    const text = await callGemini(userPrompt, systemPrompt);
+    const text = await callAI(userPrompt, systemPrompt, settings);
     setInsight(text);
     setIsGenerating(false);
   };
@@ -480,6 +489,8 @@ const ChatView = ({ onEnd, lang, onCrisis }) => {
 
   useEffect(() => { endOfMsgRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
 
+  const settings = useSettings();
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -488,7 +499,7 @@ const ChatView = ({ onEnd, lang, onCrisis }) => {
     setInput("");
     setIsTyping(true);
     const systemPrompt = `You are a supportive, gentle AI companion...`;
-    const botResponseText = await callGemini(input, systemPrompt);
+    const botResponseText = await callAI(input, systemPrompt, settings);
     setIsTyping(false);
     setMessages(prev => [...prev, { id: Date.now() + 1, text: botResponseText, sender: 'bot' }]);
   };
@@ -778,7 +789,7 @@ const CrisisView = ({ onBack, lang }) => {
 };
 
 // 3. Layout Shell
-const Navbar = React.memo(({ view, setView, lang, toggleLang, tNav }) => {
+const Navbar = React.memo(({ view, setView, lang, toggleLang, tNav, onOpenSettings }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -794,6 +805,7 @@ const Navbar = React.memo(({ view, setView, lang, toggleLang, tNav }) => {
         <button onClick={() => setView('learn')} className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-full hover:bg-indigo-50"><BookOpen size={16} /> {tNav.learn}</button>
         {view === 'landing' && (<button onClick={() => setView('safety')} className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">{tNav.safety}</button>)}
         <button onClick={toggleLang} className="flex items-center gap-1 bg-gray-100/80 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold transition-colors tracking-wide backdrop-blur-sm"><Globe size={12} />{tNav.lang}</button>
+        <button onClick={onOpenSettings} className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"><Settings size={18} /></button>
       </div>
     </nav>
   );
@@ -804,6 +816,7 @@ const AppShell = () => {
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState('en');
   const [resultType, setResultType] = useState(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const toggleLang = useCallback(() => setLang(prev => prev === 'en' ? 'zh' : 'en'), []);
   const handleQuizComplete = () => {
@@ -829,7 +842,8 @@ const AppShell = () => {
   return (
     <div className="min-h-screen bg-[#FDFCFE] text-gray-900 font-sans overflow-x-hidden relative selection:bg-purple-200">
       <GlobalBackground />
-      <Navbar view={view} setView={setView} lang={lang} toggleLang={toggleLang} tNav={tNav} />
+      <Navbar view={view} setView={setView} lang={lang} toggleLang={toggleLang} tNav={tNav} onOpenSettings={() => setIsSettingsOpen(true)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <main className="relative z-10">
         <AnimatePresence mode="wait">
           {view === 'landing' && (<motion.div key="landing" exit={{ opacity: 0, y: -20 }} className="absolute w-full top-0"><HeroView onStart={() => setView('quiz')} onViewSafety={() => setView('safety')} lang={lang} /></motion.div>)}
@@ -865,4 +879,10 @@ const AppShell = () => {
   );
 };
 
-export default AppShell;
+export default function App() {
+  return (
+    <SettingsProvider>
+      <AppShell />
+    </SettingsProvider>
+  );
+}

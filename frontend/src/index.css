@@ -4,15 +4,22 @@
 
 #root {
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 @keyframes glow-orbit {
   0% {
     transform: translateY(0px) translateX(0px) rotate(0deg);
   }
+
   50% {
     transform: translateY(-6px) translateX(6px) rotate(1deg);
   }
+
   100% {
     transform: translateY(4px) translateX(-4px) rotate(-1deg);
   }
@@ -34,12 +41,10 @@
   top: 50%;
   height: 3px;
   border-radius: 9999px;
-  background: linear-gradient(
-    120deg,
-    rgba(147, 197, 253, 0.15),
-    rgba(196, 181, 253, 0.55),
-    rgba(251, 207, 232, 0.2)
-  );
+  background: linear-gradient(120deg,
+      rgba(147, 197, 253, 0.15),
+      rgba(196, 181, 253, 0.55),
+      rgba(251, 207, 232, 0.2));
   filter: blur(5px);
   opacity: 0.85;
   transform: rotate(-8deg);
@@ -69,12 +74,10 @@
   inset-inline: -10px;
   border-radius: inherit;
   background:
-    linear-gradient(
-      120deg,
+    linear-gradient(120deg,
       rgba(147, 197, 253, 0.85),
       rgba(196, 181, 253, 0.75),
-      rgba(251, 207, 232, 0.7)
-    );
+      rgba(251, 207, 232, 0.7));
   opacity: 0.18;
   filter: blur(1.2px);
 }
@@ -99,9 +102,11 @@
   .how-step-card--1 {
     transform: translateY(10px) rotate(-5deg);
   }
+
   .how-step-card--2 {
     transform: translateY(-4px) rotate(3deg);
   }
+
   .how-step-card--3 {
     transform: translateY(8px) rotate(-4deg);
   }
