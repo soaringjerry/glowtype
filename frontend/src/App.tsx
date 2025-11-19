@@ -50,39 +50,9 @@ const callGemini = async (prompt, systemInstruction) => {
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "Connection interrupted.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Sorry, the cosmic connection is weak right now.";
+    return "I'm having a little trouble connecting. Please try again.";
   }
 };
-
-// --- VISUAL ASSETS ---
-
-const GlobalBackground = () => (
-  <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#FDFCFE]">
-    <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-darken" />
-    <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0], x: [0, 50, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="absolute top-[-10%] -left-[10%] w-[50vw] h-[50vw] bg-purple-200/40 rounded-full blur-[80px] mix-blend-multiply" />
-    <motion.div animate={{ scale: [1, 1.1, 1], x: [0, -30, 0], y: [0, 50, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "linear" }} className="absolute bottom-[-10%] -right-[10%] w-[50vw] h-[50vw] bg-blue-200/40 rounded-full blur-[80px] mix-blend-multiply" />
-    <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 18, repeat: Infinity }} className="absolute top-[40%] left-[30%] w-[40vw] h-[40vw] bg-pink-100/50 rounded-full blur-[100px] mix-blend-multiply" />
-  </div>
-);
-
-const BrandLogo = () => (
-  <div className="flex items-center gap-4 group cursor-pointer select-none">
-    <div className="relative w-10 h-10 flex items-center justify-center">
-      <div className="absolute inset-0 bg-gradient-to-tr from-indigo-300 via-purple-300 to-pink-300 rounded-full blur-md opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
-      <div className="relative z-10 bg-white/80 w-full h-full rounded-xl overflow-hidden border border-white shadow-sm backdrop-blur-md flex items-center justify-center">
-        <div className="absolute inset-0 bg-[conic-gradient(at_center,_var(--tw-gradient-stops))] from-rose-100 via-sky-100 to-violet-100 opacity-80" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 border border-white/50 rotate-45 mix-blend-overlay" />
-        <Sparkles size={14} className="text-indigo-600 relative z-20 mix-blend-multiply" />
-      </div>
-    </div>
-    <div className="flex flex-col justify-center -space-y-0.5">
-      <span className="font-serif text-xl text-gray-900 tracking-tight group-hover:text-indigo-600 transition-colors duration-500">Glowtype</span>
-      <div className="flex items-center gap-1"><span className="h-px w-3 bg-gradient-to-r from-indigo-400 to-pink-400"></span><span className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em]">Prism</span></div>
-    </div>
-  </div>
-);
-
-// --- CONFIG & TRANSLATIONS ---
 
 const TRANSLATIONS = {
   en: {
@@ -174,6 +144,27 @@ const APP_CONFIG = {
 
 // --- COMPONENTS ---
 
+const GlobalBackground = React.memo(() => (
+  <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#FDFCFE]">
+    <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-darken" />
+    <motion.div
+      animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0], x: [0, 50, 0] }}
+      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+      className="absolute top-[-10%] -left-[10%] w-[50vw] h-[50vw] bg-purple-200/40 rounded-full blur-[80px] mix-blend-multiply will-change-transform"
+    />
+    <motion.div
+      animate={{ scale: [1, 1.1, 1], x: [0, -30, 0], y: [0, 50, 0] }}
+      transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+      className="absolute bottom-[-10%] -right-[10%] w-[50vw] h-[50vw] bg-blue-200/40 rounded-full blur-[80px] mix-blend-multiply will-change-transform"
+    />
+    <motion.div
+      animate={{ scale: [1, 1.3, 1] }}
+      transition={{ duration: 18, repeat: Infinity }}
+      className="absolute top-[40%] left-[30%] w-[40vw] h-[40vw] bg-pink-100/50 rounded-full blur-[100px] mix-blend-multiply will-change-transform"
+    />
+  </div>
+));
+
 const Button = ({ children, onClick, variant = 'primary', className = '', icon: Icon, disabled = false, isLoading = false }) => {
   const baseStyle = "relative overflow-hidden rounded-2xl font-medium transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group";
 
@@ -215,18 +206,18 @@ const GlassCard = ({ children, className = '', delay = 0 }) => (
 );
 
 // Meteor Component for Crisis View
-const Meteor = ({ delay, duration, style }) => (
+const Meteor = React.memo(({ delay, duration, style }) => (
   <motion.div
     initial={{ top: -100, left: '120%', opacity: 0 }}
     animate={{ top: '120%', left: '-20%', opacity: [0, 1, 0] }}
     transition={{ duration: duration, delay: delay, repeat: Infinity, repeatDelay: Math.random() * 3 + 2, ease: "linear" }}
-    className="absolute w-[2px] h-[120px] bg-gradient-to-b from-transparent via-white to-transparent rotate-45 z-0 shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+    className="absolute w-[2px] h-[120px] bg-gradient-to-b from-transparent via-white to-transparent rotate-45 z-0 shadow-[0_0_8px_rgba(255,255,255,0.8)] will-change-transform"
     style={style}
   >
     {/* Sparkling Head */}
     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full" />
   </motion.div>
-);
+));
 
 // --- VIEWS ---
 
@@ -461,12 +452,26 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
             </button>
           </div>
         </div>
-      </motion.div>
-    </div>
+      </motion.div >
+    </div >
   );
 };
 
-const ChatView = ({ onEnd, lang }) => {
+const BrandLogo = () => (
+  <div className="flex items-center gap-2 group">
+    <div className="relative w-8 h-8 flex items-center justify-center">
+      <div className="absolute inset-0 bg-indigo-500 rounded-full blur-md opacity-20 group-hover:opacity-40 transition-opacity" />
+      <div className="relative w-full h-full bg-gradient-to-tr from-indigo-600 to-purple-500 rounded-xl rotate-3 group-hover:rotate-6 transition-transform duration-300 flex items-center justify-center shadow-lg">
+        <Sparkles className="text-white w-4 h-4" />
+      </div>
+    </div>
+    <span className="font-serif text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 tracking-tight">
+      Glowtype
+    </span>
+  </div>
+);
+
+const ChatView = ({ onEnd, lang, onCrisis }) => {
   const t = TRANSLATIONS[lang].chat;
   const [messages, setMessages] = useState([{ id: 1, text: t.intro, sender: 'bot' }]);
   const [input, setInput] = useState("");
@@ -489,36 +494,123 @@ const ChatView = ({ onEnd, lang }) => {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-white/80 backdrop-blur-3xl relative z-20">
-      <div className="bg-white/50 backdrop-blur-md border-b border-gray-200/50 p-4 flex justify-between items-center sticky top-0 z-30">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          <span className="font-medium text-gray-700">{t.header}</span>
+    <div className="flex flex-col h-[100dvh] bg-[#FDFCFE] relative z-50">
+      {/* Header */}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-100 p-4 flex justify-between items-center sticky top-0 z-40 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-50 flex items-center justify-center border border-white shadow-sm">
+            <Sparkles size={18} className="text-indigo-500" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-sm leading-tight">Glowtype AI</h3>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+              <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Online</span>
+            </div>
+          </div>
         </div>
-        <button onClick={onEnd} className="text-sm text-red-500 hover:bg-red-50 px-3 py-1 rounded-full transition-colors font-medium">{t.end}</button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCrisis}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-full text-xs font-bold border border-rose-100 hover:bg-rose-100 transition-colors"
+          >
+            <Heart size={12} className="fill-rose-500/20" />
+            <span>Crisis Support</span>
+          </button>
+          <button onClick={onEnd} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+            <X size={20} />
+          </button>
+        </div>
       </div>
-      <div className="bg-indigo-50/50 px-4 py-2 text-center border-b border-indigo-100/50">
-        <p className="text-[10px] uppercase tracking-wider text-indigo-400 font-bold">{t.disclaimer}</p>
+
+      {/* Disclaimer Banner */}
+      <div className="bg-indigo-50/60 px-4 py-1.5 text-center border-b border-indigo-100/50 backdrop-blur-sm">
+        <p className="text-[10px] font-medium text-indigo-400 flex items-center justify-center gap-1.5">
+          <ShieldCheck size={10} /> {t.disclaimer}
+        </p>
       </div>
-      <div className="flex-grow overflow-y-auto p-4 space-y-4">
+
+      {/* Messages Area */}
+      <div className="flex-grow overflow-y-auto p-4 space-y-6 pb-32">
         {messages.map((msg) => (
-          <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.sender === 'user' ? 'bg-gray-900 text-white rounded-br-none' : 'bg-white/90 border border-gray-100 text-gray-800 rounded-bl-none'}`}>
-              {msg.text}
+          <motion.div
+            key={msg.id}
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div className={`flex gap-3 max-w-[85%] md:max-w-[70%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              {/* Avatar */}
+              <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${msg.sender === 'user' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-100 text-indigo-600 shadow-sm'}`}>
+                {msg.sender === 'user' ? 'You' : <Sparkles size={14} />}
+              </div>
+
+              {/* Bubble */}
+              <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-sm relative group ${msg.sender === 'user'
+                ? 'bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-tr-none'
+                : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'
+                }`}>
+                {msg.text}
+                {msg.sender === 'bot' && (
+                  <div className="absolute -bottom-5 left-0 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-gray-400 pl-2 pt-1">
+                    AI-generated
+                  </div>
+                )}
+              </div>
             </div>
           </motion.div>
         ))}
+
         {isTyping && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-            <div className="bg-white/90 border border-gray-100 p-4 rounded-2xl rounded-bl-none shadow-sm flex gap-1"><span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" /><span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce delay-100" /><span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce delay-200" /></div>
+            <div className="flex gap-3 max-w-[85%]">
+              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 text-indigo-600 shadow-sm">
+                <Sparkles size={14} />
+              </div>
+              <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm flex gap-1 items-center h-10">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" />
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-100" />
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-200" />
+              </div>
+            </div>
           </motion.div>
         )}
         <div ref={endOfMsgRef} />
       </div>
-      <form onSubmit={handleSend} className="p-4 bg-white/80 border-t border-gray-100 flex gap-2 z-30">
-        <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} className="flex-grow bg-gray-100/80 rounded-full px-6 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all" />
-        <button type="submit" disabled={isTyping} className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center text-white hover:scale-105 transition-transform disabled:opacity-50"><ArrowRight size={20} /></button>
-      </form>
+
+      {/* Input Area */}
+      <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-white via-white/90 to-transparent pt-10 z-40">
+        {/* Mobile Crisis Button (Visible only on small screens) */}
+        <div className="md:hidden flex justify-center mb-3">
+          <button
+            onClick={onCrisis}
+            className="flex items-center gap-1.5 px-3 py-1 bg-rose-50/80 text-rose-600 rounded-full text-[10px] font-bold border border-rose-100 backdrop-blur-md"
+          >
+            <Heart size={10} className="fill-rose-500/20" />
+            Need help? Crisis Support
+          </button>
+        </div>
+
+        <form onSubmit={handleSend} className="max-w-3xl mx-auto relative flex items-center gap-2 shadow-2xl shadow-indigo-100/50 rounded-[2rem] p-1.5 bg-white border border-gray-100">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={t.placeholder}
+            className="flex-grow bg-transparent px-5 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none text-sm md:text-base"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || isTyping}
+            className="w-10 h-10 md:w-12 md:h-12 bg-gray-900 rounded-full flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-gray-900/20"
+          >
+            <ArrowRight size={18} />
+          </button>
+        </form>
+        <p className="text-center text-[10px] text-gray-300 mt-3 font-medium">
+          Glowtype AI can make mistakes.
+        </p>
+      </div>
     </div>
   );
 };
@@ -605,7 +697,7 @@ const CrisisView = ({ onBack, lang }) => {
         className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl"
         onClick={onBack}
       >
-        {[...Array(5)].map((_, i) => (
+        {[...Array(3)].map((_, i) => (
           <Meteor
             key={i}
             delay={Math.random() * 2}
@@ -685,15 +777,35 @@ const CrisisView = ({ onBack, lang }) => {
   );
 };
 
-// 3. Layout Shell (Unchanged)
+// 3. Layout Shell
+const Navbar = React.memo(({ view, setView, lang, toggleLang, tNav }) => {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <nav className={`fixed top-0 w-full z-40 px-6 flex justify-between items-center transition-all duration-500 ease-in-out border-b ${isScrolled ? "py-3 bg-white/70 backdrop-blur-xl border-gray-200/50 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]" : "py-6 bg-transparent border-transparent"}`}>
+      <div className="cursor-pointer z-50" onClick={() => setView('landing')}><BrandLogo /></div>
+      <div className="flex items-center gap-3">
+        <button onClick={() => setView('learn')} className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-full hover:bg-indigo-50"><BookOpen size={16} /> {tNav.learn}</button>
+        {view === 'landing' && (<button onClick={() => setView('safety')} className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">{tNav.safety}</button>)}
+        <button onClick={toggleLang} className="flex items-center gap-1 bg-gray-100/80 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold transition-colors tracking-wide backdrop-blur-sm"><Globe size={12} />{tNav.lang}</button>
+      </div>
+    </nav>
+  );
+});
+
 const AppShell = () => {
   const [view, setView] = useState('landing');
-  const [isScrolled, setIsScrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState('en');
   const [resultType, setResultType] = useState(null);
 
-  const toggleLang = () => setLang(prev => prev === 'en' ? 'zh' : 'en');
+  const toggleLang = useCallback(() => setLang(prev => prev === 'en' ? 'zh' : 'en'), []);
   const handleQuizComplete = () => {
     const type = Math.random() > 0.5 ? "Quiet Comet" : "Radiant Nebula";
     setResultType(type);
@@ -701,12 +813,6 @@ const AppShell = () => {
   };
 
   useEffect(() => { setTimeout(() => setLoading(false), 1500); }, []);
-
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   if (loading) {
     return (
@@ -723,20 +829,13 @@ const AppShell = () => {
   return (
     <div className="min-h-screen bg-[#FDFCFE] text-gray-900 font-sans overflow-x-hidden relative selection:bg-purple-200">
       <GlobalBackground />
-      <nav className={`fixed top-0 w-full z-40 px-6 flex justify-between items-center transition-all duration-500 ease-in-out border-b ${isScrolled ? "py-3 bg-white/70 backdrop-blur-xl border-gray-200/50 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]" : "py-6 bg-transparent border-transparent"}`}>
-        <div className="cursor-pointer z-50" onClick={() => setView('landing')}><BrandLogo /></div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setView('learn')} className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-full hover:bg-indigo-50"><BookOpen size={16} /> {tNav.learn}</button>
-          {view === 'landing' && (<button onClick={() => setView('safety')} className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">{tNav.safety}</button>)}
-          <button onClick={toggleLang} className="flex items-center gap-1 bg-gray-100/80 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold transition-colors tracking-wide backdrop-blur-sm"><Globe size={12} />{tNav.lang}</button>
-        </div>
-      </nav>
+      <Navbar view={view} setView={setView} lang={lang} toggleLang={toggleLang} tNav={tNav} />
       <main className="relative z-10">
         <AnimatePresence mode="wait">
           {view === 'landing' && (<motion.div key="landing" exit={{ opacity: 0, y: -20 }} className="absolute w-full top-0"><HeroView onStart={() => setView('quiz')} onViewSafety={() => setView('safety')} lang={lang} /></motion.div>)}
           {view === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><QuizView onComplete={handleQuizComplete} lang={lang} /></motion.div>)}
           {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => setView('chat')} onTips={() => alert("Hydrate & Rest!")} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} /></motion.div>)}
-          {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} /></motion.div>)}
+          {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} /></motion.div>)}
           {view === 'safety' && (<motion.div key="safety" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute w-full top-0 z-30"><SafetyView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
           {view === 'learn' && (<motion.div key="learn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><LearnView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
         </AnimatePresence>
