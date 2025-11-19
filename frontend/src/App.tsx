@@ -837,7 +837,7 @@ const AppShell = () => {
   const [lang, setLang] = useState('en'); // Example state
   const [resultType, setResultType] = useState(null); // Example state
 
-  const toggleLang = () => setLang(prev => (prev === 'en' ? 'es' : 'en'));
+  const toggleLang = () => setLang(prev => (prev === 'en' ? 'zh' : 'en'));
   const handleQuizComplete = (type) => {
     setResultType(type);
     setView('result');
