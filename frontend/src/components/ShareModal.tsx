@@ -1,6 +1,6 @@
 import { useRef, useState, type FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Copy, Check, Loader2, Share2 } from 'lucide-react';
+import { X, Download, Copy, Check, Loader2, Share2, Sparkles } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { ShareCard } from './ShareCard';
 
@@ -53,7 +53,7 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -68,19 +68,24 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+                        className="relative w-full max-w-6xl bg-[#FDFCFE] rounded-[32px] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:h-[800px]"
                     >
                         {/* Close Button */}
                         <button
                             onClick={onClose}
-                            className="absolute top-4 right-4 z-50 p-2 bg-white/50 hover:bg-white rounded-full transition-colors text-gray-500 hover:text-gray-900"
+                            className="absolute top-6 right-6 z-50 p-3 bg-white/80 hover:bg-white rounded-full transition-all text-gray-400 hover:text-gray-900 shadow-sm hover:shadow-md backdrop-blur-sm"
                         >
-                            <X size={24} />
+                            <X size={20} />
                         </button>
 
                         {/* Preview Section (Left/Top) */}
-                        <div className="flex-1 bg-gray-100/50 p-6 md:p-12 flex items-center justify-center overflow-hidden relative">
-                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05]" />
+                        <div className="flex-1 bg-gray-50/50 relative overflow-hidden flex items-center justify-center p-8 md:p-0 group">
+                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
+
+                            {/* Ambient Background for Preview Area */}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                                <div className="w-[600px] h-[600px] bg-gradient-to-tr from-indigo-200 to-purple-200 rounded-full blur-[100px] mix-blend-multiply" />
+                            </div>
 
                             {/* The actual card to be captured (Hidden from view but rendered) */}
                             <div className="fixed left-[-9999px] top-[-9999px]">
@@ -98,11 +103,9 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
                             </div>
 
                             {/* Visual Preview (Scaled down version for display) */}
-                            <div className="relative w-full max-w-[320px] aspect-[9/16] shadow-2xl rounded-[24px] overflow-hidden ring-1 ring-black/5 bg-white transform transition-transform hover:scale-[1.02] duration-500">
-                                {/* We render a scaled-down version of the same component for preview, 
-                      or we could just render the component directly and scale it with CSS. 
-                      Let's render it directly but scaled with CSS transform. */}
-                                <div className="w-[1080px] h-[1920px] origin-top-left transform scale-[0.296] pointer-events-none">
+                            {/* We use a container that maintains aspect ratio and scales the content */}
+                            <div className="relative h-full max-h-[700px] aspect-[9/16] shadow-2xl rounded-[24px] overflow-hidden ring-8 ring-white/50 bg-white transform transition-transform duration-700 hover:scale-[1.02] hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.15)]">
+                                <div className="w-[1080px] h-[1920px] origin-top-left transform scale-[0.35] md:scale-[0.38] lg:scale-[0.42] pointer-events-none">
                                     <ShareCard
                                         title={data.title[lang]}
                                         tagline={data.tagline[lang]}
@@ -118,15 +121,15 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
                         </div>
 
                         {/* Actions Section (Right/Bottom) */}
-                        <div className="w-full md:w-[400px] bg-white p-8 flex flex-col justify-center border-l border-gray-100">
-                            <div className="mb-8 text-center md:text-left">
-                                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-4 mx-auto md:mx-0">
-                                    <Share2 size={24} />
+                        <div className="w-full md:w-[420px] bg-white p-8 md:p-12 flex flex-col justify-center border-l border-gray-100 relative z-20">
+                            <div className="mb-10">
+                                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-6 shadow-sm">
+                                    <Share2 size={28} />
                                 </div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                                <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">
                                     {lang === 'zh' ? '分享你的光芒' : 'Share your Glow'}
                                 </h2>
-                                <p className="text-gray-500">
+                                <p className="text-gray-500 leading-relaxed text-lg">
                                     {lang === 'zh'
                                         ? '保存这张卡片到相册，或者复制链接分享给朋友。'
                                         : 'Save this card to your photos or copy the link to share with friends.'}
@@ -137,16 +140,16 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
                                 <button
                                     onClick={handleDownload}
                                     disabled={isGenerating}
-                                    className="w-full py-4 px-6 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl shadow-gray-900/10"
+                                    className="w-full py-5 px-6 bg-gray-900 hover:bg-gray-800 text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl shadow-gray-900/10 group"
                                 >
                                     {isGenerating ? (
                                         <>
-                                            <Loader2 size={20} className="animate-spin" />
+                                            <Loader2 size={22} className="animate-spin" />
                                             <span>{lang === 'zh' ? '生成中...' : 'Generating...'}</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Download size={20} />
+                                            <Download size={22} className="group-hover:-translate-y-0.5 transition-transform" />
                                             <span>{lang === 'zh' ? '保存卡片' : 'Save Card Image'}</span>
                                         </>
                                     )}
@@ -154,24 +157,25 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
 
                                 <button
                                     onClick={handleCopyLink}
-                                    className="w-full py-4 px-6 bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 text-gray-700 rounded-xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95"
+                                    className="w-full py-5 px-6 bg-white border border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/50 text-gray-700 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 group"
                                 >
                                     {hasCopied ? (
                                         <>
-                                            <Check size={20} className="text-green-500" />
+                                            <Check size={22} className="text-green-500" />
                                             <span className="text-green-600">{lang === 'zh' ? '已复制链接' : 'Link Copied!'}</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Copy size={20} />
+                                            <Copy size={22} className="group-hover:scale-110 transition-transform text-gray-400 group-hover:text-indigo-500" />
                                             <span>{lang === 'zh' ? '复制链接' : 'Copy Link'}</span>
                                         </>
                                     )}
                                 </button>
                             </div>
 
-                            <div className="mt-8 pt-8 border-t border-gray-100 text-center">
-                                <p className="text-xs text-gray-400 uppercase tracking-widest font-medium">
+                            <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-center gap-2 opacity-60">
+                                <Sparkles size={14} className="text-indigo-400" />
+                                <p className="text-xs text-gray-400 uppercase tracking-[0.2em] font-medium">
                                     Glowtype // {new Date().getFullYear()}
                                 </p>
                             </div>
