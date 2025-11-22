@@ -41,9 +41,9 @@ export const ShareModal: FC<ShareModalProps> = ({
         width: 1080,
         height: 1920,
         useCORS: true,
-        backgroundColor: '#FDFCFE',
+        backgroundColor: '#fdf5ff',
         logging: false,
-        scrollY: -window.scrollY,
+        scrollY: 0,
       });
 
       const link = document.createElement('a');

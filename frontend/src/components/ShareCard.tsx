@@ -24,12 +24,13 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
     return (
       <div
         ref={ref}
-        className="relative w-[1080px] h-[1920px] bg-gradient-to-br from-[#fdf5ff] via-[#f7f9ff] to-[#f1f5ff] overflow-hidden"
+        className="relative w-[1080px] h-[1920px] overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #fdf5ff 0%, #f7f9ff 50%, #eef4ff 100%)' }}
       >
         {/* Background noise + pastel glows */}
-        <div className="absolute inset-0 opacity-[0.05] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-darken" />
-        <div className="absolute -left-32 -top-24 w-[900px] h-[900px] rounded-full bg-pink-200/35 blur-[140px] mix-blend-multiply" />
-        <div className="absolute -right-40 top-40 w-[950px] h-[950px] rounded-full bg-sky-200/35 blur-[150px] mix-blend-multiply" />
+        <div className="absolute inset-0 opacity-[0.06] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        <div className="absolute -left-32 -top-24 w-[900px] h-[900px] rounded-full bg-pink-200/40 blur-[140px]" />
+        <div className="absolute -right-40 top-40 w-[950px] h-[950px] rounded-full bg-sky-200/40 blur-[150px]" />
         <div className="absolute inset-x-20 top-16 h-28 rounded-[28px] bg-white/70 border border-white/50 backdrop-blur-md shadow-[0_24px_80px_-36px_rgba(15,23,42,0.2)]" />
 
         {/* Content */}
