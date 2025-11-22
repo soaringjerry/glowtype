@@ -170,30 +170,28 @@ export const ShareModal: FC<ShareModalProps> = ({
     if (!cardRef.current) return;
     setIsGenerating(true);
     try {
-      const target = cardRef.current;
-      const prevTransform = target.style.transform;
-      const prevWidth = target.style.width;
-      const prevHeight = target.style.height;
+      const source = cardRef.current;
+      const clone = source.cloneNode(true) as HTMLElement;
+      clone.style.transform = 'none';
+      clone.style.width = '1080px';
+      clone.style.height = '1920px';
+      clone.style.position = 'fixed';
+      clone.style.left = '-20000px';
+      clone.style.top = '-20000px';
+      clone.style.pointerEvents = 'none';
+      document.body.appendChild(clone);
 
-      // Capture at full size to avoid scaled artifacts/black bg.
-      target.style.transform = 'none';
-      target.style.width = '1080px';
-      target.style.height = '1920px';
-
-      const canvas = await html2canvas(target, {
+      const canvas = await html2canvas(clone, {
         scale: 2,
         width: 1080,
         height: 1920,
         useCORS: true,
-        backgroundColor: '#fdf5ff',
+        backgroundColor: '#fafafa',
         logging: false,
         scrollY: 0,
       });
 
-      // restore preview styles
-      target.style.transform = prevTransform;
-      target.style.width = prevWidth;
-      target.style.height = prevHeight;
+      document.body.removeChild(clone);
 
       const link = document.createElement('a');
       link.download = `glowtype-${data.title.en.replace(/\s+/g, '-').toLowerCase()}.png`;
