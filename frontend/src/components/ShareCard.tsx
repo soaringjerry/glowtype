@@ -24,12 +24,13 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
     return (
       <div
         ref={ref}
-        className="relative w-[1080px] h-[1920px] bg-[#f7f7fb] overflow-hidden"
+        className="relative w-[1080px] h-[1920px] bg-gradient-to-br from-[#fdf5ff] via-[#f7f9ff] to-[#f1f5ff] overflow-hidden"
       >
-        {/* Background noise + soft gradients */}
+        {/* Background noise + pastel glows */}
         <div className="absolute inset-0 opacity-[0.05] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-darken" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#dfe7ff_0%,transparent_40%),radial-gradient(circle_at_80%_30%,#fde7f3_0%,transparent_38%),radial-gradient(circle_at_50%_85%,#e2fff7_0%,transparent_38%)]" />
-        <div className="absolute inset-x-16 top-24 h-24 rounded-3xl bg-white/70 border border-white/40 backdrop-blur-md shadow-[0_20px_70px_-30px_rgba(15,23,42,0.25)]" />
+        <div className="absolute -left-32 -top-24 w-[900px] h-[900px] rounded-full bg-pink-200/35 blur-[140px] mix-blend-multiply" />
+        <div className="absolute -right-40 top-40 w-[950px] h-[950px] rounded-full bg-sky-200/35 blur-[150px] mix-blend-multiply" />
+        <div className="absolute inset-x-20 top-16 h-28 rounded-[28px] bg-white/70 border border-white/50 backdrop-blur-md shadow-[0_24px_80px_-36px_rgba(15,23,42,0.2)]" />
 
         {/* Content */}
         <div className="relative z-10 flex h-full flex-col items-center justify-between px-16 py-20">
@@ -50,13 +51,12 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
 
           {/* Card */}
           <div className="w-full flex justify-center">
-            <div className="w-[900px] aspect-[3/5] drop-shadow-[0_25px_70px_rgba(15,23,42,0.18)]">
+            <div className="w-[880px] aspect-[3/5] drop-shadow-[0_25px_70px_rgba(15,23,42,0.18)]">
               <GlowtypeCard
                 data={cardData}
                 insight={insight}
                 lang={lang}
                 animated={false}
-                variant="share"
                 className="h-full w-full"
               />
             </div>
