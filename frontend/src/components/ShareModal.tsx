@@ -44,6 +44,12 @@ export const ShareModal: FC<ShareModalProps> = ({
         backgroundColor: '#fdf5ff',
         logging: false,
         scrollY: 0,
+        onclone: (doc) => {
+          const el = doc.getElementById('share-card-preview');
+          if (el) {
+            el.style.transform = 'none';
+          }
+        },
       });
 
       const link = document.createElement('a');
@@ -114,11 +120,6 @@ export const ShareModal: FC<ShareModalProps> = ({
             exit={{ opacity: 0, scale: 0.97, y: 12 }}
             className="relative w-full max-w-6xl bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col md:flex-row"
           >
-            {/* Hidden capture target */}
-            <div className="fixed -left-[2000px] top-0 pointer-events-none">
-              <ShareCard ref={cardRef} {...shareData} insight={insight} lang={lang} />
-            </div>
-
             {/* Preview */}
             <div className="flex-1 bg-gray-50 relative overflow-hidden flex items-center justify-center p-6 md:p-10">
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.04]" />
@@ -127,6 +128,8 @@ export const ShareModal: FC<ShareModalProps> = ({
                 style={{ width: 360, height: 640 }}
               >
                 <div
+                  id="share-card-preview"
+                  ref={cardRef}
                   style={{
                     width: 1080,
                     height: 1920,
