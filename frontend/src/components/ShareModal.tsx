@@ -183,8 +183,13 @@ export const ShareModal: FC<ShareModalProps> = ({
       clone.style.pointerEvents = 'none';
       document.body.appendChild(clone);
 
-      // Remove heavy/buggy background layers for capture to avoid canvas errors
+      // Remove background layers that can trip html2canvas pattern rendering
       clone.querySelectorAll('[data-capture-skip]').forEach((el) => el.remove());
+      clone
+        .querySelectorAll<HTMLElement>('[style*="grainy-gradients"], [style*="data:image"]')
+        .forEach((el) => {
+          el.style.backgroundImage = 'none';
+        });
 
       const canvas = await html2canvas(clone, {
         scale: 2,
