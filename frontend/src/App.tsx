@@ -413,6 +413,7 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
             }}
             insight={insight}
             lang={lang}
+            variant="share"
             className="h-full w-full"
           />
         </div>
