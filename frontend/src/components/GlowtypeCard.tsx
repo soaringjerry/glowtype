@@ -30,19 +30,19 @@ export const GlowtypeCard = memo(
 
     const isShare = variant === 'share';
     const titleClasses = isShare
-      ? 'text-5xl lg:text-6xl leading-tight'
+      ? 'text-4xl md:text-5xl leading-tight'
       : 'text-2xl md:text-3xl lg:text-4xl';
     const taglineClasses = isShare
-      ? 'text-base md:text-lg uppercase tracking-[0.2em]'
+      ? 'text-xs md:text-sm uppercase tracking-[0.18em]'
       : 'text-xs md:text-sm uppercase tracking-widest';
     const bodyClasses = isShare
-      ? 'text-lg md:text-xl leading-relaxed'
+      ? 'text-base md:text-lg leading-relaxed'
       : 'text-sm md:text-base leading-relaxed';
-    const auraMainSize = isShare ? 'w-56 h-56 md:w-64 md:h-64 lg:w-72 lg:h-72' : 'w-48 h-48 md:w-52 md:h-52 lg:w-60 lg:h-60';
-    const auraSecondarySize = isShare ? 'w-52 h-52 md:w-60 md:h-60 lg:w-64 lg:h-64' : 'w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56';
-    const borderWidth = isShare ? 'border-[10px]' : 'border-[6px]';
-    const paddingClasses = isShare ? 'p-8 md:p-10 lg:p-12' : 'p-6 md:p-8 lg:p-10';
-    const radius = isShare ? 'rounded-[48px]' : 'rounded-[32px]';
+    const auraMainSize = isShare ? 'w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64' : 'w-48 h-48 md:w-52 md:h-52 lg:w-60 lg:h-60';
+    const auraSecondarySize = isShare ? 'w-44 h-44 md:w-52 md:h-52 lg:w-60 lg:h-60' : 'w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56';
+    const borderWidth = isShare ? 'border-[8px]' : 'border-[6px]';
+    const paddingClasses = isShare ? 'p-7 md:p-9 lg:p-10' : 'p-6 md:p-8 lg:p-10';
+    const radius = isShare ? 'rounded-[40px]' : 'rounded-[32px]';
 
     const Container = animated ? motion.div : 'div';
     const AuraMain = animated ? motion.div : 'div';
