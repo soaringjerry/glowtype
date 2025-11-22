@@ -42,6 +42,7 @@ export const GlowtypeCard = memo(
     const auraSecondarySize = isShare ? 'w-52 h-52 md:w-60 md:h-60 lg:w-64 lg:h-64' : 'w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56';
     const borderWidth = isShare ? 'border-[10px]' : 'border-[6px]';
     const paddingClasses = isShare ? 'p-8 md:p-10 lg:p-12' : 'p-6 md:p-8 lg:p-10';
+    const radius = isShare ? 'rounded-[48px]' : 'rounded-[32px]';
 
     const Container = animated ? motion.div : 'div';
     const AuraMain = animated ? motion.div : 'div';
@@ -57,7 +58,7 @@ export const GlowtypeCard = memo(
           animated ? { rotateY: 0, opacity: 1 } : undefined
         }
         transition={animated ? { duration: 1, type: 'spring' } : undefined}
-        className={`relative h-full w-full rounded-[32px] overflow-hidden bg-gradient-to-br ${cardAccent} shadow-2xl ${borderWidth} border-white/60 ${className}`}
+        className={`relative h-full w-full ${radius} overflow-hidden bg-gradient-to-br ${cardAccent} shadow-2xl ${borderWidth} border-white/60 ${className}`}
       >
         <div className="absolute inset-0 opacity-[0.6] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
 
