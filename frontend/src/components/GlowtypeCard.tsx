@@ -60,13 +60,7 @@ export const GlowtypeCard = memo(
         transition={animated ? { duration: 1, type: 'spring' } : undefined}
         className={`relative h-full w-full ${radius} overflow-hidden bg-gradient-to-br ${cardAccent} shadow-2xl ${borderWidth} border-white/60 ${className}`}
       >
-        <div
-          className="absolute inset-0 opacity-[0.6] pointer-events-none"
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.5'/></svg>\")",
-          }}
-        />
+        <div className="absolute inset-0 opacity-[0.6] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
 
         <div className="absolute top-6 left-0 w-full flex justify-center z-20">
           <div className="bg-white/30 backdrop-blur-md border border-white/50 px-3 py-1 rounded-full">
