@@ -57,6 +57,7 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
         <div className="absolute inset-0 bg-[#fafafa]" />
         <div
           className="absolute inset-0"
+          data-capture-skip
           style={{ backgroundImage: 'radial-gradient(#00000008 1px, transparent 1px)', backgroundSize: '40px 40px' }}
         />
         <div
@@ -69,6 +70,7 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
         />
         <div
           className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
+          data-capture-skip
           style={{ backgroundImage: `url("${noiseBg}")` }}
         />
         <CornerMarks />
@@ -180,6 +182,9 @@ export const ShareModal: FC<ShareModalProps> = ({
       clone.style.top = '-20000px';
       clone.style.pointerEvents = 'none';
       document.body.appendChild(clone);
+
+      // Remove heavy/buggy background layers for capture to avoid canvas errors
+      clone.querySelectorAll('[data-capture-skip]').forEach((el) => el.remove());
 
       const canvas = await html2canvas(clone, {
         scale: 2,
