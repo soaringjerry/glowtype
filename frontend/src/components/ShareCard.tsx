@@ -26,15 +26,16 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         className="relative w-[1080px] h-[1920px] bg-[#FDFCFE] overflow-hidden flex items-center justify-center"
       >
         <div className="absolute inset-0 opacity-[0.05] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-darken" />
-        <div className="absolute -left-24 -top-40 w-[900px] h-[900px] bg-indigo-200/35 rounded-full blur-[120px] mix-blend-multiply" />
-        <div className="absolute -right-32 -bottom-48 w-[1100px] h-[1100px] bg-pink-200/35 rounded-full blur-[140px] mix-blend-multiply" />
-        <div className="relative z-10 flex flex-col items-center gap-10 p-12">
+        <div className="absolute -left-10 -top-24 w-[1200px] h-[1200px] bg-indigo-200/35 rounded-full blur-[140px] mix-blend-multiply" />
+        <div className="absolute -right-24 -bottom-32 w-[1200px] h-[1200px] bg-pink-200/30 rounded-full blur-[160px] mix-blend-multiply" />
+        <div className="relative z-10 flex flex-col items-center gap-12 p-12">
           <GlowtypeCard
             data={cardData}
             insight={insight}
             lang={lang}
             animated={false}
-            className="max-w-[880px] w-full aspect-[3/5]"
+            variant="share"
+            className="max-w-[900px] w-full aspect-[3/5]"
           />
           <div className="flex flex-col items-center gap-2 text-gray-500 uppercase tracking-[0.28em] text-2xl font-semibold">
             <span>glowtype.me</span>

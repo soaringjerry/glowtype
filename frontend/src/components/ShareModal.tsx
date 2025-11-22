@@ -52,12 +52,42 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
         }
     };
 
-    const handleCopyLink = () => {
+    const handleCopyLink = async () => {
         const url = window.location.href;
-        navigator.clipboard.writeText(url).then(() => {
+
+        const fallbackCopy = () => {
+            const textarea = document.createElement('textarea');
+            textarea.value = url;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                document.execCommand('copy');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        };
+
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                fallbackCopy();
+            }
             setHasCopied(true);
             setTimeout(() => setHasCopied(false), 2000);
-        });
+        } catch (err) {
+            console.error('Failed to copy link', err);
+            try {
+                fallbackCopy();
+                setHasCopied(true);
+                setTimeout(() => setHasCopied(false), 2000);
+            } catch {
+                alert(lang === 'zh' ? '复制链接失败，请手动复制地址栏中的链接。' : 'Failed to copy link. Please copy the URL from the address bar manually.');
+            }
+        }
     };
 
     return (
