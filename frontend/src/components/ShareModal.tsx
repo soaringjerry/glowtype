@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState, type FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Copy, Check, Loader2, Share2, Sparkles, Zap, ScanLine, Fingerprint } from 'lucide-react';
+import { X, Download, Copy, Check, Loader2, Share2, Zap, ScanLine, Fingerprint } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { GlowtypeCard } from './GlowtypeCard';
 
@@ -18,6 +18,15 @@ type InlineShareCardProps = {
   insight: string | null;
   lang: 'en' | 'zh';
 };
+
+const CornerMarks = () => (
+  <>
+    <div className="absolute top-12 left-12 w-6 h-6 border-t-[1.5px] border-l-[1.5px] border-slate-300/60" />
+    <div className="absolute top-12 right-12 w-6 h-6 border-t-[1.5px] border-r-[1.5px] border-slate-300/60" />
+    <div className="absolute bottom-12 left-12 w-6 h-6 border-b-[1.5px] border-l-[1.5px] border-slate-300/60" />
+    <div className="absolute bottom-12 right-12 w-6 h-6 border-b-[1.5px] border-r-[1.5px] border-slate-300/60" />
+  </>
+);
 
 const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
   ({ data, insight, lang }, ref) => {
