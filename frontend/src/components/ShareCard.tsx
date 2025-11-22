@@ -28,9 +28,9 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         style={{ background: 'linear-gradient(135deg, #fdf5ff 0%, #f7f9ff 50%, #eef4ff 100%)' }}
       >
         {/* Background noise + pastel glows */}
-        <div className="absolute inset-0 opacity-[0.06] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-        <div className="absolute -left-32 -top-24 w-[900px] h-[900px] rounded-full bg-pink-200/40 blur-[140px]" />
-        <div className="absolute -right-40 top-40 w-[950px] h-[950px] rounded-full bg-sky-200/40 blur-[150px]" />
+        <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(circle_at_10%_20%,rgba(255,255,255,0.6),transparent_45%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.6),transparent_45%)]" />
+        <div className="absolute -left-32 -top-24 w-[900px] h-[900px] rounded-full bg-pink-200/35 blur-[140px]" />
+        <div className="absolute -right-40 top-40 w-[950px] h-[950px] rounded-full bg-sky-200/35 blur-[150px]" />
         <div className="absolute inset-x-20 top-16 h-28 rounded-[28px] bg-white/70 border border-white/50 backdrop-blur-md shadow-[0_24px_80px_-36px_rgba(15,23,42,0.2)]" />
 
         {/* Content */}

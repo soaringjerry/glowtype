@@ -36,7 +36,17 @@ export const ShareModal: FC<ShareModalProps> = ({
     if (!cardRef.current) return;
     setIsGenerating(true);
     try {
-      const canvas = await html2canvas(cardRef.current, {
+      const target = cardRef.current;
+      const prevTransform = target.style.transform;
+      const prevWidth = target.style.width;
+      const prevHeight = target.style.height;
+
+      // Capture at full size to avoid scaled artifacts/black bg.
+      target.style.transform = 'none';
+      target.style.width = '1080px';
+      target.style.height = '1920px';
+
+      const canvas = await html2canvas(target, {
         scale: 2,
         width: 1080,
         height: 1920,
@@ -44,13 +54,12 @@ export const ShareModal: FC<ShareModalProps> = ({
         backgroundColor: '#fdf5ff',
         logging: false,
         scrollY: 0,
-        onclone: (doc) => {
-          const el = doc.getElementById('share-card-preview');
-          if (el) {
-            el.style.transform = 'none';
-          }
-        },
       });
+
+      // restore preview styles
+      target.style.transform = prevTransform;
+      target.style.width = prevWidth;
+      target.style.height = prevHeight;
 
       const link = document.createElement('a');
       link.download = `glowtype-${data.title.en.replace(/\s+/g, '-').toLowerCase()}.png`;
