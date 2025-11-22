@@ -46,9 +46,6 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
       return Math.abs(hash % 900) + 100;
     }, [data.title]);
 
-    const noiseBg =
-      "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.12'/></svg>";
-
     return (
       <div
         ref={ref}
@@ -57,7 +54,6 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
         <div className="absolute inset-0 bg-[#fafafa]" />
         <div
           className="absolute inset-0"
-          data-capture-skip
           style={{ backgroundImage: 'radial-gradient(#00000008 1px, transparent 1px)', backgroundSize: '40px 40px' }}
         />
         <div
@@ -68,11 +64,9 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
           className="absolute bottom-0 right-0 w-[80%] h-[40%] opacity-20 blur-[150px]"
           style={{ background: data.cardAccent }}
         />
-        <div
-          className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
-          data-capture-skip
-          style={{ backgroundImage: `url("${noiseBg}")` }}
-        />
+        <div className="absolute inset-0 pointer-events-none mix-blend-multiply">
+          <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.7),transparent_45%),radial-gradient(circle_at_70%_60%,rgba(255,255,255,0.55),transparent_50%)]" />
+        </div>
         <CornerMarks />
 
         <div className="relative z-10 w-full px-20 flex items-center justify-between">
@@ -182,14 +176,6 @@ export const ShareModal: FC<ShareModalProps> = ({
       clone.style.top = '-20000px';
       clone.style.pointerEvents = 'none';
       document.body.appendChild(clone);
-
-      // Remove background layers that can trip html2canvas pattern rendering
-      clone.querySelectorAll('[data-capture-skip]').forEach((el) => el.remove());
-      clone
-        .querySelectorAll<HTMLElement>('[style*="grainy-gradients"], [style*="data:image"]')
-        .forEach((el) => {
-          el.style.backgroundImage = 'none';
-        });
 
       const canvas = await html2canvas(clone, {
         scale: 2,
