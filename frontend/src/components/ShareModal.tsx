@@ -46,6 +46,9 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
       return Math.abs(hash % 900) + 100;
     }, [data.title]);
 
+    const noiseBg =
+      "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.12'/></svg>";
+
     return (
       <div
         ref={ref}
@@ -64,7 +67,10 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
           className="absolute bottom-0 right-0 w-[80%] h-[40%] opacity-20 blur-[150px]"
           style={{ background: data.cardAccent }}
         />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-multiply" />
+        <div
+          className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
+          style={{ backgroundImage: `url("${noiseBg}")` }}
+        />
         <CornerMarks />
 
         <div className="relative z-10 w-full px-20 flex items-center justify-between">
