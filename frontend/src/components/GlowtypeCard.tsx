@@ -29,15 +29,20 @@ export const GlowtypeCard = memo(
       data;
 
     const isShare = variant === 'share';
-    // Unified styling for display/share; only minor container tweaks by variant.
-    const titleClasses = 'text-4xl md:text-5xl leading-tight';
-    const taglineClasses = 'text-xs md:text-sm uppercase tracking-[0.18em]';
-    const bodyClasses = 'text-base md:text-lg leading-relaxed';
-    const auraMainSize = 'w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64';
-    const auraSecondarySize = 'w-44 h-44 md:w-52 md:h-52 lg:w-60 lg:h-60';
-    const borderWidth = 'border-[8px]';
-    const paddingClasses = isShare ? 'p-8 md:p-9 lg:p-10' : 'p-7 md:p-8 lg:p-9';
-    const radius = 'rounded-[40px]';
+    const titleClasses = isShare
+      ? 'text-4xl md:text-5xl leading-tight'
+      : 'text-2xl md:text-3xl lg:text-4xl';
+    const taglineClasses = isShare
+      ? 'text-xs md:text-sm uppercase tracking-[0.18em]'
+      : 'text-xs md:text-sm uppercase tracking-widest';
+    const bodyClasses = isShare
+      ? 'text-base md:text-lg leading-relaxed'
+      : 'text-sm md:text-base leading-relaxed';
+    const auraMainSize = isShare ? 'w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64' : 'w-48 h-48 md:w-52 md:h-52 lg:w-60 lg:h-60';
+    const auraSecondarySize = isShare ? 'w-44 h-44 md:w-52 md:h-52 lg:w-60 lg:h-60' : 'w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56';
+    const borderWidth = isShare ? 'border-[8px]' : 'border-[6px]';
+    const paddingClasses = isShare ? 'p-7 md:p-9 lg:p-10' : 'p-6 md:p-8 lg:p-10';
+    const radius = isShare ? 'rounded-[40px]' : 'rounded-[32px]';
 
     const Container = animated ? motion.div : 'div';
     const AuraMain = animated ? motion.div : 'div';
