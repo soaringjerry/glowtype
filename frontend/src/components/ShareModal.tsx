@@ -1,95 +1,8 @@
-import { useRef, useState, type FC, forwardRef } from 'react';
+import { useRef, useState, type FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Copy, Check, Loader2, Share2, Sparkles } from 'lucide-react';
 import html2canvas from 'html2canvas';
-import { ResultCard } from './ResultCard';
-
-// --- SHARE CANVAS WRAPPER ---
-// This wrapper sets up the 1080x1920 dimensions and background for the share image.
-
-interface ShareCanvasProps {
-    title: string;
-    tagline: string;
-    description: string;
-    insight?: string | null;
-    auraGradient: string;
-    cardAccent: string;
-    textColor: string;
-    lang: 'en' | 'zh';
-}
-
-const ShareCanvas = forwardRef<HTMLDivElement, ShareCanvasProps>(({
-    title,
-    tagline,
-    description,
-    insight,
-    auraGradient,
-    cardAccent,
-    textColor,
-    lang
-}, ref) => {
-
-    const isZh = lang === 'zh' || lang?.startsWith('zh');
-
-    return (
-        <div
-            ref={ref}
-            className="relative w-[1080px] h-[1920px] bg-[#FDFCFE] overflow-hidden flex flex-col items-center text-center"
-            style={{ fontFamily: isZh ? '"Noto Serif SC", serif' : 'serif' }}
-        >
-            {/* --- BACKGROUND LAYERS --- */}
-
-            {/* Noise Texture - Low opacity overlay */}
-            <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-0" />
-
-            {/* Ambient Gradients (Top & Bottom) - Using Opacity instead of Mix Blend Mode */}
-            <div className="absolute top-[-10%] left-[-20%] w-[1400px] h-[1400px] bg-gradient-to-br from-indigo-100 via-purple-100 to-transparent rounded-full blur-[150px] opacity-60" />
-            <div className="absolute bottom-[-10%] right-[-20%] w-[1400px] h-[1400px] bg-gradient-to-tl from-blue-100 via-pink-100 to-transparent rounded-full blur-[150px] opacity-60" />
-
-
-            {/* --- CONTENT CONTAINER --- */}
-            <div className="relative z-10 w-full h-full flex flex-col items-center justify-between py-24 px-16">
-
-                {/* 1. HEADER */}
-                <div className="flex flex-col items-center gap-6">
-                    <div className="flex items-center gap-5">
-                        <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center shadow-2xl shadow-indigo-500/20 rotate-3">
-                            <Sparkles className="text-white w-10 h-10" />
-                        </div>
-                        <span className="text-6xl font-bold text-gray-900 tracking-tight">Glowtype</span>
-                    </div>
-                    <div className="px-8 py-3 rounded-full bg-white/80 border border-white shadow-sm">
-                        <span className="text-2xl font-medium text-gray-500 uppercase tracking-[0.25em]">
-                            {isZh ? '你的光芒人格' : 'YOUR INNER UNIVERSE'}
-                        </span>
-                    </div>
-                </div>
-
-                {/* 2. MAIN CARD (Floating) */}
-                <div className="relative w-full max-w-[880px] flex-grow flex items-center justify-center">
-                    <ResultCard
-                        title={title}
-                        tagline={tagline}
-                        description={description}
-                        insight={insight}
-                        variant="share"
-                        auraGradient={auraGradient}
-                        cardAccent={cardAccent}
-                        textColor={textColor}
-                    />
-                </div>
-
-                {/* 3. FOOTER */}
-                <div className="flex flex-col items-center gap-4 pb-8 opacity-60">
-                    <p className="text-3xl text-gray-900 font-medium tracking-wide font-sans">glowtype.me</p>
-                    <p className="text-xl text-gray-500 uppercase tracking-[0.3em]">Discover yours</p>
-                </div>
-
-            </div>
-        </div>
-    );
-});
-ShareCanvas.displayName = 'ShareCanvas';
+import { ShareCard } from './ShareCard';
 
 
 // --- SHARE MODAL COMPONENT ---
@@ -189,7 +102,7 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
                                 Positioned fixed off-screen to ensure it renders fully.
                             */}
                             <div className="fixed left-[-9999px] top-[-9999px] pointer-events-none">
-                                <ShareCanvas
+                                <ShareCard
                                     ref={cardRef}
                                     title={data.title[lang]}
                                     tagline={data.tagline[lang]}
@@ -210,7 +123,7 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
                             */}
                             <div className="relative h-full max-h-[700px] aspect-[9/16] shadow-2xl rounded-[24px] overflow-hidden ring-8 ring-white/50 bg-white transform transition-transform duration-700 hover:scale-[1.02] hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.15)]">
                                 <div className="w-[1080px] h-[1920px] origin-top-left transform scale-[0.35] md:scale-[0.38] lg:scale-[0.42] pointer-events-none">
-                                    <ShareCanvas
+                                    <ShareCard
                                         title={data.title[lang]}
                                         tagline={data.tagline[lang]}
                                         description={data.description[lang]}
@@ -291,4 +204,3 @@ export const ShareModal: FC<ShareModalProps> = ({ isOpen, onClose, data, insight
         </AnimatePresence>
     );
 };
-

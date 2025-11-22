@@ -27,6 +27,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { ShareModal } from './components/ShareModal';
+import { GlowtypeCard } from './components/GlowtypeCard';
 
 // --- GEMINI API UTILITIES ---
 
@@ -401,47 +402,19 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
         </div>
 
         <div className="relative w-full aspect-[3/5] mb-8 group perspective-1000">
-          <motion.div
-            initial={{ rotateY: 180, opacity: 0 }}
-            animate={{ rotateY: 0, opacity: 1 }}
-            transition={{ duration: 1, type: "spring" }}
-            className={`relative h-full w-full rounded-[32px] overflow-hidden bg-gradient-to-br ${data.cardAccent} shadow-2xl border-[6px] border-white/60`}
-          >
-            <div className="absolute inset-0 opacity-[0.6] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
-            <div className="absolute top-6 left-0 w-full flex justify-center z-20">
-              <div className="bg-white/30 backdrop-blur-md border border-white/50 px-3 py-1 rounded-full">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-900">Rare Prototype</span>
-              </div>
-            </div>
-            <div className="absolute top-0 left-0 w-full h-[65%] flex items-center justify-center overflow-hidden">
-              <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} className="w-48 h-48 rounded-full blur-[40px] mix-blend-multiply" style={{ background: data.auraGradient }} />
-              <motion.div animate={{ scale: [1.2, 1, 1.2], x: [10, -10, 10] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute w-40 h-40 rounded-full blur-[50px] mix-blend-multiply opacity-60" style={{ background: data.auraGradient, filter: 'hue-rotate(30deg)' }} />
-              <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(255,255,255,0.1)_50%)] bg-[length:100%_4px] pointer-events-none" />
-            </div>
-            <div className="absolute bottom-0 left-0 w-full h-[45%] z-10">
-              <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/70 to-transparent backdrop-blur-[2px]" />
-              <div className="relative z-20 p-6 h-full flex flex-col justify-end">
-                <div className="pt-6">
-                  <h3 className={`text-2xl font-serif ${data.textColor} mb-1`}>{data.title[lang]}</h3>
-                  <p className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-4">{data.tagline[lang]}</p>
-                  <style>{`.no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
-                  <div className="h-28 overflow-y-auto no-scrollbar pr-1">
-                    <AnimatePresence mode="wait">
-                      {insight ? (
-                        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm font-medium text-indigo-600 italic leading-relaxed">✨ "{insight}"</motion.p>
-                      ) : (
-                        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-gray-600 leading-relaxed">{data.description[lang]}</motion.p>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-                <div className="flex justify-between items-end pt-4 opacity-50">
-                  <span className="text-[9px] font-mono text-gray-500">GEN-1 // {new Date().getFullYear()}</span>
-                  <Sparkles size={10} className="text-indigo-400" />
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          <GlowtypeCard
+            data={{
+              title: data.title[lang],
+              tagline: data.tagline[lang],
+              description: data.description[lang],
+              auraGradient: data.auraGradient,
+              cardAccent: data.cardAccent,
+              textColor: data.textColor,
+            }}
+            insight={insight}
+            lang={lang}
+            className="h-full w-full"
+          />
         </div>
 
         <div className="w-full space-y-4">
@@ -845,6 +818,42 @@ const AppShell = () => {
 
   const tNav = TRANSLATIONS[lang].nav;
   const tFooter = TRANSLATIONS[lang].footer;
+
+  // Initialize from URL on first load
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlLang = params.get('lang');
+      if (urlLang === 'en' || urlLang === 'zh') {
+        setLang(urlLang);
+      }
+      const urlType = params.get('type');
+      if (urlType && APP_CONFIG.glowtypes[urlType]) {
+        setResultType(urlType);
+        setView('result');
+      }
+    } catch (e) {
+      console.error('Failed to parse URL params', e);
+    }
+  }, []);
+
+  // Keep URL in sync with current language and result
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      params.set('lang', lang);
+      if (resultType && APP_CONFIG.glowtypes[resultType]) {
+        params.set('type', resultType);
+      } else {
+        params.delete('type');
+      }
+      const search = params.toString();
+      const newUrl = `${window.location.pathname}${search ? `?${search}` : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    } catch (e) {
+      console.error('Failed to sync URL params', e);
+    }
+  }, [lang, resultType]);
 
   return (
     <div className="min-h-screen bg-[#FDFCFE] text-gray-900 font-sans overflow-x-hidden relative selection:bg-purple-200">
