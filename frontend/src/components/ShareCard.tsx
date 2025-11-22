@@ -52,7 +52,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
 
           {/* Card */}
           <div className="w-full flex justify-center">
-            <div className="w-[880px] aspect-[3/5] drop-shadow-[0_25px_70px_rgba(15,23,42,0.18)]">
+            <div className="w-[920px] aspect-[3/5] drop-shadow-[0_25px_70px_rgba(15,23,42,0.18)]">
               <GlowtypeCard
                 data={cardData}
                 insight={insight}

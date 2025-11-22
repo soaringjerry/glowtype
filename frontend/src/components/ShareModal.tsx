@@ -122,8 +122,18 @@ export const ShareModal: FC<ShareModalProps> = ({
             {/* Preview */}
             <div className="flex-1 bg-gray-50 relative overflow-hidden flex items-center justify-center p-6 md:p-10">
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.04]" />
-              <div className="relative aspect-[9/16] w-full max-w-[360px] md:max-w-[420px] shadow-2xl rounded-[28px] overflow-hidden ring-8 ring-white/60 bg-white">
-                <div className="w-[1080px] h-[1920px] origin-top-left scale-[0.33] md:scale-[0.36] lg:scale-[0.4] pointer-events-none">
+              <div
+                className="relative shadow-2xl rounded-[28px] overflow-hidden ring-8 ring-white/60 bg-white"
+                style={{ width: 360, height: 640 }}
+              >
+                <div
+                  style={{
+                    width: 1080,
+                    height: 1920,
+                    transform: 'scale(0.333)',
+                    transformOrigin: 'top left',
+                  }}
+                >
                   <ShareCard {...shareData} insight={insight} lang={lang} />
                 </div>
               </div>
