@@ -135,7 +135,7 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
   },
 );
 
-interface ShareModalProps {
+export interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   data: ShareCardData;
