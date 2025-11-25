@@ -42,7 +42,8 @@ const getEnvConfig = () => {
   };
 };
 
-const callAI = async (prompt, systemInstruction) => {
+// Simple call for single prompt (e.g., insight generation)
+const callAI = async (prompt: string, systemInstruction: string) => {
   const { apiKey, baseUrl, model } = getEnvConfig();
 
   if (!apiKey) {
@@ -72,6 +73,70 @@ const callAI = async (prompt, systemInstruction) => {
   } catch (error) {
     console.error("AI API Error:", error);
     return "I'm having a little trouble connecting. Please try again later.";
+  }
+};
+
+// Chat call with message history for context
+const callAIChat = async (messages: Array<{role: string, content: string}>, systemInstruction: string) => {
+  const { apiKey, baseUrl, model } = getEnvConfig();
+
+  if (!apiKey) {
+    console.warn("Missing AI_API_KEY");
+    return "Configuration Error: AI service is not properly configured.";
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: "system", content: systemInstruction },
+          ...messages
+        ],
+      }),
+    });
+
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "Connection interrupted.";
+  } catch (error) {
+    console.error("AI API Error:", error);
+    return "I'm having a little trouble connecting. Please try again later.";
+  }
+};
+
+// --- AI PROMPTS ---
+const AI_PROMPTS = {
+  insight: {
+    en: `You are a poetic, mystical guide who speaks in short, evocative phrases.
+Your role is to give a brief cosmic insight about someone's emotional archetype.
+IMPORTANT: Keep your response to 1-2 sentences MAX (under 30 words). Be poetic but concise.
+Speak directly to the person using "you".`,
+    zh: `你是一位诗意的神秘向导，用简短而富有诗意的语言表达。
+你的任务是给出关于某人情绪原型的简短宇宙洞察。
+重要：回复必须控制在1-2句话以内（不超过30个字）。要有诗意但简洁。
+直接用"你"称呼对方。`
+  },
+  chat: {
+    en: `You are Glowtype AI, a warm and supportive companion. You listen with empathy and respond gently.
+Guidelines:
+- Keep responses SHORT (2-3 sentences max)
+- Be warm, understanding, and non-judgmental
+- Don't give medical advice or diagnoses
+- If someone mentions self-harm or crisis, gently encourage them to use the Crisis Support button
+- Use a conversational, friendly tone`,
+    zh: `你是 Glowtype AI，一个温暖且支持性的陪伴者。你用同理心倾听，温柔地回应。
+准则：
+- 回复保持简短（最多2-3句话）
+- 温暖、理解、不评判
+- 不提供医疗建议或诊断
+- 如果有人提到自我伤害或危机，温柔地鼓励他们使用"危机支持"按钮
+- 使用对话式的、友好的语气`
   }
 };
 
@@ -394,8 +459,10 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
 
   const handleGenerateInsight = async () => {
     setIsGenerating(true);
-    const systemPrompt = `You are a poetic, gentle companion... ${t.promptContext}`;
-    const userPrompt = `Archetype: ${data.title[lang]}. ${data.description[lang]}. Insight?`;
+    const systemPrompt = AI_PROMPTS.insight[lang];
+    const userPrompt = lang === 'zh'
+      ? `我的情绪原型是「${data.title[lang]}」：${data.description[lang]}。请给我一句简短的宇宙洞察。`
+      : `My emotional archetype is "${data.title[lang]}": ${data.description[lang]}. Give me a brief cosmic insight.`;
     const text = await callAI(userPrompt, systemPrompt);
     setInsight(text);
     setIsGenerating(false);
@@ -482,7 +549,9 @@ const BrandLogo = () => (
 
 const ChatView = ({ onEnd, lang, onCrisis }) => {
   const t = TRANSLATIONS[lang].chat;
-  const [messages, setMessages] = useState([{ id: 1, text: t.intro, sender: 'bot' }]);
+  const [messages, setMessages] = useState<Array<{id: number, text: string, sender: string}>>([
+    { id: 1, text: t.intro, sender: 'bot' }
+  ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const endOfMsgRef = useRef(null);
@@ -492,79 +561,74 @@ const ChatView = ({ onEnd, lang, onCrisis }) => {
   const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
-    const newMsg = { id: Date.now(), text: input, sender: 'user' };
+
+    const userMessage = input.trim();
+    const newMsg = { id: Date.now(), text: userMessage, sender: 'user' };
     setMessages(prev => [...prev, newMsg]);
     setInput("");
     setIsTyping(true);
-    const systemPrompt = `You are a supportive, gentle AI companion...`;
-    const botResponseText = await callAI(input, systemPrompt);
+
+    // Build conversation history for context (last 10 messages)
+    const recentMessages = [...messages.slice(-10), newMsg];
+    const chatHistory = recentMessages.map(m => ({
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      content: m.text
+    }));
+
+    const systemPrompt = AI_PROMPTS.chat[lang];
+    const botResponseText = await callAIChat(chatHistory, systemPrompt);
+
     setIsTyping(false);
     setMessages(prev => [...prev, { id: Date.now() + 1, text: botResponseText, sender: 'bot' }]);
   };
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#FDFCFE] relative z-50">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-100 p-4 flex justify-between items-center sticky top-0 z-40 shadow-sm flex-none">
+      {/* Header - Clean & Minimal */}
+      <div className="bg-white/90 backdrop-blur-xl border-b border-gray-100/80 px-4 py-3 flex justify-between items-center sticky top-0 z-40 flex-none">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-50 flex items-center justify-center border border-white shadow-sm">
-            <Sparkles size={18} className="text-indigo-500" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-200/50">
+            <Sparkles size={16} className="text-white" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 text-sm leading-tight">Glowtype AI</h3>
+            <h3 className="font-bold text-gray-900 text-sm">{t.header}</h3>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-              <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Online</span>
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+              <span className="text-[10px] text-gray-400">Online</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={onCrisis}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-full text-xs font-bold border border-rose-100 hover:bg-rose-100 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-xs font-medium hover:bg-rose-100 transition-colors"
           >
-            <Heart size={12} className="fill-rose-500/20" />
-            <span>Crisis Support</span>
+            <Heart size={12} />
+            <span className="hidden sm:inline">{lang === 'zh' ? '危机支持' : 'Crisis'}</span>
           </button>
-          <button onClick={onEnd} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={20} />
+          <button onClick={onEnd} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors">
+            <X size={18} />
           </button>
         </div>
       </div>
 
-      {/* Disclaimer Banner */}
-      <div className="bg-indigo-50/60 px-4 py-1.5 text-center border-b border-indigo-100/50 backdrop-blur-sm flex-none">
-        <p className="text-[10px] font-medium text-indigo-400 flex items-center justify-center gap-1.5">
-          <ShieldCheck size={10} /> {t.disclaimer}
-        </p>
-      </div>
-
-      {/* Messages Area - Flex Grow to take available space */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.map((msg) => (
           <motion.div
             key={msg.id}
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
             className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            <div className={`flex gap-3 max-w-[85%] md:max-w-[70%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              {/* Avatar */}
-              <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${msg.sender === 'user' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-100 text-indigo-600 shadow-sm'}`}>
-                {msg.sender === 'user' ? 'You' : <Sparkles size={14} />}
-              </div>
-
-              {/* Bubble */}
-              <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-sm relative group ${msg.sender === 'user'
-                ? 'bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-tr-none'
-                : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'
-                }`}>
+            <div className={`max-w-[80%] ${msg.sender === 'user' ? 'order-1' : ''}`}>
+              <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                msg.sender === 'user'
+                  ? 'bg-gray-900 text-white rounded-br-md'
+                  : 'bg-white border border-gray-100 text-gray-700 rounded-bl-md shadow-sm'
+              }`}>
                 {msg.text}
-                {msg.sender === 'bot' && (
-                  <div className="absolute -bottom-5 left-0 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-gray-400 pl-2 pt-1">
-                    AI-generated
-                  </div>
-                )}
               </div>
             </div>
           </motion.div>
@@ -572,14 +636,11 @@ const ChatView = ({ onEnd, lang, onCrisis }) => {
 
         {isTyping && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-            <div className="flex gap-3 max-w-[85%]">
-              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 text-indigo-600 shadow-sm">
-                <Sparkles size={14} />
-              </div>
-              <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm flex gap-1 items-center h-10">
-                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" />
-                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-100" />
-                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-200" />
+            <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </motion.div>
@@ -587,37 +648,28 @@ const ChatView = ({ onEnd, lang, onCrisis }) => {
         <div ref={endOfMsgRef} />
       </div>
 
-      {/* Input Area - Flex None to stay at bottom */}
-      <div className="flex-none p-4 bg-gradient-to-t from-white via-white/90 to-transparent pt-2 z-40">
-        {/* Mobile Crisis Button (Visible only on small screens) */}
-        <div className="md:hidden flex justify-center mb-3">
-          <button
-            onClick={onCrisis}
-            className="flex items-center gap-1.5 px-3 py-1 bg-rose-50/80 text-rose-600 rounded-full text-[10px] font-bold border border-rose-100 backdrop-blur-md"
-          >
-            <Heart size={10} className="fill-rose-500/20" />
-            Need help? Crisis Support
-          </button>
-        </div>
-
-        <form onSubmit={handleSend} className="max-w-3xl mx-auto relative flex items-center gap-2 shadow-2xl shadow-indigo-100/50 rounded-[2rem] p-1.5 bg-white border border-gray-100">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={t.placeholder}
-            className="flex-grow bg-transparent px-5 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none text-sm md:text-base"
-          />
+      {/* Input Area - Clean design */}
+      <div className="flex-none p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100/80">
+        <form onSubmit={handleSend} className="max-w-2xl mx-auto flex items-center gap-2">
+          <div className="flex-grow relative">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t.placeholder}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
+            />
+          </div>
           <button
             type="submit"
             disabled={!input.trim() || isTyping}
-            className="w-10 h-10 md:w-12 md:h-12 bg-gray-900 rounded-full flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-gray-900/20"
+            className="w-11 h-11 bg-indigo-500 hover:bg-indigo-600 rounded-xl flex items-center justify-center text-white transition-all disabled:opacity-40 disabled:hover:bg-indigo-500 shadow-lg shadow-indigo-200/50"
           >
             <ArrowRight size={18} />
           </button>
         </form>
-        <p className="text-center text-[10px] text-gray-300 mt-3 font-medium">
-          Glowtype AI can make mistakes.
+        <p className="text-center text-[10px] text-gray-300 mt-2">
+          {lang === 'zh' ? 'AI 可能会出错 · 隐私保护' : 'AI can make mistakes · Private'}
         </p>
       </div>
     </div>
