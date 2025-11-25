@@ -46,17 +46,44 @@ if ! grep -q "^VITE_SHARE_RENDER_URL=" "${ROOT_DIR}/.env" 2>/dev/null; then
   echo "[INFO] Injected VITE_SHARE_RENDER_URL=http://localhost:${HOST_RENDER_PORT} into .env"
 fi
 
-# Inject GEMINI_API_KEY if provided via environment (e.g. from one-line install command)
-if [ -n "${GEMINI_API_KEY:-}" ]; then
+# Inject AI configuration if provided via environment (e.g. from one-line install command)
+# Supports OpenAI-compatible APIs (OpenAI, DeepSeek, Groq, local LLMs, etc.)
+if [ -n "${AI_API_KEY:-}" ]; then
   if [ -f "${ROOT_DIR}/.env" ]; then
-    # Remove existing key if present (including empty ones from example) to avoid duplicates
-    # Using temp file for cross-platform compatibility
-    grep -v "^GEMINI_API_KEY=" "${ROOT_DIR}/.env" > "${ROOT_DIR}/.env.tmp" || true
+    # Remove existing keys to avoid duplicates
+    grep -v "^AI_API_KEY=" "${ROOT_DIR}/.env" > "${ROOT_DIR}/.env.tmp" || true
     mv "${ROOT_DIR}/.env.tmp" "${ROOT_DIR}/.env"
-    
-    # Append the new key
-    echo "GEMINI_API_KEY=${GEMINI_API_KEY}" >> "${ROOT_DIR}/.env"
-    echo "[INFO] Configured GEMINI_API_KEY from environment variable."
+
+    echo "AI_API_KEY=${AI_API_KEY}" >> "${ROOT_DIR}/.env"
+    echo "[INFO] Configured AI_API_KEY from environment variable."
+  fi
+fi
+
+if [ -n "${AI_API_URL:-}" ]; then
+  if [ -f "${ROOT_DIR}/.env" ]; then
+    grep -v "^AI_API_URL=" "${ROOT_DIR}/.env" > "${ROOT_DIR}/.env.tmp" || true
+    mv "${ROOT_DIR}/.env.tmp" "${ROOT_DIR}/.env"
+    echo "AI_API_URL=${AI_API_URL}" >> "${ROOT_DIR}/.env"
+    echo "[INFO] Configured AI_API_URL=${AI_API_URL}"
+  fi
+fi
+
+if [ -n "${AI_MODEL:-}" ]; then
+  if [ -f "${ROOT_DIR}/.env" ]; then
+    grep -v "^AI_MODEL=" "${ROOT_DIR}/.env" > "${ROOT_DIR}/.env.tmp" || true
+    mv "${ROOT_DIR}/.env.tmp" "${ROOT_DIR}/.env"
+    echo "AI_MODEL=${AI_MODEL}" >> "${ROOT_DIR}/.env"
+    echo "[INFO] Configured AI_MODEL=${AI_MODEL}"
+  fi
+fi
+
+# Legacy support: convert GEMINI_API_KEY to AI_API_KEY
+if [ -n "${GEMINI_API_KEY:-}" ] && [ -z "${AI_API_KEY:-}" ]; then
+  if [ -f "${ROOT_DIR}/.env" ]; then
+    grep -v "^AI_API_KEY=" "${ROOT_DIR}/.env" > "${ROOT_DIR}/.env.tmp" || true
+    mv "${ROOT_DIR}/.env.tmp" "${ROOT_DIR}/.env"
+    echo "AI_API_KEY=${GEMINI_API_KEY}" >> "${ROOT_DIR}/.env"
+    echo "[INFO] Converted GEMINI_API_KEY to AI_API_KEY."
   fi
 fi
 

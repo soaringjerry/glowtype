@@ -23,7 +23,10 @@ services:
         - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://backend:8080/api/v1}
         - VITE_SHARE_RENDER_URL=${VITE_SHARE_RENDER_URL:-http://localhost:${GLOWTYPE_RENDER_PORT_HOST:-19080}}
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # OpenAI-compatible API configuration (runtime injection)
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_API_URL=${AI_API_URL:-https://api.openai.com/v1}
+      - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
     depends_on:
       - backend
       - share-renderer

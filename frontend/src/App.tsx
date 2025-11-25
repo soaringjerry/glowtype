@@ -30,16 +30,23 @@ import { ShareModal } from './components/ShareModal';
 import { GlowtypeCard } from './components/GlowtypeCard';
 import ShareRenderPage from './pages/ShareRenderPage';
 
-// --- GEMINI API UTILITIES ---
+// --- AI API UTILITIES (OpenAI-compatible) ---
+
+// Runtime config from window.ENV (Docker) or build-time VITE_ vars
+const getEnvConfig = () => {
+  const windowEnv = (window as any).ENV || {};
+  return {
+    apiKey: windowEnv.AI_API_KEY || import.meta.env.VITE_AI_API_KEY || '',
+    baseUrl: windowEnv.AI_API_URL || import.meta.env.VITE_AI_API_URL || 'https://api.openai.com/v1',
+    model: windowEnv.AI_MODEL || import.meta.env.VITE_AI_MODEL || 'gpt-4o-mini',
+  };
+};
 
 const callAI = async (prompt, systemInstruction) => {
-  // Admin-only configuration via environment variables
-  const apiKey = import.meta.env.VITE_AI_API_KEY;
-  const baseUrl = import.meta.env.VITE_AI_API_URL || 'https://api.openai.com/v1';
-  const model = import.meta.env.VITE_AI_MODEL || 'gpt-3.5-turbo';
+  const { apiKey, baseUrl, model } = getEnvConfig();
 
   if (!apiKey) {
-    console.warn("Missing VITE_AI_API_KEY");
+    console.warn("Missing AI_API_KEY - set via environment variable or window.ENV");
     return "Configuration Error: AI service is not properly configured.";
   }
 
