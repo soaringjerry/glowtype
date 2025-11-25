@@ -1,4 +1,4 @@
-import React, { useRef, useState, type FC } from 'react';
+import React, { useRef, useState, useEffect, type FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Copy, Check, Loader2, Share2, Zap, Fingerprint } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -24,47 +24,84 @@ type InlineShareCardProps = {
   insight: string | null;
   lang: 'en' | 'zh';
   exportMode?: boolean;
+  glowDataUrl?: string;
+};
+
+// 使用 Canvas API 绘制模糊光效
+const renderGlowToCanvas = (width: number, height: number): string => {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  // 背景渐变
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+  bgGrad.addColorStop(0, '#fef3ff');
+  bgGrad.addColorStop(0.5, '#ffffff');
+  bgGrad.addColorStop(1, '#f0e6ff');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  // 绘制多层光晕模拟模糊效果
+  const centerX = width / 2;
+  const centerY = height * 0.35;
+
+  // 最外层 - 大范围柔和光晕
+  for (let i = 0; i < 20; i++) {
+    const radius = 400 - i * 15;
+    const alpha = 0.02 + i * 0.008;
+    const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+    grad.addColorStop(0, `rgba(167, 139, 250, ${alpha})`);
+    grad.addColorStop(0.5, `rgba(139, 92, 246, ${alpha * 0.6})`);
+    grad.addColorStop(1, 'rgba(139, 92, 246, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // 中层 - 较亮的紫色光晕
+  for (let i = 0; i < 15; i++) {
+    const radius = 280 - i * 12;
+    const alpha = 0.03 + i * 0.012;
+    const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+    grad.addColorStop(0, `rgba(196, 181, 253, ${alpha})`);
+    grad.addColorStop(0.6, `rgba(167, 139, 250, ${alpha * 0.5})`);
+    grad.addColorStop(1, 'rgba(167, 139, 250, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // 内层 - 明亮核心
+  for (let i = 0; i < 10; i++) {
+    const radius = 180 - i * 12;
+    const alpha = 0.05 + i * 0.02;
+    const grad = ctx.createRadialGradient(centerX, centerY - 20, 0, centerX, centerY - 20, radius);
+    grad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+    grad.addColorStop(0.5, `rgba(221, 214, 254, ${alpha * 0.6})`);
+    grad.addColorStop(1, 'rgba(221, 214, 254, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  return canvas.toDataURL('image/png');
 };
 
 const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
-  ({ data, insight, lang, exportMode = false }, ref) => {
+  ({ data, insight, lang, exportMode = false, glowDataUrl }, ref) => {
     return (
       <div
         ref={ref}
         className="relative w-[1080px] h-[1080px] overflow-hidden font-sans"
         data-share-card
         style={{
-          background: exportMode
-            ? `linear-gradient(145deg, ${data.cardAccent.includes('from-') ? '#fef3ff' : '#f8f4ff'} 0%, #ffffff 50%, ${data.cardAccent.includes('from-') ? '#f0e6ff' : '#ede9ff'} 100%)`
+          background: exportMode && glowDataUrl
+            ? `url(${glowDataUrl})`
             : `linear-gradient(145deg, #fef3ff 0%, #ffffff 50%, #f0e6ff 100%)`,
+          backgroundSize: 'cover',
         }}
       >
-        {/* Background glow effects - layered for soft glow */}
-        {exportMode ? (
-          <>
-            {/* Outer soft glow */}
-            <div
-              className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1000px] h-[800px]"
-              style={{
-                background: 'radial-gradient(ellipse 70% 60% at 50% 30%, rgba(167,139,250,0.5) 0%, rgba(139,92,246,0.25) 40%, transparent 70%)',
-              }}
-            />
-            {/* Mid glow layer */}
-            <div
-              className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[700px] h-[600px]"
-              style={{
-                background: 'radial-gradient(ellipse 60% 55% at 50% 40%, rgba(196,181,253,0.6) 0%, rgba(167,139,250,0.3) 50%, transparent 75%)',
-              }}
-            />
-            {/* Inner bright core */}
-            <div
-              className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[400px] h-[350px]"
-              style={{
-                background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255,255,255,0.7) 0%, rgba(221,214,254,0.4) 50%, transparent 80%)',
-              }}
-            />
-          </>
-        ) : (
+        {/* Background glow effects - only for preview mode */}
+        {!exportMode && (
           <>
             <div
               className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[800px] h-[700px] opacity-70 blur-[100px]"
@@ -109,29 +146,7 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
         <div className="relative z-10 flex flex-col items-center justify-center px-14 pt-8 pb-6" style={{ height: 'calc(100% - 180px)' }}>
           {/* Aura ball - smaller for square layout */}
           <div className="relative w-[280px] h-[280px] mb-10">
-            {exportMode ? (
-              <>
-                {/* Multi-layer soft glow for export */}
-                <div
-                  className="absolute inset-[-30%] rounded-full"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 50%, rgba(167,139,250,0.5) 0%, rgba(139,92,246,0.3) 40%, transparent 65%)',
-                  }}
-                />
-                <div
-                  className="absolute inset-[-10%] rounded-full"
-                  style={{
-                    background: 'radial-gradient(circle at 45% 45%, rgba(196,181,253,0.7) 0%, rgba(167,139,250,0.4) 50%, transparent 70%)',
-                  }}
-                />
-                <div
-                  className="absolute inset-[10%] rounded-full"
-                  style={{
-                    background: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.9) 0%, rgba(221,214,254,0.5) 50%, transparent 75%)',
-                  }}
-                />
-              </>
-            ) : (
+            {!exportMode && (
               <>
                 <div
                   className="absolute inset-0 rounded-full blur-[50px] opacity-90"
@@ -143,7 +158,7 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
                 />
               </>
             )}
-            {/* Inner highlight */}
+            {/* Inner highlight - always visible */}
             <div
               className="absolute inset-[25%] rounded-full opacity-60"
               style={{
@@ -216,6 +231,7 @@ export const ShareModal: FC<ShareModalProps> = ({
   const exportRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [glowDataUrl, setGlowDataUrl] = useState<string>('');
 
   const shareData = {
     title: data.title[lang],
@@ -225,6 +241,14 @@ export const ShareModal: FC<ShareModalProps> = ({
     cardAccent: data.cardAccent,
     textColor: data.textColor,
   };
+
+  // 预渲染光效
+  useEffect(() => {
+    if (isOpen && !glowDataUrl) {
+      const dataUrl = renderGlowToCanvas(1080, 1080);
+      setGlowDataUrl(dataUrl);
+    }
+  }, [isOpen, glowDataUrl]);
 
   const handleDownload = async () => {
     if (!exportRef.current) return;
@@ -372,7 +396,7 @@ export const ShareModal: FC<ShareModalProps> = ({
                 zIndex: -1,
               }}
             >
-              <InlineShareCard data={shareData} insight={insight} lang={lang} exportMode />
+              <InlineShareCard data={shareData} insight={insight} lang={lang} exportMode glowDataUrl={glowDataUrl} />
             </div>
 
             {/* Actions */}
