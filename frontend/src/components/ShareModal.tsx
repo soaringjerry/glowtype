@@ -65,11 +65,11 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
           style={{ backgroundImage: 'radial-gradient(#00000010 1px, transparent 1px)', backgroundSize: '42px 42px' }}
         />
         <div
-          className="absolute -top-[10%] left-0 w-[100%] h-[50%] opacity-55 blur-[170px]"
+          className="absolute -top-[10%] left-0 w-[100%] h-[50%] opacity-55 blur-[170px] mix-blend-layer"
           style={{ background: 'radial-gradient(circle at 40% 30%, rgba(176,144,255,0.9), rgba(124,77,255,0.6), transparent 70%)' }}
         />
         <div
-          className="absolute bottom-0 right-0 w-[80%] h-[40%] opacity-45 blur-[150px]"
+          className="absolute bottom-0 right-0 w-[80%] h-[40%] opacity-45 blur-[150px] mix-blend-layer"
           style={{ background: 'radial-gradient(circle at 65% 70%, rgba(255,205,255,0.65), rgba(160,120,255,0.45), transparent 75%)' }}
         />
         <div className="absolute inset-0 pointer-events-none">
@@ -182,6 +182,7 @@ export const ShareModal: FC<ShareModalProps> = ({
       style.textContent = `
         [data-share-card].export-mode {
           background: linear-gradient(135deg,#fdf5ff 0%,#f7f9ff 45%,#eef4ff 100%);
+          filter: saturate(1.1) contrast(1.03);
         }
         [data-share-card].export-mode .mix-blend-layer {
           mix-blend-mode: normal !important;
@@ -196,6 +197,17 @@ export const ShareModal: FC<ShareModalProps> = ({
       `;
       clone.classList.add('export-mode');
       clone.appendChild(style);
+
+      // Add a saturation overlay to approximate blend glow
+      const overlay = document.createElement('div');
+      overlay.style.position = 'absolute';
+      overlay.style.inset = '0';
+      overlay.style.pointerEvents = 'none';
+      overlay.style.opacity = '0.35';
+      overlay.style.backgroundImage =
+        'radial-gradient(circle at 35% 30%, rgba(135,104,255,0.8), rgba(96,64,255,0.5), transparent 65%), radial-gradient(circle at 70% 70%, rgba(255,190,255,0.55), rgba(180,140,255,0.45), transparent 70%)';
+      const card = clone.querySelector('[data-share-card]');
+      card?.appendChild(overlay);
 
       const canvas = await html2canvas(clone, {
         scale: 2,
