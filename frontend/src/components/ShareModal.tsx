@@ -23,7 +23,6 @@ type InlineShareCardProps = {
   };
   insight: string | null;
   lang: 'en' | 'zh';
-  exportMode?: boolean;
   glowDataUrl?: string;
 };
 
@@ -102,32 +101,19 @@ const renderGlowToCanvas = (width: number, height: number): string => {
 };
 
 const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
-  ({ data, insight, lang, exportMode = false, glowDataUrl }, ref) => {
+  ({ data, insight, lang, glowDataUrl }, ref) => {
     return (
       <div
         ref={ref}
         className="relative w-[1080px] h-[1080px] overflow-hidden font-sans"
         data-share-card
         style={{
-          background: exportMode && glowDataUrl
+          background: glowDataUrl
             ? `url(${glowDataUrl})`
             : `linear-gradient(145deg, #fef3ff 0%, #ffffff 50%, #f0e6ff 100%)`,
           backgroundSize: 'cover',
         }}
       >
-        {/* Background glow effects - only for preview mode */}
-        {!exportMode && (
-          <>
-            <div
-              className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[800px] h-[700px] opacity-70 blur-[100px]"
-              style={{ background: data.auraGradient }}
-            />
-            <div
-              className="absolute top-[0%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] opacity-50 blur-[80px]"
-              style={{ background: 'radial-gradient(circle, rgba(196,181,253,0.8), transparent 70%)' }}
-            />
-          </>
-        )}
 
         {/* Subtle grid pattern */}
         <div
@@ -159,28 +145,8 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
 
         {/* Main content area - centered */}
         <div className="relative z-10 flex flex-col items-center justify-center px-14 pt-8 pb-6" style={{ height: 'calc(100% - 180px)' }}>
-          {/* Aura ball - only show in preview mode, export uses canvas background */}
-          <div className="relative w-[280px] h-[280px] mb-10">
-            {!exportMode && (
-              <>
-                <div
-                  className="absolute inset-0 rounded-full blur-[50px] opacity-90"
-                  style={{ background: data.auraGradient }}
-                />
-                <div
-                  className="absolute inset-[10%] rounded-full blur-[35px] opacity-70"
-                  style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.8), rgba(196,181,253,0.4))' }}
-                />
-                {/* Inner highlight - only in preview */}
-                <div
-                  className="absolute inset-[25%] rounded-full opacity-60"
-                  style={{
-                    background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), transparent 60%)',
-                  }}
-                />
-              </>
-            )}
-          </div>
+          {/* Aura ball placeholder - actual glow is in canvas background */}
+          <div className="relative w-[280px] h-[280px] mb-10" />
 
           {/* Title */}
           <h1 className={`text-6xl font-serif font-bold text-center mb-4 ${data.textColor}`}>
@@ -392,7 +358,7 @@ export const ShareModal: FC<ShareModalProps> = ({
                     transformOrigin: 'top left',
                   }}
                 >
-                  <InlineShareCard data={shareData} insight={insight} lang={lang} />
+                  <InlineShareCard data={shareData} insight={insight} lang={lang} glowDataUrl={glowDataUrl} />
                 </div>
               </div>
             </div>
@@ -411,7 +377,7 @@ export const ShareModal: FC<ShareModalProps> = ({
                 zIndex: -1,
               }}
             >
-              <InlineShareCard data={shareData} insight={insight} lang={lang} exportMode glowDataUrl={glowDataUrl} />
+              <InlineShareCard data={shareData} insight={insight} lang={lang} glowDataUrl={glowDataUrl} />
             </div>
 
             {/* Actions */}
