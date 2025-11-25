@@ -39,6 +39,12 @@ EOF
   echo "      Please edit .env as needed (ports, VITE_API_BASE_URL, etc.)."
 fi
 
+# Ensure share renderer URL present for server-side screenshot
+if ! grep -q "^VITE_SHARE_RENDER_URL=" "${ROOT_DIR}/.env" 2>/dev/null; then
+  echo "VITE_SHARE_RENDER_URL=http://share-renderer:4000" >> "${ROOT_DIR}/.env"
+  echo "[INFO] Injected VITE_SHARE_RENDER_URL=http://share-renderer:4000 into .env"
+fi
+
 # Inject GEMINI_API_KEY if provided via environment (e.g. from one-line install command)
 if [ -n "${GEMINI_API_KEY:-}" ]; then
   if [ -f "${ROOT_DIR}/.env" ]; then

@@ -37,4 +37,3 @@ echo "[STEP] Running local setup_and_run.sh ..."
 ./scripts/setup_and_run.sh
 
 echo "=== Glowtype.me – remote setup finished ==="
-
