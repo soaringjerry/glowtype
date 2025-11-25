@@ -8,13 +8,23 @@ import (
 )
 
 // SeedDatabase populates the database with example data if tables are empty
-func SeedDatabase(db *gorm.DB) {
+// Set SEED_DB_FORCE=true to force re-seed even if data exists
+func SeedDatabase(db *gorm.DB, force bool) {
 	// Check if already seeded
 	var count int64
 	db.Model(&TraitDimensionDB{}).Count(&count)
-	if count > 0 {
-		log.Println("Database already has data, skipping seed")
+	if count > 0 && !force {
+		log.Println("Database already has data, skipping seed (set SEED_DB_FORCE=true to override)")
 		return
+	}
+
+	if force && count > 0 {
+		log.Println("SEED_DB_FORCE=true, clearing existing data...")
+		db.Exec("DELETE FROM scoring_rules")
+		db.Exec("DELETE FROM glowtype_i18n")
+		db.Exec("DELETE FROM glowtypes")
+		db.Exec("DELETE FROM quiz_questions")
+		db.Exec("DELETE FROM trait_dimensions")
 	}
 
 	log.Println("Seeding database with example data...")
