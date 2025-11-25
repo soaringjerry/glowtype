@@ -18,11 +18,12 @@ type GlowtypeCardProps = {
   className?: string;
   animated?: boolean;
   variant?: 'display' | 'share';
+  exportMode?: boolean;
 };
 
 export const GlowtypeCard = memo(
   forwardRef<HTMLDivElement, GlowtypeCardProps>(function GlowtypeCard(
-    { data, insight, lang, className = '', animated = true, variant = 'display' },
+    { data, insight, lang, className = '', animated = true, variant = 'display', exportMode = false },
     ref,
   ) {
     const { title, tagline, description, auraGradient, cardAccent, textColor } =
@@ -60,10 +61,21 @@ export const GlowtypeCard = memo(
         transition={animated ? { duration: 1, type: 'spring' } : undefined}
         className={`relative h-full w-full ${radius} overflow-hidden bg-gradient-to-br ${cardAccent} shadow-2xl ${borderWidth} border-white/60 ${className}`}
       >
-        <div className="absolute inset-0 opacity-[0.6] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
+        {!exportMode && (
+          <div className="absolute inset-0 opacity-[0.6] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
+        )}
+        {exportMode && (
+          <div
+            className="absolute inset-0 opacity-[0.08] pointer-events-none"
+            style={{
+              backgroundImage: `repeating-conic-gradient(#9990 0% 25%, transparent 0% 50%)`,
+              backgroundSize: '3px 3px',
+            }}
+          />
+        )}
 
         <div className="absolute top-6 left-0 w-full flex justify-center z-20">
-          <div className="bg-white/30 backdrop-blur-md border border-white/50 px-3 py-1 rounded-full">
+          <div className={`${exportMode ? 'bg-white/50' : 'bg-white/30 backdrop-blur-md'} border border-white/50 px-3 py-1 rounded-full`}>
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-900">
               {lang === 'zh' ? '稀有原型' : 'Rare Prototype'}
             </span>
@@ -71,31 +83,52 @@ export const GlowtypeCard = memo(
         </div>
 
         <div className="absolute top-0 left-0 w-full h-[65%] flex items-center justify-center overflow-hidden">
-          <AuraMain
-            animate={
-              animated ? { scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] } : undefined
-            }
-            transition={
-              animated ? { duration: 6, repeat: Infinity, ease: 'easeInOut' } : undefined
-            }
-            className={`${auraMainSize} rounded-full blur-[40px] mix-blend-multiply`}
-            style={{ background: auraGradient }}
-          />
-          <AuraSecondary
-            animate={
-              animated ? { scale: [1.2, 1, 1.2], x: [10, -10, 10] } : undefined
-            }
-            transition={
-              animated ? { duration: 8, repeat: Infinity, ease: 'easeInOut' } : undefined
-            }
-            className={`absolute ${auraSecondarySize} rounded-full blur-[50px] mix-blend-multiply opacity-60`}
-            style={{ background: auraGradient, filter: 'hue-rotate(30deg)' }}
-          />
+          {exportMode ? (
+            <>
+              <div
+                className={`${auraMainSize} rounded-full opacity-70`}
+                style={{
+                  background: `radial-gradient(circle, ${auraGradient.includes('linear') ? '#a78bfa' : auraGradient.replace('linear-gradient', 'radial-gradient')}, transparent 70%)`,
+                  transform: 'scale(2.5)',
+                }}
+              />
+              <div
+                className={`absolute ${auraSecondarySize} rounded-full opacity-40`}
+                style={{
+                  background: `radial-gradient(circle, #c4b5fd, transparent 65%)`,
+                  transform: 'scale(2.2) translateX(10%)',
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <AuraMain
+                animate={
+                  animated ? { scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] } : undefined
+                }
+                transition={
+                  animated ? { duration: 6, repeat: Infinity, ease: 'easeInOut' } : undefined
+                }
+                className={`${auraMainSize} rounded-full blur-[40px] mix-blend-multiply`}
+                style={{ background: auraGradient }}
+              />
+              <AuraSecondary
+                animate={
+                  animated ? { scale: [1.2, 1, 1.2], x: [10, -10, 10] } : undefined
+                }
+                transition={
+                  animated ? { duration: 8, repeat: Infinity, ease: 'easeInOut' } : undefined
+                }
+                className={`absolute ${auraSecondarySize} rounded-full blur-[50px] mix-blend-multiply opacity-60`}
+                style={{ background: auraGradient, filter: 'hue-rotate(30deg)' }}
+              />
+            </>
+          )}
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(255,255,255,0.1)_50%)] bg-[length:100%_4px] pointer-events-none" />
         </div>
 
         <div className="absolute bottom-0 left-0 w-full h-[45%] z-10">
-          <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/70 to-transparent backdrop-blur-[2px]" />
+          <div className={`absolute inset-0 bg-gradient-to-t ${exportMode ? 'from-white via-white/85' : 'from-white/95 via-white/70'} to-transparent ${exportMode ? '' : 'backdrop-blur-[2px]'}`} />
           <div className={`relative z-20 ${paddingClasses} h-full flex flex-col justify-end`}>
             <div className="pt-6">
               <h3 className={`${titleClasses} font-serif ${textColor} mb-2`}>

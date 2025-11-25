@@ -24,6 +24,7 @@ type InlineShareCardProps = {
   };
   insight: string | null;
   lang: 'en' | 'zh';
+  exportMode?: boolean;
 };
 
 const CornerMarks = () => (
@@ -36,7 +37,7 @@ const CornerMarks = () => (
 );
 
 const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
-  ({ data, insight, lang }, ref) => {
+  ({ data, insight, lang, exportMode = false }, ref) => {
     const dateStr = useMemo(
       () =>
         new Date()
@@ -64,14 +65,29 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
           className="absolute inset-0"
           style={{ backgroundImage: 'radial-gradient(#00000010 1px, transparent 1px)', backgroundSize: '42px 42px' }}
         />
-        <div
-          className="absolute -top-[10%] left-0 w-[100%] h-[50%] opacity-55 blur-[170px] mix-blend-layer"
-          style={{ background: 'radial-gradient(circle at 40% 30%, rgba(176,144,255,0.9), rgba(124,77,255,0.6), transparent 70%)' }}
-        />
-        <div
-          className="absolute bottom-0 right-0 w-[80%] h-[40%] opacity-45 blur-[150px] mix-blend-layer"
-          style={{ background: 'radial-gradient(circle at 65% 70%, rgba(255,205,255,0.65), rgba(160,120,255,0.45), transparent 75%)' }}
-        />
+        {exportMode ? (
+          <>
+            <div
+              className="absolute -top-[10%] left-0 w-[100%] h-[50%] opacity-45"
+              style={{ background: 'radial-gradient(ellipse 80% 60% at 40% 30%, rgba(176,144,255,0.6), rgba(124,77,255,0.35), transparent 70%)' }}
+            />
+            <div
+              className="absolute bottom-0 right-0 w-[80%] h-[40%] opacity-35"
+              style={{ background: 'radial-gradient(ellipse 70% 50% at 65% 70%, rgba(255,205,255,0.5), rgba(160,120,255,0.3), transparent 75%)' }}
+            />
+          </>
+        ) : (
+          <>
+            <div
+              className="absolute -top-[10%] left-0 w-[100%] h-[50%] opacity-55 blur-[170px] mix-blend-layer"
+              style={{ background: 'radial-gradient(circle at 40% 30%, rgba(176,144,255,0.9), rgba(124,77,255,0.6), transparent 70%)' }}
+            />
+            <div
+              className="absolute bottom-0 right-0 w-[80%] h-[40%] opacity-45 blur-[150px] mix-blend-layer"
+              style={{ background: 'radial-gradient(circle at 65% 70%, rgba(255,205,255,0.65), rgba(160,120,255,0.45), transparent 75%)' }}
+            />
+          </>
+        )}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute inset-0 opacity-[0.07] bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.7),transparent_50%),radial-gradient(circle_at_70%_60%,rgba(255,255,255,0.55),transparent_55%)]" />
         </div>
@@ -111,6 +127,7 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
               insight={insight}
               lang={lang}
               animated={false}
+              exportMode={exportMode}
               className="w-full h-full"
             />
           </div>
@@ -151,6 +168,7 @@ export const ShareModal: FC<ShareModalProps> = ({
   lang,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
 
@@ -164,7 +182,7 @@ export const ShareModal: FC<ShareModalProps> = ({
   };
 
   const handleDownload = async () => {
-    if (!cardRef.current) return;
+    if (!exportRef.current) return;
     setIsGenerating(true);
     try {
       // Preferred path: call render service if configured
@@ -188,49 +206,8 @@ export const ShareModal: FC<ShareModalProps> = ({
         }
       }
 
-      const source = cardRef.current;
-      const clone = source.cloneNode(true) as HTMLElement;
-      clone.style.transform = 'none';
-      clone.style.width = '1080px';
-      clone.style.height = '1920px';
-      clone.style.position = 'fixed';
-      clone.style.left = '-20000px';
-      clone.style.top = '-20000px';
-      clone.style.pointerEvents = 'none';
-      document.body.appendChild(clone);
-
-      const style = document.createElement('style');
-      style.textContent = `
-        [data-share-card].export-mode {
-          background: linear-gradient(135deg,#fdf5ff 0%,#f7f9ff 45%,#eef4ff 100%);
-          filter: saturate(1.1) contrast(1.03);
-        }
-        [data-share-card].export-mode .mix-blend-layer {
-          mix-blend-mode: normal !important;
-          opacity: 0.7 !important;
-        }
-        [data-share-card].export-mode .aura-layer.aura-1 {
-          background: radial-gradient(circle at 40% 30%, rgba(176,144,255,0.9), rgba(124,77,255,0.55), transparent 68%);
-        }
-        [data-share-card].export-mode .aura-layer.aura-2 {
-          background: radial-gradient(circle at 70% 60%, rgba(255,205,255,0.6), rgba(160,120,255,0.45), transparent 72%);
-        }
-      `;
-      clone.classList.add('export-mode');
-      clone.appendChild(style);
-
-      // Add a saturation overlay to approximate blend glow
-      const overlay = document.createElement('div');
-      overlay.style.position = 'absolute';
-      overlay.style.inset = '0';
-      overlay.style.pointerEvents = 'none';
-      overlay.style.opacity = '0.35';
-      overlay.style.backgroundImage =
-        'radial-gradient(circle at 35% 30%, rgba(135,104,255,0.8), rgba(96,64,255,0.5), transparent 65%), radial-gradient(circle at 70% 70%, rgba(255,190,255,0.55), rgba(180,140,255,0.45), transparent 70%)';
-      const card = clone.querySelector('[data-share-card]');
-      card?.appendChild(overlay);
-
-      const canvas = await html2canvas(clone, {
+      // Use the exportMode version of the card for html2canvas
+      const canvas = await html2canvas(exportRef.current, {
         scale: 2,
         width: 1080,
         height: 1920,
@@ -239,8 +216,6 @@ export const ShareModal: FC<ShareModalProps> = ({
         logging: false,
         scrollY: 0,
       });
-
-      document.body.removeChild(clone);
 
       const link = document.createElement('a');
       link.download = `glowtype-${data.title.en.replace(/\s+/g, '-').toLowerCase()}.png`;
@@ -336,6 +311,23 @@ export const ShareModal: FC<ShareModalProps> = ({
                   <InlineShareCard data={shareData} insight={insight} lang={lang} />
                 </div>
               </div>
+            </div>
+
+            {/* Hidden export version for html2canvas */}
+            <div
+              ref={exportRef}
+              aria-hidden="true"
+              style={{
+                position: 'fixed',
+                left: '-9999px',
+                top: 0,
+                width: 1080,
+                height: 1920,
+                pointerEvents: 'none',
+                zIndex: -1,
+              }}
+            >
+              <InlineShareCard data={shareData} insight={insight} lang={lang} exportMode />
             </div>
 
             {/* Actions */}

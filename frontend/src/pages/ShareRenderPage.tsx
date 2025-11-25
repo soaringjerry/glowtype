@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { GlowtypeCard } from '../components/GlowtypeCard';
 import { Zap, ScanLine, Fingerprint } from 'lucide-react';
 
