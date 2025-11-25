@@ -1,6 +1,4 @@
-import { useMemo } from 'react';
-import { GlowtypeCard } from '../components/GlowtypeCard';
-import { Zap, ScanLine, Fingerprint } from 'lucide-react';
+import { Zap, Fingerprint } from 'lucide-react';
 
 type ShareCardPayload = {
   data: {
@@ -44,93 +42,113 @@ export default function ShareRenderPage() {
     textColor: payload.data.textColor,
   };
 
-  const dateStr = useMemo(
-    () =>
-      new Date()
-        .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        .toUpperCase(),
-    [],
-  );
-
-  const auraId = useMemo(() => {
-    let hash = 0;
-    for (let i = 0; i < data.title.length; i++) {
-      hash = data.title.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return Math.abs(hash % 900) + 100;
-  }, [data.title]);
-
   return (
     <div
       id="share-card-render"
-      className="relative w-[1080px] h-[1920px] overflow-hidden bg-slate-50 flex flex-col items-center justify-between py-28 font-sans"
-      style={{ margin: 0, padding: 0 }}
+      className="relative w-[1080px] h-[1920px] overflow-hidden font-sans"
+      style={{
+        background: `linear-gradient(145deg, #fef3ff 0%, #ffffff 50%, #f0e6ff 100%)`,
+        margin: 0,
+        padding: 0,
+      }}
     >
-      <div className="absolute inset-0 bg-[#fafafa]" />
+      {/* Background glow effects - using blur for Playwright */}
       <div
-        className="absolute inset-0"
-        style={{ backgroundImage: 'radial-gradient(#00000010 1px, transparent 1px)', backgroundSize: '42px 42px' }}
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] opacity-70 blur-[100px]"
+        style={{ background: data.auraGradient }}
       />
       <div
-        className="absolute -top-[10%] left-0 w-[100%] h-[50%] opacity-55 blur-[170px]"
-        style={{ background: 'radial-gradient(circle at 40% 30%, rgba(176,144,255,0.9), rgba(124,77,255,0.6), transparent 70%)' }}
+        className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[700px] h-[700px] opacity-50 blur-[80px]"
+        style={{ background: 'radial-gradient(circle, rgba(196,181,253,0.8), transparent 70%)' }}
       />
-      <div
-        className="absolute bottom-0 right-0 w-[80%] h-[40%] opacity-45 blur-[150px]"
-        style={{ background: 'radial-gradient(circle at 65% 70%, rgba(255,205,255,0.65), rgba(160,120,255,0.45), transparent 75%)' }}
-      />
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 opacity-[0.07] bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.7),transparent_50%),radial-gradient(circle_at_70%_60%,rgba(255,255,255,0.55),transparent_55%)]" />
-      </div>
-      <div className="absolute top-12 left-12 w-6 h-6 border-t-[1.5px] border-l-[1.5px] border-slate-300/60" />
-      <div className="absolute top-12 right-12 w-6 h-6 border-t-[1.5px] border-r-[1.5px] border-slate-300/60" />
-      <div className="absolute bottom-12 left-12 w-6 h-6 border-b-[1.5px] border-l-[1.5px] border-slate-300/60" />
-      <div className="absolute bottom-12 right-12 w-6 h-6 border-b-[1.5px] border-r-[1.5px] border-slate-300/60" />
 
-      <div className="relative z-10 w-full px-20 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 text-white flex items-center justify-center rounded-2xl shadow-lg shadow-slate-900/20">
-            <Zap size={24} fill="currentColor" />
+      {/* Subtle grid pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+      />
+
+      {/* Header */}
+      <div className="relative z-10 pt-16 px-16 flex items-center justify-between">
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 bg-slate-900 text-white flex items-center justify-center rounded-2xl shadow-xl">
+            <Zap size={32} fill="currentColor" />
           </div>
-          <div className="flex flex-col justify-center">
-            <span className="text-2xl font-black text-slate-900 tracking-tight leading-none">GLOWTYPE</span>
-            <span className="text-[11px] text-slate-400 font-mono tracking-[0.25em] uppercase mt-1">Analysis Report</span>
+          <div>
+            <span className="text-3xl font-black text-slate-900 tracking-tight">GLOWTYPE</span>
+            <div className="text-sm text-slate-400 font-medium tracking-wider mt-1">情绪光谱分析</div>
           </div>
-        </div>
-        <div className="text-right">
-          <div className="text-sm font-mono text-slate-400 tracking-widest">{dateStr}</div>
         </div>
       </div>
 
-      <div className="relative z-10 w-[920px] aspect-[3/5] group">
-        <div
-          className="absolute inset-0 rounded-[48px] translate-x-5 translate-y-5 opacity-40"
-          style={{ backgroundColor: data.cardAccent }}
-        />
-        <div className="absolute -inset-5 border border-slate-900/5 rounded-[64px]" />
-        <div className="relative w-full h-full rounded-[48px] overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.05)] bg-white">
-          <GlowtypeCard
-            data={data}
-            insight={payload.insight}
-            lang={lang}
-            animated={false}
-            className="w-full h-full"
+      {/* Main content area */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-16 py-12">
+        {/* Aura ball */}
+        <div className="relative w-[420px] h-[420px] mb-16">
+          <div
+            className="absolute inset-0 rounded-full blur-[60px] opacity-90"
+            style={{ background: data.auraGradient }}
+          />
+          <div
+            className="absolute inset-[10%] rounded-full blur-[40px] opacity-70"
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.8), rgba(196,181,253,0.4))' }}
+          />
+          {/* Inner highlight */}
+          <div
+            className="absolute inset-[25%] rounded-full opacity-60"
+            style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), transparent 60%)',
+            }}
           />
         </div>
-        <div className="absolute -top-6 -right-6 bg-white px-6 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] rounded-full border border-slate-100 transform rotate-6 flex items-center gap-3 z-20">
-          <ScanLine size={20} className="text-slate-400" />
-          <span className="text-lg font-bold tracking-widest text-slate-800 font-mono">#{auraId}</span>
+
+        {/* Title */}
+        <h1 className={`text-7xl font-serif font-bold text-center mb-6 ${data.textColor}`}>
+          {data.title}
+        </h1>
+
+        {/* Tagline */}
+        <p className="text-2xl text-slate-500 font-medium tracking-wide text-center mb-12 uppercase">
+          {data.tagline}
+        </p>
+
+        {/* Divider */}
+        <div className="w-32 h-1 bg-gradient-to-r from-violet-300 via-purple-400 to-violet-300 rounded-full mb-12" />
+
+        {/* Description or Insight */}
+        <div className="max-w-[800px] text-center">
+          {payload.insight ? (
+            <p className="text-3xl leading-relaxed text-violet-600 font-medium italic">
+              "{payload.insight}"
+            </p>
+          ) : (
+            <p className="text-2xl leading-relaxed text-slate-600">
+              {data.description}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-8 w-full px-20">
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-300/50 to-transparent" />
-        <div className="flex items-end justify-between w-full opacity-60">
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-mono text-slate-400 tracking-[0.4em] uppercase">Generated by AI</span>
-            <span className="text-xl font-bold text-slate-800 tracking-[0.15em]">GLOWTYPE.ME</span>
+      {/* Footer */}
+      <div className="relative z-10 pb-16 px-16">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-lg text-slate-400 font-mono tracking-wider mb-1">
+              {lang === 'zh' ? '扫码探索你的光谱' : 'Discover your spectrum'}
+            </div>
+            <div className="text-2xl font-bold text-slate-700 tracking-wide">
+              GLOWTYPE.ME
+            </div>
           </div>
-          <Fingerprint size={40} className="text-slate-300" strokeWidth={1.5} />
+          <div className="flex items-center gap-4 bg-white/60 px-6 py-4 rounded-2xl">
+            <Fingerprint size={48} className="text-violet-400" strokeWidth={1.5} />
+            <div className="text-right">
+              <div className="text-sm text-slate-400 font-mono">{lang === 'zh' ? 'AI 生成' : 'AI Generated'}</div>
+              <div className="text-lg font-bold text-slate-600">
+                {new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
