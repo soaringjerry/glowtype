@@ -57,6 +57,11 @@ func InitDB() *gorm.DB {
 	DB = db
 	log.Printf("Database initialized at: %s", dbPath)
 
+	// Auto-seed if SEED_DB=true and database is empty
+	if getEnv("SEED_DB", "") == "true" {
+		SeedDatabase(db)
+	}
+
 	return db
 }
 
