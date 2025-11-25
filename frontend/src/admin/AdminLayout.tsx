@@ -122,13 +122,13 @@ export default function AdminLayout() {
       <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
         <div className="p-6">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/dimensions" element={<Dimensions />} />
-            <Route path="/questions" element={<Questions />} />
-            <Route path="/glowtypes" element={<Glowtypes />} />
-            <Route path="/rules" element={<Rules />} />
-            <Route path="/debugger" element={<RuleDebugger />} />
-            <Route path="/prompts" element={<Prompts />} />
+            <Route path="/admin" element={<Dashboard />} />
+            <Route path="/admin/dimensions" element={<Dimensions />} />
+            <Route path="/admin/questions" element={<Questions />} />
+            <Route path="/admin/glowtypes" element={<Glowtypes />} />
+            <Route path="/admin/rules" element={<Rules />} />
+            <Route path="/admin/debugger" element={<RuleDebugger />} />
+            <Route path="/admin/prompts" element={<Prompts />} />
           </Routes>
         </div>
       </main>
