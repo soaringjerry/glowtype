@@ -167,6 +167,27 @@ export const ShareModal: FC<ShareModalProps> = ({
     if (!cardRef.current) return;
     setIsGenerating(true);
     try {
+      // Preferred path: call render service if configured
+      const renderServiceUrl = import.meta.env.VITE_SHARE_RENDER_URL;
+      if (renderServiceUrl) {
+        const res = await fetch(`${renderServiceUrl.replace(/\/$/, '')}/render`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data, insight, lang }),
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `glowtype-${shareData.title.replace(/\s+/g, '-').toLowerCase()}.png`;
+          link.click();
+          URL.revokeObjectURL(url);
+          setIsGenerating(false);
+          return;
+        }
+      }
+
       const source = cardRef.current;
       const clone = source.cloneNode(true) as HTMLElement;
       clone.style.transform = 'none';
