@@ -19,6 +19,9 @@ WORKDIR /app/backend
 
 RUN adduser -D -u 10001 appuser
 
+# Create data directory with proper ownership
+RUN mkdir -p /data && chown appuser:appuser /data
+
 # Copy binary and config
 COPY --from=builder /app/backend/glowtype-api /app/backend/glowtype-api
 COPY --from=builder /app/backend/config /app/backend/config
