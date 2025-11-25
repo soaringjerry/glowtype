@@ -41,8 +41,9 @@ fi
 
 # Ensure share renderer URL present for server-side screenshot
 if ! grep -q "^VITE_SHARE_RENDER_URL=" "${ROOT_DIR}/.env" 2>/dev/null; then
-  echo "VITE_SHARE_RENDER_URL=http://share-renderer:4000" >> "${ROOT_DIR}/.env"
-  echo "[INFO] Injected VITE_SHARE_RENDER_URL=http://share-renderer:4000 into .env"
+  HOST_RENDER_PORT="${GLOWTYPE_RENDER_PORT_HOST:-19080}"
+  echo "VITE_SHARE_RENDER_URL=http://localhost:${HOST_RENDER_PORT}" >> "${ROOT_DIR}/.env"
+  echo "[INFO] Injected VITE_SHARE_RENDER_URL=http://localhost:${HOST_RENDER_PORT} into .env"
 fi
 
 # Inject GEMINI_API_KEY if provided via environment (e.g. from one-line install command)
