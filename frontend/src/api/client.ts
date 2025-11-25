@@ -1,7 +1,4 @@
-const getApiBaseUrl = () => {
-  const windowEnv = (window as any).ENV || {};
-  return windowEnv.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || '/api/v1';
-};
+import { getApiBaseUrl } from './baseUrl';
 
 const defaultBase = getApiBaseUrl();
 
@@ -35,4 +32,3 @@ export async function apiPost<T, B = unknown>(
   }
   return (await res.json()) as T;
 }
-

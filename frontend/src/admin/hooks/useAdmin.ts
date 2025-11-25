@@ -1,9 +1,5 @@
-import { useState, useCallback } from 'react';
-
-const getApiBaseUrl = () => {
-  const windowEnv = (window as any).ENV || {};
-  return windowEnv.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || '/api/v1';
-};
+import { useCallback, useState } from 'react';
+import { getApiBaseUrl } from '../../api/baseUrl';
 
 export const useAdminAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
