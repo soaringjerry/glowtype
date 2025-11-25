@@ -45,40 +45,55 @@ const renderGlowToCanvas = (width: number, height: number): string => {
 
   // 绘制多层光晕模拟模糊效果
   const centerX = width / 2;
-  const centerY = height * 0.35;
+  const centerY = height * 0.38; // 球心位置
 
-  // 最外层 - 大范围柔和光晕
-  for (let i = 0; i < 20; i++) {
-    const radius = 400 - i * 15;
-    const alpha = 0.02 + i * 0.008;
+  // 最外层 - 大范围柔和环境光
+  for (let i = 0; i < 25; i++) {
+    const radius = 450 - i * 12;
+    const alpha = 0.015 + i * 0.006;
     const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
     grad.addColorStop(0, `rgba(167, 139, 250, ${alpha})`);
-    grad.addColorStop(0.5, `rgba(139, 92, 246, ${alpha * 0.6})`);
+    grad.addColorStop(0.4, `rgba(139, 92, 246, ${alpha * 0.5})`);
     grad.addColorStop(1, 'rgba(139, 92, 246, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
   }
 
-  // 中层 - 较亮的紫色光晕
-  for (let i = 0; i < 15; i++) {
-    const radius = 280 - i * 12;
-    const alpha = 0.03 + i * 0.012;
+  // 中层 - 紫色光晕过渡
+  for (let i = 0; i < 20; i++) {
+    const radius = 280 - i * 8;
+    const alpha = 0.02 + i * 0.01;
     const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
     grad.addColorStop(0, `rgba(196, 181, 253, ${alpha})`);
-    grad.addColorStop(0.6, `rgba(167, 139, 250, ${alpha * 0.5})`);
+    grad.addColorStop(0.5, `rgba(167, 139, 250, ${alpha * 0.6})`);
     grad.addColorStop(1, 'rgba(167, 139, 250, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
   }
 
-  // 内层 - 明亮核心
-  for (let i = 0; i < 10; i++) {
-    const radius = 180 - i * 12;
-    const alpha = 0.05 + i * 0.02;
-    const grad = ctx.createRadialGradient(centerX, centerY - 20, 0, centerX, centerY - 20, radius);
+  // 内层 - 柔和的球形核心
+  for (let i = 0; i < 25; i++) {
+    const radius = 160 - i * 4;
+    const alpha = 0.03 + i * 0.015;
+    const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
     grad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
-    grad.addColorStop(0.5, `rgba(221, 214, 254, ${alpha * 0.6})`);
+    grad.addColorStop(0.4, `rgba(237, 233, 254, ${alpha * 0.7})`);
+    grad.addColorStop(0.8, `rgba(221, 214, 254, ${alpha * 0.3})`);
     grad.addColorStop(1, 'rgba(221, 214, 254, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // 高光点 - 球体左上角的反光
+  for (let i = 0; i < 15; i++) {
+    const radius = 80 - i * 4;
+    const alpha = 0.04 + i * 0.02;
+    const highlightX = centerX - 40;
+    const highlightY = centerY - 50;
+    const grad = ctx.createRadialGradient(highlightX, highlightY, 0, highlightX, highlightY, radius);
+    grad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+    grad.addColorStop(0.5, `rgba(255, 255, 255, ${alpha * 0.3})`);
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
   }
@@ -144,7 +159,7 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
 
         {/* Main content area - centered */}
         <div className="relative z-10 flex flex-col items-center justify-center px-14 pt-8 pb-6" style={{ height: 'calc(100% - 180px)' }}>
-          {/* Aura ball - smaller for square layout */}
+          {/* Aura ball - only show in preview mode, export uses canvas background */}
           <div className="relative w-[280px] h-[280px] mb-10">
             {!exportMode && (
               <>
@@ -156,15 +171,15 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
                   className="absolute inset-[10%] rounded-full blur-[35px] opacity-70"
                   style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.8), rgba(196,181,253,0.4))' }}
                 />
+                {/* Inner highlight - only in preview */}
+                <div
+                  className="absolute inset-[25%] rounded-full opacity-60"
+                  style={{
+                    background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), transparent 60%)',
+                  }}
+                />
               </>
             )}
-            {/* Inner highlight - always visible */}
-            <div
-              className="absolute inset-[25%] rounded-full opacity-60"
-              style={{
-                background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), transparent 60%)',
-              }}
-            />
           </div>
 
           {/* Title */}
