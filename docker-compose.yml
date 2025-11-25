@@ -26,7 +26,6 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://backend:8080/api/v1}
         - VITE_SHARE_RENDER_URL=${VITE_SHARE_RENDER_URL:-http://localhost:${GLOWTYPE_RENDER_PORT_HOST:-19080}}
     environment:
       # OpenAI-compatible API configuration (runtime injection)
@@ -52,7 +51,7 @@ services:
       - "${GLOWTYPE_RENDER_PORT_HOST:-19080}:4000"
     restart: unless-stopped
     labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
 
   watchtower:
     image: containrrr/watchtower:latest
