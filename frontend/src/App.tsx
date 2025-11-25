@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { ShareModal } from './components/ShareModal';
 import { GlowtypeCard } from './components/GlowtypeCard';
+import ShareRenderPage from './pages/ShareRenderPage';
 
 // --- GEMINI API UTILITIES ---
 
@@ -803,6 +804,10 @@ const Navbar = memo(({ view, setView, lang, toggleLang, tNav }) => {
 });
 
 const AppShell = () => {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/share-render')) {
+    return <ShareRenderPage />;
+  }
+
   // Assume view, setView, lang, toggleLang, handleQuizComplete, resultType are defined here
   // For the purpose of this fix, we're just wrapping the existing JSX.
   // In a real app, these would come from useState, etc.

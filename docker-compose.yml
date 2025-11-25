@@ -38,6 +38,7 @@ services:
       context: ./scripts/share-renderer
     environment:
       - PORT=4000
+      - FRONTEND_RENDER_URL=http://frontend
     ports:
       - "${GLOWTYPE_RENDER_PORT_HOST:-19080}:4000"
     restart: unless-stopped
