@@ -29,6 +29,8 @@ import {
 import { ShareModal } from './components/ShareModal';
 import { GlowtypeCard } from './components/GlowtypeCard';
 import ShareRenderPage from './pages/ShareRenderPage';
+import { BrowserRouter } from 'react-router-dom';
+import AdminLayout from './admin/AdminLayout';
 
 // --- AI API UTILITIES (OpenAI-compatible) ---
 
@@ -863,6 +865,16 @@ const Navbar = memo(({ view, setView, lang, toggleLang, tNav }) => {
 });
 
 const AppShell = () => {
+  // Admin panel route
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+    return (
+      <BrowserRouter>
+        <AdminLayout />
+      </BrowserRouter>
+    );
+  }
+
+  // Share render route (for Playwright screenshot)
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/share-render')) {
     return <ShareRenderPage />;
   }

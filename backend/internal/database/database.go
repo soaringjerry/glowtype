@@ -1,0 +1,73 @@
+package database
+
+import (
+	"log"
+	"os"
+	"path/filepath"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+var DB *gorm.DB
+
+// InitDB initializes the SQLite database connection
+func InitDB() *gorm.DB {
+	dbPath := getEnv("DB_PATH", "/data/glowtype.db")
+
+	// Ensure directory exists
+	dir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Printf("Warning: could not create db directory %s: %v", dir, err)
+		// Fall back to current directory
+		dbPath = "./glowtype.db"
+	}
+
+	var gormLogger logger.Interface
+	if getEnv("ENV", "development") == "production" {
+		gormLogger = logger.Default.LogMode(logger.Silent)
+	} else {
+		gormLogger = logger.Default.LogMode(logger.Info)
+	}
+
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: gormLogger,
+	})
+	if err != nil {
+		log.Fatalf("failed to connect database: %v", err)
+	}
+
+	// Auto migrate all models
+	err = db.AutoMigrate(
+		&TraitDimensionDB{},
+		&QuizQuestionDB{},
+		&GlowtypeDB{},
+		&GlowtypeI18NDB{},
+		&ScoringRuleDB{},
+		&QuizResultDB{},
+		&AIPromptDB{},
+		&UsageStats{},
+		&GlowtypeStats{},
+	)
+	if err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+	}
+
+	DB = db
+	log.Printf("Database initialized at: %s", dbPath)
+
+	return db
+}
+
+func getEnv(key, fallback string) string {
+	if v, ok := os.LookupEnv(key); ok && v != "" {
+		return v
+	}
+	return fallback
+}
+
+// GetDB returns the database instance
+func GetDB() *gorm.DB {
+	return DB
+}
