@@ -31,7 +31,7 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
     return (
       <div
         ref={ref}
-        className="relative w-[1080px] h-[1920px] overflow-hidden font-sans"
+        className="relative w-[1080px] h-[1080px] overflow-hidden font-sans"
         data-share-card
         style={{
           background: exportMode
@@ -39,30 +39,39 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
             : `linear-gradient(145deg, #fef3ff 0%, #ffffff 50%, #f0e6ff 100%)`,
         }}
       >
-        {/* Background glow effects */}
+        {/* Background glow effects - layered for soft glow */}
         {exportMode ? (
           <>
+            {/* Outer soft glow */}
             <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] opacity-60"
+              className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1000px] h-[800px]"
               style={{
-                background: `radial-gradient(circle at 50% 40%, ${data.auraGradient.includes('#') ? data.auraGradient.split(',')[0]?.replace('linear-gradient(', '').trim() || 'rgba(167,139,250,0.7)' : 'rgba(167,139,250,0.7)'}, rgba(139,92,246,0.4) 40%, transparent 70%)`,
+                background: 'radial-gradient(ellipse 70% 60% at 50% 30%, rgba(167,139,250,0.5) 0%, rgba(139,92,246,0.25) 40%, transparent 70%)',
               }}
             />
+            {/* Mid glow layer */}
             <div
-              className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[700px] h-[700px] opacity-50"
+              className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[700px] h-[600px]"
               style={{
-                background: 'radial-gradient(circle, rgba(196,181,253,0.6) 0%, rgba(167,139,250,0.3) 50%, transparent 70%)',
+                background: 'radial-gradient(ellipse 60% 55% at 50% 40%, rgba(196,181,253,0.6) 0%, rgba(167,139,250,0.3) 50%, transparent 75%)',
+              }}
+            />
+            {/* Inner bright core */}
+            <div
+              className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[400px] h-[350px]"
+              style={{
+                background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255,255,255,0.7) 0%, rgba(221,214,254,0.4) 50%, transparent 80%)',
               }}
             />
           </>
         ) : (
           <>
             <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] opacity-70 blur-[100px]"
+              className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[800px] h-[700px] opacity-70 blur-[100px]"
               style={{ background: data.auraGradient }}
             />
             <div
-              className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[700px] h-[700px] opacity-50 blur-[80px]"
+              className="absolute top-[0%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] opacity-50 blur-[80px]"
               style={{ background: 'radial-gradient(circle, rgba(196,181,253,0.8), transparent 70%)' }}
             />
           </>
@@ -75,46 +84,61 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
         />
 
         {/* Header */}
-        <div className="relative z-10 pt-16 px-16 flex items-center justify-between">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-slate-900 text-white flex items-center justify-center rounded-2xl shadow-xl">
-              <Zap size={32} fill="currentColor" />
+        <div className="relative z-10 pt-12 px-14 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-slate-900 text-white flex items-center justify-center rounded-xl shadow-xl">
+              <Zap size={28} fill="currentColor" />
             </div>
             <div>
-              <span className="text-3xl font-black text-slate-900 tracking-tight">GLOWTYPE</span>
-              <div className="text-sm text-slate-400 font-medium tracking-wider mt-1">情绪光谱分析</div>
+              <span className="text-2xl font-black text-slate-900 tracking-tight">GLOWTYPE</span>
+              <div className="text-xs text-slate-400 font-medium tracking-wider mt-0.5">情绪光谱分析</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 bg-white/60 px-5 py-3 rounded-xl">
+            <Fingerprint size={32} className="text-violet-400" strokeWidth={1.5} />
+            <div className="text-right">
+              <div className="text-xs text-slate-400 font-mono">{lang === 'zh' ? 'AI 生成' : 'AI Generated'}</div>
+              <div className="text-sm font-bold text-slate-600">
+                {new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Main content area */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-16 py-12">
-          {/* Aura ball */}
-          <div className="relative w-[420px] h-[420px] mb-16">
+        {/* Main content area - centered */}
+        <div className="relative z-10 flex flex-col items-center justify-center px-14 pt-8 pb-6" style={{ height: 'calc(100% - 180px)' }}>
+          {/* Aura ball - smaller for square layout */}
+          <div className="relative w-[280px] h-[280px] mb-10">
             {exportMode ? (
               <>
+                {/* Multi-layer soft glow for export */}
                 <div
-                  className="absolute inset-0 rounded-full opacity-80"
+                  className="absolute inset-[-30%] rounded-full"
                   style={{
-                    background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9), transparent 50%), radial-gradient(circle, ${data.auraGradient.includes('linear') ? 'rgba(167,139,250,0.9), rgba(139,92,246,0.7)' : data.auraGradient.replace('linear-gradient(', 'radial-gradient(circle,').replace('to right,', '')} 60%, transparent 75%)`,
-                    transform: 'scale(1.1)',
+                    background: 'radial-gradient(circle at 50% 50%, rgba(167,139,250,0.5) 0%, rgba(139,92,246,0.3) 40%, transparent 65%)',
                   }}
                 />
                 <div
-                  className="absolute inset-[15%] rounded-full opacity-70"
+                  className="absolute inset-[-10%] rounded-full"
                   style={{
-                    background: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.95), rgba(196,181,253,0.5) 60%, transparent 80%)',
+                    background: 'radial-gradient(circle at 45% 45%, rgba(196,181,253,0.7) 0%, rgba(167,139,250,0.4) 50%, transparent 70%)',
+                  }}
+                />
+                <div
+                  className="absolute inset-[10%] rounded-full"
+                  style={{
+                    background: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.9) 0%, rgba(221,214,254,0.5) 50%, transparent 75%)',
                   }}
                 />
               </>
             ) : (
               <>
                 <div
-                  className="absolute inset-0 rounded-full blur-[60px] opacity-90"
+                  className="absolute inset-0 rounded-full blur-[50px] opacity-90"
                   style={{ background: data.auraGradient }}
                 />
                 <div
-                  className="absolute inset-[10%] rounded-full blur-[40px] opacity-70"
+                  className="absolute inset-[10%] rounded-full blur-[35px] opacity-70"
                   style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.8), rgba(196,181,253,0.4))' }}
                 />
               </>
@@ -129,26 +153,26 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
           </div>
 
           {/* Title */}
-          <h1 className={`text-7xl font-serif font-bold text-center mb-6 ${data.textColor}`}>
+          <h1 className={`text-6xl font-serif font-bold text-center mb-4 ${data.textColor}`}>
             {data.title}
           </h1>
 
           {/* Tagline */}
-          <p className="text-2xl text-slate-500 font-medium tracking-wide text-center mb-12 uppercase">
+          <p className="text-xl text-slate-500 font-medium tracking-wide text-center mb-8 uppercase">
             {data.tagline}
           </p>
 
           {/* Divider */}
-          <div className="w-32 h-1 bg-gradient-to-r from-violet-300 via-purple-400 to-violet-300 rounded-full mb-12" />
+          <div className="w-24 h-1 bg-gradient-to-r from-violet-300 via-purple-400 to-violet-300 rounded-full mb-8" />
 
           {/* Description or Insight */}
-          <div className="max-w-[800px] text-center">
+          <div className="max-w-[700px] text-center">
             {insight ? (
-              <p className="text-3xl leading-relaxed text-violet-600 font-medium italic">
+              <p className="text-2xl leading-relaxed text-violet-600 font-medium italic">
                 "{insight}"
               </p>
             ) : (
-              <p className="text-2xl leading-relaxed text-slate-600">
+              <p className="text-xl leading-relaxed text-slate-600">
                 {data.description}
               </p>
             )}
@@ -156,23 +180,14 @@ const InlineShareCard = React.forwardRef<HTMLDivElement, InlineShareCardProps>(
         </div>
 
         {/* Footer */}
-        <div className="relative z-10 pb-16 px-16">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-lg text-slate-400 font-mono tracking-wider mb-1">
+        <div className="absolute bottom-0 left-0 right-0 z-10 pb-10 px-14">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-base text-slate-400 font-mono tracking-wider mb-1">
                 {lang === 'zh' ? '扫码探索你的光谱' : 'Discover your spectrum'}
               </div>
-              <div className="text-2xl font-bold text-slate-700 tracking-wide">
+              <div className="text-xl font-bold text-slate-700 tracking-wide">
                 GLOWTYPE.ME
-              </div>
-            </div>
-            <div className="flex items-center gap-4 bg-white/60 px-6 py-4 rounded-2xl">
-              <Fingerprint size={48} className="text-violet-400" strokeWidth={1.5} />
-              <div className="text-right">
-                <div className="text-sm text-slate-400 font-mono">{lang === 'zh' ? 'AI 生成' : 'AI Generated'}</div>
-                <div className="text-lg font-bold text-slate-600">
-                  {new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                </div>
               </div>
             </div>
           </div>
@@ -240,7 +255,7 @@ export const ShareModal: FC<ShareModalProps> = ({
       const canvas = await html2canvas(exportRef.current, {
         scale: 2,
         width: 1080,
-        height: 1920,
+        height: 1080,
         useCORS: true,
         backgroundColor: '#fafafa',
         logging: false,
@@ -326,15 +341,15 @@ export const ShareModal: FC<ShareModalProps> = ({
               />
               <div
                 className="relative shadow-2xl rounded-[28px] overflow-hidden ring-8 ring-white/60 bg-white"
-                style={{ width: 360, height: 640 }}
+                style={{ width: 400, height: 400 }}
               >
                 <div
                   id="share-card-preview"
                   ref={cardRef}
                   style={{
                     width: 1080,
-                    height: 1920,
-                    transform: 'scale(0.333)',
+                    height: 1080,
+                    transform: 'scale(0.37)',
                     transformOrigin: 'top left',
                   }}
                 >
@@ -352,7 +367,7 @@ export const ShareModal: FC<ShareModalProps> = ({
                 left: '-9999px',
                 top: 0,
                 width: 1080,
-                height: 1920,
+                height: 1080,
                 pointerEvents: 'none',
                 zIndex: -1,
               }}

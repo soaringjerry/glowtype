@@ -31,7 +31,7 @@ app.post('/render', async (req, res) => {
     const targetUrl = `${frontendRenderBase.replace(/\/$/, '')}/share-render?payload=${encodeURIComponent(payload)}`;
 
     const b = await getBrowser();
-    const page = await b.newPage({ viewport: { width: 1080, height: 1920 } });
+    const page = await b.newPage({ viewport: { width: 1080, height: 1080 } });
     await page.goto(targetUrl, { waitUntil: 'networkidle' });
     const card = await page.$('#share-card-render');
     const buffer = card
