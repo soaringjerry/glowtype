@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Plus,
   Edit2,
@@ -30,6 +31,7 @@ interface Glowtype {
 }
 
 export default function Glowtypes() {
+  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
   const [glowtypes, setGlowtypes] = useState<Glowtype[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);

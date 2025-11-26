@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Save,
   Loader2,
@@ -41,6 +42,7 @@ const defaultPrompts = [
 ];
 
 export default function Prompts() {
+  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
   const [prompts, setPrompts] = useState<AIPrompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingKey, setEditingKey] = useState<string | null>(null);

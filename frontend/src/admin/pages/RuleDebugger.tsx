@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Play, Loader2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdmin';
 
@@ -38,6 +39,7 @@ interface DebugResult {
 }
 
 export default function RuleDebugger() {
+  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
   const [dimensions, setDimensions] = useState<TraitDimension[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [result, setResult] = useState<DebugResult | null>(null);

@@ -138,6 +138,17 @@
     "error": "发生错误",
     "noData": "暂无数据",
     "active": "启用",
-    "inactive": "禁用"
+    "inactive": "禁用",
+    "import": "导入",
+    "export": "导出",
+    "new": "新建",
+    "options": "选项",
+    "option": "选项",
+    "remove": "删除",
+    "textChinese": "文本（中文）",
+    "textEnglish": "文本（英文）",
+    "value": "值",
+    "dimensionScores": "维度分数",
+    "noDimensions": "暂无维度定义"
   }
 }

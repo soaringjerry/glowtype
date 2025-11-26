@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Plus,
   Edit2,
@@ -23,6 +24,7 @@ interface TraitDimension {
 }
 
 export default function Dimensions() {
+  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
   const [dimensions, setDimensions] = useState<TraitDimension[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);

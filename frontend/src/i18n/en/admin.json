@@ -138,6 +138,17 @@
     "error": "An error occurred",
     "noData": "No data",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "import": "Import",
+    "export": "Export",
+    "new": "New",
+    "options": "Options",
+    "option": "Option",
+    "remove": "Remove",
+    "textChinese": "Text (Chinese)",
+    "textEnglish": "Text (English)",
+    "value": "Value",
+    "dimensionScores": "Dimension Scores",
+    "noDimensions": "No dimensions defined"
   }
 }

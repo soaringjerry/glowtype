@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Plus,
   Edit2,
@@ -38,6 +39,7 @@ interface TraitDimension {
 }
 
 export default function Questions() {
+  const { t } = useTranslation('admin');
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [dimensions, setDimensions] = useState<TraitDimension[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +113,7 @@ export default function Questions() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this question?')) return;
+    if (!confirm(t('questions.confirmDelete'))) return;
     await api.deleteQuestion(id);
     await loadData();
   };
@@ -204,13 +206,13 @@ export default function Questions() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quiz Questions</h1>
-          <p className="text-gray-500">{questions.length} questions</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('questions.title')}</h1>
+          <p className="text-gray-500">{t('questions.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition">
             <Upload className="w-4 h-4" />
-            Import
+            {t('common.import') || 'Import'}
             <input type="file" accept=".json" onChange={handleImport} className="hidden" />
           </label>
           <button
@@ -218,14 +220,14 @@ export default function Questions() {
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
           >
             <Download className="w-4 h-4" />
-            Export
+            {t('common.export') || 'Export'}
           </button>
           <button
             onClick={handleCreate}
             className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition"
           >
             <Plus className="w-4 h-4" />
-            Add Question
+            {t('questions.add')}
           </button>
         </div>
       </div>
@@ -234,11 +236,11 @@ export default function Questions() {
       {(isCreating || editingId) && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h3 className="font-semibold text-gray-800 mb-4">
-            {isCreating ? 'New Question' : 'Edit Question'}
+            {isCreating ? t('questions.add') : t('questions.edit')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Question ID</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('questions.questionId')}</label>
               <input
                 type="text"
                 value={editForm.questionId || ''}
@@ -247,7 +249,7 @@ export default function Questions() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('questions.order')}</label>
               <input
                 type="number"
                 value={editForm.order || 1}
@@ -256,7 +258,7 @@ export default function Questions() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Question (Chinese)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('questions.questionZh')}</label>
               <textarea
                 value={editForm.questionZh || ''}
                 onChange={(e) => setEditForm({ ...editForm, questionZh: e.target.value })}
@@ -265,7 +267,7 @@ export default function Questions() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Question (English)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('questions.questionEn')}</label>
               <textarea
                 value={editForm.questionEn || ''}
                 onChange={(e) => setEditForm({ ...editForm, questionEn: e.target.value })}
@@ -278,31 +280,31 @@ export default function Questions() {
           {/* Options */}
           <div className="mt-6">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-gray-800">Options</h4>
+              <h4 className="font-medium text-gray-800">{t('questions.options')}</h4>
               <button
                 onClick={addOption}
                 className="text-sm text-purple-600 hover:text-purple-700"
               >
-                + Add Option
+                + {t('questions.addOption')}
               </button>
             </div>
             <div className="space-y-4">
               {(editForm.options || []).map((opt, idx) => (
                 <div key={idx} className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="font-medium text-gray-700">Option {idx + 1}</span>
+                    <span className="font-medium text-gray-700">{t('common.option')} {idx + 1}</span>
                     {(editForm.options?.length || 0) > 2 && (
                       <button
                         onClick={() => removeOption(idx)}
                         className="text-red-500 hover:text-red-600 text-sm"
                       >
-                        Remove
+                        {t('questions.removeOption')}
                       </button>
                     )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Text (Chinese)</label>
+                      <label className="block text-xs text-gray-500 mb-1">{t('questions.optionTextZh')}</label>
                       <input
                         type="text"
                         value={opt.text?.zh || ''}
@@ -311,7 +313,7 @@ export default function Questions() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Text (English)</label>
+                      <label className="block text-xs text-gray-500 mb-1">{t('questions.optionTextEn')}</label>
                       <input
                         type="text"
                         value={opt.text?.en || ''}
@@ -320,7 +322,7 @@ export default function Questions() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Value (trait)</label>
+                      <label className="block text-xs text-gray-500 mb-1">{t('common.value')}</label>
                       <input
                         type="text"
                         value={opt.value || ''}
@@ -332,7 +334,7 @@ export default function Questions() {
                   </div>
                   {/* Dimension Scores */}
                   <div className="mt-3">
-                    <label className="block text-xs text-gray-500 mb-2">Dimension Scores</label>
+                    <label className="block text-xs text-gray-500 mb-2">{t('questions.scores')}</label>
                     <div className="flex flex-wrap gap-3">
                       {dimensions.map((dim) => (
                         <div key={dim.id} className="flex items-center gap-1">
@@ -347,7 +349,7 @@ export default function Questions() {
                         </div>
                       ))}
                       {dimensions.length === 0 && (
-                        <span className="text-xs text-gray-400">No dimensions defined</span>
+                        <span className="text-xs text-gray-400">{t('common.noDimensions')}</span>
                       )}
                     </div>
                   </div>
@@ -363,14 +365,14 @@ export default function Questions() {
               className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save
+              {t('questions.save')}
             </button>
             <button
               onClick={handleCancel}
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
             >
               <X className="w-4 h-4" />
-              Cancel
+              {t('questions.cancel')}
             </button>
           </div>
         </div>
@@ -380,7 +382,7 @@ export default function Questions() {
       <div className="space-y-3">
         {questions.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 text-center text-gray-400">
-            No questions yet. Click "Add Question" to create one.
+            {t('common.noData')}
           </div>
         ) : (
           questions

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Plus,
   Edit2,
@@ -44,6 +45,7 @@ interface Glowtype {
 }
 
 export default function Rules() {
+  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
   const [rules, setRules] = useState<ScoringRule[]>([]);
   const [dimensions, setDimensions] = useState<TraitDimension[]>([]);
   const [glowtypes, setGlowtypes] = useState<Glowtype[]>([]);
