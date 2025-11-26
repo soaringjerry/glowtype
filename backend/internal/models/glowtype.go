@@ -21,5 +21,9 @@ type GlowtypeResponse struct {
 	Description  []string `json:"description"`
 	SelfCareTips []string `json:"selfCareTips"`
 	Disclaimer   string   `json:"disclaimer"`
+	// Styling fields (from database)
+	AuraGradient string `json:"auraGradient,omitempty"`
+	CardAccent   string `json:"cardAccent,omitempty"`
+	TextColor    string `json:"textColor,omitempty"`
 }
 

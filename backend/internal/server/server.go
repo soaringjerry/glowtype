@@ -34,7 +34,7 @@ func New(cfg config.Config) *gin.Engine {
 	db := database.GetDB()
 	scoringService := services.NewScoringService(db)
 	quizService := services.NewQuizService(db, scoringService)
-	glowtypeService := services.NewGlowtypeService(glowtypesCfg)
+	glowtypeService := services.NewGlowtypeService(db, glowtypesCfg)
 	chatService := services.NewChatService()
 	helpService := services.NewHelpService()
 

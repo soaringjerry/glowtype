@@ -374,15 +374,80 @@ const HeroView = ({ onStart, onViewSafety, lang }) => {
 const QuizView = ({ onComplete, lang }) => {
   const [currentQ, setCurrentQ] = useState(0);
   const [direction, setDirection] = useState(1);
-  const questions = APP_CONFIG.quizQuestions;
+  const [questions, setQuestions] = useState(APP_CONFIG.quizQuestions);
+  const [quizId, setQuizId] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
   const t = TRANSLATIONS[lang].quiz;
 
-  const handleAnswer = (value) => {
+  // Fetch questions from API, fallback to hardcoded if empty
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const apiLang = lang === 'zh' ? 'zh-CN' : 'en';
+        const res = await fetch(`${window.location.origin}/api/v1/quiz?lang=${apiLang}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.questions && data.questions.length > 0) {
+            // Transform API response to match APP_CONFIG format
+            const apiQuestions = data.questions.map((q: any) => ({
+              id: q.id,
+              question: { en: q.question, zh: q.question },
+              options: q.options.map((opt: any) => ({
+                text: { en: opt.text, zh: opt.text },
+                value: opt.id
+              }))
+            }));
+            setQuestions(apiQuestions);
+            setQuizId(data.quizId);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch questions from API, using fallback', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuestions();
+  }, [lang]);
+
+  const handleAnswer = async (value) => {
+    const currentQuestion = questions[currentQ];
+    const newAnswers = { ...answers, [currentQuestion.id]: value };
+    setAnswers(newAnswers);
+
     if (currentQ < questions.length - 1) {
       setDirection(1);
       setCurrentQ(prev => prev + 1);
     } else {
-      onComplete();
+      // Submit to API if we have a quizId (from API questions)
+      if (quizId) {
+        try {
+          const payload = {
+            quizId,
+            language: lang === 'zh' ? 'zh-CN' : 'en',
+            answers: Object.entries(newAnswers).map(([questionId, optionId]) => ({
+              questionId,
+              optionId
+            }))
+          };
+          const res = await fetch(`${window.location.origin}/api/v1/quiz/score`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            onComplete(data.glowtypeId);
+            return;
+          }
+        } catch (e) {
+          console.warn('Failed to submit quiz, using fallback result', e);
+        }
+      }
+      // Fallback to random result
+      const types = Object.keys(APP_CONFIG.glowtypes);
+      onComplete(types[Math.floor(Math.random() * types.length)]);
     }
   };
 
@@ -394,6 +459,14 @@ const QuizView = ({ onComplete, lang }) => {
   };
 
   const progress = ((currentQ + 1) / questions.length) * 100;
+
+  if (loading) {
+    return (
+      <div className="max-w-xl mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col justify-center items-center relative z-10">
+        <Loader2 className="animate-spin text-gray-400" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col justify-center relative z-10">
@@ -451,39 +524,84 @@ const QuizView = ({ onComplete, lang }) => {
 };
 
 const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
-  const data = APP_CONFIG.glowtypes[resultType || "Quiet Comet"];
+  const fallbackData = APP_CONFIG.glowtypes[resultType] || APP_CONFIG.glowtypes["Quiet Comet"];
+  const [data, setData] = useState(fallbackData);
+  const [loading, setLoading] = useState(true);
   const t = TRANSLATIONS[lang].result;
   const [insight, setInsight] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // Fetch glowtype data from API, fallback to hardcoded
+  useEffect(() => {
+    const fetchGlowtype = async () => {
+      if (!resultType) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const apiLang = lang === 'zh' ? 'zh-CN' : 'en';
+        const res = await fetch(`${window.location.origin}/api/v1/glowtypes/${encodeURIComponent(resultType)}?lang=${apiLang}`);
+        if (res.ok) {
+          const apiData = await res.json();
+          if (apiData && apiData.name) {
+            // Transform API response to match APP_CONFIG format
+            setData({
+              title: { en: apiData.name, zh: apiData.name },
+              tagline: { en: apiData.tagline || '', zh: apiData.tagline || '' },
+              description: { en: Array.isArray(apiData.description) ? apiData.description.join(' ') : apiData.description || '', zh: Array.isArray(apiData.description) ? apiData.description.join(' ') : apiData.description || '' },
+              auraGradient: apiData.auraGradient || fallbackData?.auraGradient || "radial-gradient(circle at center, #a5b4fc, #818cf8, #4f46e5, transparent 70%)",
+              cardAccent: apiData.cardAccent || fallbackData?.cardAccent || "from-indigo-50 to-blue-50",
+              textColor: apiData.textColor || fallbackData?.textColor || "text-indigo-900"
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch glowtype from API, using fallback', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchGlowtype();
+  }, [resultType, lang]);
 
   useEffect(() => { setInsight(null); }, [lang]);
 
   const handleGenerateInsight = async () => {
     setIsGenerating(true);
     const systemPrompt = AI_PROMPTS.insight[lang];
+    const title = data.title?.[lang] || data.title?.en || resultType;
+    const description = data.description?.[lang] || data.description?.en || '';
     const userPrompt = lang === 'zh'
-      ? `我的情绪原型是「${data.title[lang]}」：${data.description[lang]}。请给我一句简短的宇宙洞察。`
-      : `My emotional archetype is "${data.title[lang]}": ${data.description[lang]}. Give me a brief cosmic insight.`;
+      ? `我的情绪原型是「${title}」：${description}。请给我一句简短的宇宙洞察。`
+      : `My emotional archetype is "${title}": ${description}. Give me a brief cosmic insight.`;
     const text = await callAI(userPrompt, systemPrompt);
     setInsight(text);
     setIsGenerating(false);
   };
+
+  if (loading || !data) {
+    return (
+      <div className="max-w-md mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col items-center justify-center relative z-10">
+        <Loader2 className="animate-spin text-gray-400" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col relative z-10">
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="flex-grow flex flex-col items-center">
         <div className="text-center mb-8">
           <p className="text-sm font-medium text-gray-500 uppercase tracking-widest mb-2">{t.label}</p>
-          <h2 className="text-4xl font-serif text-gray-900">{data.title[lang]}</h2>
+          <h2 className="text-4xl font-serif text-gray-900">{data.title?.[lang] || data.title?.en || resultType}</h2>
         </div>
 
         <div className="relative w-full aspect-[3/5] mb-8 group perspective-1000">
           <GlowtypeCard
             data={{
-              title: data.title[lang],
-              tagline: data.tagline[lang],
-              description: data.description[lang],
+              title: data.title?.[lang] || data.title?.en || resultType,
+              tagline: data.tagline?.[lang] || data.tagline?.en || '',
+              description: data.description?.[lang] || data.description?.en || '',
               auraGradient: data.auraGradient,
               cardAccent: data.cardAccent,
               textColor: data.textColor,

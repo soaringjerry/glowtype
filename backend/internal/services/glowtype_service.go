@@ -1,24 +1,72 @@
 package services
 
 import (
-	"errors"
+	"encoding/json"
 	"strings"
 
+	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/models"
+	"gorm.io/gorm"
 )
 
 type GlowtypeService struct {
-	items []models.GlowtypeConfig
+	db            *gorm.DB
+	fallbackItems []models.GlowtypeConfig // Fallback to config file if DB is empty
 }
 
-func NewGlowtypeService(items []models.GlowtypeConfig) *GlowtypeService {
-	return &GlowtypeService{items: items}
+func NewGlowtypeService(db *gorm.DB, fallbackItems []models.GlowtypeConfig) *GlowtypeService {
+	return &GlowtypeService{
+		db:            db,
+		fallbackItems: fallbackItems,
+	}
 }
 
 func (s *GlowtypeService) GetGlowtype(id, lang string) (*models.GlowtypeResponse, error) {
 	lang = normalizeLangInternal(lang)
 
-	for _, item := range s.items {
+	// Try to fetch from database first
+	var glowtype database.GlowtypeDB
+	if err := s.db.Where("type_code = ? AND is_active = ?", id, true).First(&glowtype).Error; err == nil {
+		// Found in database, get i18n
+		var i18n database.GlowtypeI18NDB
+		langQuery := lang
+		if lang == "zh-CN" {
+			langQuery = "zh"
+		}
+
+		// Try exact lang, then fallback to "en"
+		if err := s.db.Where("glowtype_id = ? AND lang = ?", glowtype.ID, langQuery).First(&i18n).Error; err != nil {
+			// Try English fallback
+			s.db.Where("glowtype_id = ? AND lang = ?", glowtype.ID, "en").First(&i18n)
+		}
+
+		// Parse JSON arrays from text fields
+		var description []string
+		var selfCareTips []string
+		if i18n.Description != "" {
+			json.Unmarshal([]byte(i18n.Description), &description)
+		}
+		if i18n.SelfCareTips != "" {
+			json.Unmarshal([]byte(i18n.SelfCareTips), &selfCareTips)
+		}
+
+		return &models.GlowtypeResponse{
+			ID:           glowtype.TypeCode,
+			Language:     lang,
+			Name:         i18n.Name,
+			Tagline:      i18n.Tagline,
+			Description:  description,
+			SelfCareTips: selfCareTips,
+			Disclaimer:   i18n.Disclaimer,
+			// Include styling info
+			AuraGradient: glowtype.AuraGradient,
+			CardAccent:   glowtype.CardAccent,
+			TextColor:    glowtype.TextColor,
+		}, nil
+	}
+
+	// Fallback to config file
+	for _, item := range s.fallbackItems {
 		if item.ID != id {
 			continue
 		}
@@ -39,7 +87,7 @@ func (s *GlowtypeService) GetGlowtype(id, lang string) (*models.GlowtypeResponse
 		}, nil
 	}
 
-	return nil, errors.New("glowtype not found")
+	return nil, gorm.ErrRecordNotFound
 }
 
 func normalizeLangInternal(lang string) string {
