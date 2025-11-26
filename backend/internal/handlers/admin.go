@@ -408,6 +408,22 @@ func UpdatePrompt(c *gin.Context) {
 	c.JSON(http.StatusOK, prompt)
 }
 
+// GetPublicPrompts returns prompts as a map for frontend use (no auth required)
+func GetPublicPrompts(c *gin.Context) {
+	var prompts []database.AIPromptDB
+	if err := database.GetDB().Where("is_active = ?", true).Find(&prompts).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return as a map keyed by prompt key for easy frontend access
+	result := make(map[string]string)
+	for _, p := range prompts {
+		result[p.Key] = p.Content
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 // ============ Statistics ============
 
 func GetStatsOverview(c *gin.Context) {

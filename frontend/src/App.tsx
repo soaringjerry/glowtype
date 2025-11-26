@@ -31,6 +31,7 @@ import { GlowtypeCard } from './components/GlowtypeCard';
 import ShareRenderPage from './pages/ShareRenderPage';
 import { BrowserRouter } from 'react-router-dom';
 import AdminLayout from './admin/AdminLayout';
+import { getApiBaseUrl } from './api/baseUrl';
 
 // --- AI API UTILITIES (OpenAI-compatible) ---
 
@@ -112,8 +113,8 @@ const callAIChat = async (messages: Array<{role: string, content: string}>, syst
   }
 };
 
-// --- AI PROMPTS ---
-const AI_PROMPTS = {
+// --- AI PROMPTS (defaults, can be overridden by database) ---
+const DEFAULT_AI_PROMPTS = {
   insight: {
     en: `You are a poetic, mystical guide who speaks in short, evocative phrases.
 Your role is to give a brief cosmic insight about someone's emotional archetype.
@@ -140,6 +141,30 @@ Guidelines:
 - 如果有人提到自我伤害或危机，温柔地鼓励他们使用"危机支持"按钮
 - 使用对话式的、友好的语气`
   }
+};
+
+// Fetch prompts from API and merge with defaults
+let cachedPrompts: Record<string, string> | null = null;
+const fetchPrompts = async (): Promise<Record<string, string>> => {
+  if (cachedPrompts) return cachedPrompts;
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/prompts`);
+    if (res.ok) {
+      cachedPrompts = await res.json();
+      return cachedPrompts!;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch prompts from API, using defaults');
+  }
+  return {};
+};
+
+// Get prompt with API override or default fallback
+const getPrompt = (type: 'insight' | 'chat', lang: 'en' | 'zh', apiPrompts: Record<string, string>): string => {
+  const apiKey = type === 'insight'
+    ? `cosmic_insight_system_${lang}`
+    : `chat_system_${lang}`;
+  return apiPrompts[apiKey] || DEFAULT_AI_PROMPTS[type][lang];
 };
 
 const TRANSLATIONS = {
@@ -544,7 +569,7 @@ const findGlowtypeConfig = (typeId: string) => {
   return APP_CONFIG.glowtypes["Quiet Comet"];
 };
 
-const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
+const ResultView = ({ onChat, onTips, onHelp, lang, resultType, apiPrompts = {} }) => {
   // Always use APP_CONFIG styling as the base
   const configData = findGlowtypeConfig(resultType);
   const [data, setData] = useState(configData);
@@ -564,7 +589,7 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
 
   const handleGenerateInsight = async () => {
     setIsGenerating(true);
-    const systemPrompt = AI_PROMPTS.insight[lang];
+    const systemPrompt = getPrompt('insight', lang, apiPrompts);
     const title = data.title[lang];
     const description = data.description[lang];
     const userPrompt = lang === 'zh'
@@ -654,7 +679,7 @@ const BrandLogo = () => (
   </div>
 );
 
-const ChatView = ({ onEnd, lang, onCrisis }) => {
+const ChatView = ({ onEnd, lang, onCrisis, apiPrompts = {} }) => {
   const t = TRANSLATIONS[lang].chat;
   const [messages, setMessages] = useState<Array<{id: number, text: string, sender: string}>>([
     { id: 1, text: t.intro, sender: 'bot' }
@@ -682,7 +707,7 @@ const ChatView = ({ onEnd, lang, onCrisis }) => {
       content: m.text
     }));
 
-    const systemPrompt = AI_PROMPTS.chat[lang];
+    const systemPrompt = getPrompt('chat', lang, apiPrompts);
     const botResponseText = await callAIChat(chatHistory, systemPrompt);
 
     setIsTyping(false);
@@ -990,6 +1015,12 @@ const AppShell = () => {
   const [view, setView] = useState('landing'); // Example state
   const [lang, setLang] = useState('en'); // Example state
   const [resultType, setResultType] = useState(null); // Example state
+  const [apiPrompts, setApiPrompts] = useState<Record<string, string>>({});
+
+  // Fetch AI prompts from API on mount
+  useEffect(() => {
+    fetchPrompts().then(setApiPrompts);
+  }, []);
 
   const toggleLang = () => setLang(prev => (prev === 'en' ? 'zh' : 'en'));
   const handleQuizComplete = (type) => {
@@ -1044,8 +1075,8 @@ const AppShell = () => {
         <AnimatePresence mode="wait">
           {view === 'landing' && (<motion.div key="landing" exit={{ opacity: 0, y: -20 }} className="absolute w-full top-0"><HeroView onStart={() => setView('quiz')} onViewSafety={() => setView('safety')} lang={lang} /></motion.div>)}
           {view === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><QuizView onComplete={handleQuizComplete} lang={lang} /></motion.div>)}
-          {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => setView('chat')} onTips={() => alert("Hydrate & Rest!")} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} /></motion.div>)}
-          {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} /></motion.div>)}
+          {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => setView('chat')} onTips={() => alert("Hydrate & Rest!")} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} apiPrompts={apiPrompts} /></motion.div>)}
+          {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} apiPrompts={apiPrompts} /></motion.div>)}
           {view === 'safety' && (<motion.div key="safety" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute w-full top-0 z-30"><SafetyView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
           {view === 'learn' && (<motion.div key="learn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><LearnView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
         </AnimatePresence>

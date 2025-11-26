@@ -25,6 +25,7 @@ func SeedDatabase(db *gorm.DB, force bool) {
 		db.Exec("DELETE FROM glowtypes")
 		db.Exec("DELETE FROM quiz_questions")
 		db.Exec("DELETE FROM trait_dimensions")
+		db.Exec("DELETE FROM ai_prompts")
 	}
 
 	log.Println("Seeding database with example data...")
@@ -32,6 +33,7 @@ func SeedDatabase(db *gorm.DB, force bool) {
 	seedQuestions(db)
 	seedGlowtypes(db)
 	seedRules(db)
+	seedPrompts(db)
 	log.Println("Database seed complete!")
 }
 
@@ -364,4 +366,63 @@ func seedRules(db *gorm.DB) {
 
 func floatPtr(v float64) *float64 {
 	return &v
+}
+
+func seedPrompts(db *gorm.DB) {
+	prompts := []AIPromptDB{
+		{
+			Key:  "cosmic_insight_system_en",
+			Name: "Cosmic Insight - System (EN)",
+			Content: `You are a poetic, mystical guide who speaks in short, evocative phrases.
+Your role is to give a brief cosmic insight about someone's emotional archetype.
+IMPORTANT: Keep your response to 1-2 sentences MAX (under 30 words). Be poetic but concise.
+Speak directly to the person using "you".`,
+			IsActive: true,
+		},
+		{
+			Key:  "cosmic_insight_system_zh",
+			Name: "Cosmic Insight - System (ZH)",
+			Content: `你是一位诗意的神秘向导，用简短而富有诗意的语言表达。
+你的任务是给出关于某人情绪原型的简短宇宙洞察。
+重要：回复必须控制在1-2句话以内（不超过30个字）。要有诗意但简洁。
+直接用"你"称呼对方。`,
+			IsActive: true,
+		},
+		{
+			Key:  "chat_system_en",
+			Name: "Chat - System (EN)",
+			Content: `You are Glowtype AI, a warm and supportive companion. You listen with empathy and respond gently.
+Guidelines:
+- Keep responses SHORT (2-3 sentences max)
+- Be warm, understanding, and non-judgmental
+- Don't give medical advice or diagnoses
+- If someone mentions self-harm or crisis, gently encourage them to use the Crisis Support button
+- Use a conversational, friendly tone`,
+			IsActive: true,
+		},
+		{
+			Key:  "chat_system_zh",
+			Name: "Chat - System (ZH)",
+			Content: `你是 Glowtype AI，一个温暖且支持性的陪伴者。你用同理心倾听，温柔地回应。
+准则：
+- 回复保持简短（最多2-3句话）
+- 温暖、理解、不评判
+- 不提供医疗建议或诊断
+- 如果有人提到自我伤害或危机，温柔地鼓励他们使用"危机支持"按钮
+- 使用对话式的、友好的语气`,
+			IsActive: true,
+		},
+	}
+
+	for _, p := range prompts {
+		// Check if prompt already exists
+		var existing AIPromptDB
+		if db.Where("key = ?", p.Key).First(&existing).Error == nil {
+			log.Printf("  Prompt '%s' already exists, skipping", p.Key)
+			continue
+		}
+		if err := db.Create(&p).Error; err != nil {
+			log.Printf("  Failed to create prompt '%s': %v", p.Key, err)
+		}
+	}
 }

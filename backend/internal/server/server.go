@@ -55,6 +55,9 @@ func New(cfg config.Config) *gin.Engine {
 
 		// Public stats endpoint (anonymous event tracking)
 		api.POST("/stats/event", handlers.RecordEventHandler)
+
+		// Public prompts endpoint (for AI features)
+		api.GET("/prompts", handlers.GetPublicPrompts)
 	}
 
 	// Admin routes
