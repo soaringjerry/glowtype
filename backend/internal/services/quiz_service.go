@@ -1,64 +1,122 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/models"
+	"gorm.io/gorm"
 )
 
 type QuizService struct {
-	cfg *models.QuizConfig
+	db             *gorm.DB
+	scoringService *ScoringService
 }
 
-func NewQuizService(cfg *models.QuizConfig) *QuizService {
-	return &QuizService{cfg: cfg}
+func NewQuizService(db *gorm.DB, scoringService *ScoringService) *QuizService {
+	return &QuizService{
+		db:             db,
+		scoringService: scoringService,
+	}
 }
 
 func (s *QuizService) GetQuiz(lang string) models.QuizResponse {
 	lang = normalizeLangInternal(lang)
-	questions := make([]models.QuizQuestionDTO, 0, len(s.cfg.Questions))
 
-	for _, q := range s.cfg.Questions {
-		loc, ok := q.Translations[lang]
-		if !ok {
-			loc = q.Translations["en"]
+	// Query active questions from database
+	var questions []database.QuizQuestionDB
+	s.db.Where("is_active = ? AND tenant_id IS NULL", true).Order("\"order\" asc").Find(&questions)
+
+	quizQuestions := make([]models.QuizQuestionDTO, 0, len(questions))
+
+	for _, q := range questions {
+		// Parse options JSON
+		var options []database.OptionConfig
+		if err := json.Unmarshal(q.Options, &options); err != nil {
+			continue
 		}
 
-		opts := make([]models.QuizOptionDTO, 0, len(loc.Options))
-		for idx, text := range loc.Options {
-			optionID := "o" + strconvI(idx+1)
+		// Get question text based on language
+		var questionText string
+		if lang == "zh-CN" && q.QuestionZH != "" {
+			questionText = q.QuestionZH
+		} else {
+			questionText = q.QuestionEN
+		}
+
+		// Build options
+		opts := make([]models.QuizOptionDTO, 0, len(options))
+		for idx, opt := range options {
+			optionID := fmt.Sprintf("o%d", idx+1)
+
+			// Get option text based on language
+			var optionText string
+			if lang == "zh-CN" {
+				if text, ok := opt.Text["zh"]; ok && text != "" {
+					optionText = text
+				} else if text, ok := opt.Text["zh-CN"]; ok && text != "" {
+					optionText = text
+				} else {
+					optionText = opt.Text["en"]
+				}
+			} else {
+				optionText = opt.Text["en"]
+			}
+
 			opts = append(opts, models.QuizOptionDTO{
 				ID:   optionID,
-				Text: text,
+				Text: optionText,
 			})
 		}
 
-		questions = append(questions, models.QuizQuestionDTO{
-			ID:       q.ID,
+		quizQuestions = append(quizQuestions, models.QuizQuestionDTO{
+			ID:       q.QuestionID,
 			Order:    q.Order,
-			Question: loc.Question,
+			Question: questionText,
 			Options:  opts,
 		})
 	}
 
 	return models.QuizResponse{
-		QuizID:    s.cfg.ID,
+		QuizID:    uuid.New().String(),
 		Language:  lang,
-		Questions: questions,
+		Questions: quizQuestions,
 	}
 }
 
-// ScoreQuiz currently returns a simple placeholder glowtype.
-// The logic can be refined later without changing the API.
+// ScoreQuiz processes quiz answers and returns the matching Glowtype
 func (s *QuizService) ScoreQuiz(req models.QuizScoreRequest) models.QuizScoreResponse {
-	_ = req // placeholder: use answers in future
+	// Convert frontend answers to database format
+	answers := make([]database.AnswerRecord, 0, len(req.Answers))
+	for _, ans := range req.Answers {
+		// Parse optionId like "o1" -> index 0, "o2" -> index 1, etc.
+		optionIndex := 0
+		if len(ans.OptionID) > 1 && ans.OptionID[0] == 'o' {
+			fmt.Sscanf(ans.OptionID[1:], "%d", &optionIndex)
+			optionIndex-- // Convert 1-based to 0-based
+		}
+
+		answers = append(answers, database.AnswerRecord{
+			QuestionID:  ans.QuestionID,
+			OptionIndex: optionIndex,
+		})
+	}
+
+	// Use scoring service to calculate result
+	result, err := s.scoringService.ScoreQuiz(answers, nil, false)
+	if err != nil {
+		return models.QuizScoreResponse{
+			GlowtypeID:   "quiet-comet", // Default fallback
+			ScoreDetails: map[string]interface{}{"error": err.Error()},
+		}
+	}
 
 	return models.QuizScoreResponse{
-		GlowtypeID:   "quiet-comet",
-		ScoreDetails: map[string]interface{}{},
+		GlowtypeID:   result.ResultTypeCode,
+		ScoreDetails: map[string]interface{}{"scores": result.DimensionScores},
 	}
 }
 
-func strconvI(i int) string {
-	return fmt.Sprintf("%d", i)
-}
+// normalizeLangInternal is defined in glowtype_service.go

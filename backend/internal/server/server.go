@@ -25,16 +25,15 @@ func New(cfg config.Config) *gin.Engine {
 	r.Use(gin.Recovery())
 	r.Use(middleware.CORS(cfg.AllowedOrigin))
 
-	quizCfg, err := storage.LoadQuizConfig()
-	if err != nil {
-		log.Fatalf("failed to load quiz config: %v", err)
-	}
 	glowtypesCfg, err := storage.LoadGlowtypes()
 	if err != nil {
 		log.Fatalf("failed to load glowtypes config: %v", err)
 	}
 
-	quizService := services.NewQuizService(quizCfg)
+	// Create services with database connection
+	db := database.GetDB()
+	scoringService := services.NewScoringService(db)
+	quizService := services.NewQuizService(db, scoringService)
 	glowtypeService := services.NewGlowtypeService(glowtypesCfg)
 	chatService := services.NewChatService()
 	helpService := services.NewHelpService()
