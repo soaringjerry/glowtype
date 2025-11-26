@@ -167,6 +167,21 @@ const getPrompt = (type: 'insight' | 'chat', lang: 'en' | 'zh', apiPrompts: Reco
   return apiPrompts[apiKey] || DEFAULT_AI_PROMPTS[type][lang];
 };
 
+// --- ANONYMOUS STATS TRACKING ---
+// Tracks anonymous events for dashboard statistics (no PII)
+const trackEvent = async (event: 'quiz_complete' | 'share_generate' | 'ai_chat_start' | 'ai_insight_use', typeCode?: string) => {
+  try {
+    await fetch(`${getApiBaseUrl()}/stats/event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, typeCode }),
+    });
+  } catch (e) {
+    // Silently fail - stats are not critical
+    console.debug('Stats tracking failed:', e);
+  }
+};
+
 const TRANSLATIONS = {
   en: {
     nav: { safety: "Safety", learn: "Learn", lang: "中文" },
@@ -589,6 +604,7 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType, apiPrompts = {} 
 
   const handleGenerateInsight = async () => {
     setIsGenerating(true);
+    trackEvent('ai_insight_use', resultType); // Track insight generation
     const systemPrompt = getPrompt('insight', lang, apiPrompts);
     const title = data.title[lang];
     const description = data.description[lang];
@@ -636,7 +652,7 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType, apiPrompts = {} 
             <div className="flex gap-2">
               <button
                 className="px-4 py-2.5 bg-white border border-gray-100 rounded-xl text-indigo-600 font-bold text-xs hover:border-indigo-200 hover:bg-indigo-50 hover:shadow-sm transition-all active:scale-95 flex items-center gap-2"
-                onClick={() => setShowShareModal(true)}
+                onClick={() => { trackEvent('share_generate', resultType); setShowShareModal(true); }}
               >
                 {t.shareTitle}
               </button>
@@ -1026,6 +1042,7 @@ const AppShell = () => {
   const handleQuizComplete = (type) => {
     setResultType(type);
     setView('result');
+    trackEvent('quiz_complete', type); // Track quiz completion
   };
 
   const tNav = TRANSLATIONS[lang].nav;
@@ -1075,7 +1092,7 @@ const AppShell = () => {
         <AnimatePresence mode="wait">
           {view === 'landing' && (<motion.div key="landing" exit={{ opacity: 0, y: -20 }} className="absolute w-full top-0"><HeroView onStart={() => setView('quiz')} onViewSafety={() => setView('safety')} lang={lang} /></motion.div>)}
           {view === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><QuizView onComplete={handleQuizComplete} lang={lang} /></motion.div>)}
-          {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => setView('chat')} onTips={() => alert("Hydrate & Rest!")} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} apiPrompts={apiPrompts} /></motion.div>)}
+          {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => { trackEvent('ai_chat_start'); setView('chat'); }} onTips={() => alert("Hydrate & Rest!")} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} apiPrompts={apiPrompts} /></motion.div>)}
           {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} apiPrompts={apiPrompts} /></motion.div>)}
           {view === 'safety' && (<motion.div key="safety" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute w-full top-0 z-30"><SafetyView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
           {view === 'learn' && (<motion.div key="learn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><LearnView onBack={() => setView('landing')} lang={lang} /></motion.div>)}

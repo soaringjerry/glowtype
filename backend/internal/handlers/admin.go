@@ -167,13 +167,63 @@ func DeleteQuestion(c *gin.Context) {
 
 // ============ Glowtypes CRUD ============
 
+// GlowtypeMerged combines GlowtypeDB with I18N data for frontend convenience
+type GlowtypeMerged struct {
+	ID              uint   `json:"id"`
+	TypeCode        string `json:"typeCode"`
+	PrimaryColor    string `json:"primaryColor"`
+	Gradient        string `json:"gradient"`
+	NameZh          string `json:"nameZh"`
+	NameEn          string `json:"nameEn"`
+	TaglineZh       string `json:"taglineZh"`
+	TaglineEn       string `json:"taglineEn"`
+	DescriptionZh   string `json:"descriptionZh"`
+	DescriptionEn   string `json:"descriptionEn"`
+	SelfCareTipsZh  string `json:"selfCareTipsZh"`
+	SelfCareTipsEn  string `json:"selfCareTipsEn"`
+	DisclaimerZh    string `json:"disclaimerZh"`
+	DisclaimerEn    string `json:"disclaimerEn"`
+}
+
 func ListGlowtypes(c *gin.Context) {
 	var glowtypes []database.GlowtypeDB
 	if err := database.GetDB().Where("is_active = ?", true).Order("type_code asc").Find(&glowtypes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, glowtypes)
+
+	// Merge with i18n data
+	result := make([]GlowtypeMerged, 0, len(glowtypes))
+	for _, gt := range glowtypes {
+		merged := GlowtypeMerged{
+			ID:           gt.ID,
+			TypeCode:     gt.TypeCode,
+			PrimaryColor: gt.PrimaryColor,
+			Gradient:     gt.AuraGradient,
+		}
+
+		// Load i18n records
+		var i18ns []database.GlowtypeI18NDB
+		database.GetDB().Where("glowtype_id = ?", gt.ID).Find(&i18ns)
+		for _, i18n := range i18ns {
+			switch i18n.Lang {
+			case "zh":
+				merged.NameZh = i18n.Name
+				merged.TaglineZh = i18n.Tagline
+				merged.DescriptionZh = i18n.Description
+				merged.SelfCareTipsZh = i18n.SelfCareTips
+				merged.DisclaimerZh = i18n.Disclaimer
+			case "en":
+				merged.NameEn = i18n.Name
+				merged.TaglineEn = i18n.Tagline
+				merged.DescriptionEn = i18n.Description
+				merged.SelfCareTipsEn = i18n.SelfCareTips
+				merged.DisclaimerEn = i18n.Disclaimer
+			}
+		}
+		result = append(result, merged)
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func GetGlowtypeWithI18N(c *gin.Context) {
@@ -194,18 +244,54 @@ func GetGlowtypeWithI18N(c *gin.Context) {
 }
 
 func CreateGlowtype(c *gin.Context) {
-	var glowtype database.GlowtypeDB
-	if err := c.ShouldBindJSON(&glowtype); err != nil {
+	var input GlowtypeMerged
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	glowtype.IsActive = true
-	glowtype.Version = 1
+
+	// Create main glowtype record
+	glowtype := database.GlowtypeDB{
+		TypeCode:     input.TypeCode,
+		PrimaryColor: input.PrimaryColor,
+		AuraGradient: input.Gradient,
+		IsActive:     true,
+		Version:      1,
+	}
 	if err := database.GetDB().Create(&glowtype).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, glowtype)
+
+	// Create i18n records
+	if input.NameZh != "" || input.TaglineZh != "" || input.DescriptionZh != "" {
+		zhI18n := database.GlowtypeI18NDB{
+			GlowtypeID:   glowtype.ID,
+			Lang:         "zh",
+			Name:         input.NameZh,
+			Tagline:      input.TaglineZh,
+			Description:  input.DescriptionZh,
+			SelfCareTips: input.SelfCareTipsZh,
+			Disclaimer:   input.DisclaimerZh,
+		}
+		database.GetDB().Create(&zhI18n)
+	}
+	if input.NameEn != "" || input.TaglineEn != "" || input.DescriptionEn != "" {
+		enI18n := database.GlowtypeI18NDB{
+			GlowtypeID:   glowtype.ID,
+			Lang:         "en",
+			Name:         input.NameEn,
+			Tagline:      input.TaglineEn,
+			Description:  input.DescriptionEn,
+			SelfCareTips: input.SelfCareTipsEn,
+			Disclaimer:   input.DisclaimerEn,
+		}
+		database.GetDB().Create(&enI18n)
+	}
+
+	// Return merged result
+	input.ID = glowtype.ID
+	c.JSON(http.StatusCreated, input)
 }
 
 func UpdateGlowtype(c *gin.Context) {
@@ -215,17 +301,54 @@ func UpdateGlowtype(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Glowtype not found"})
 		return
 	}
-	if err := c.ShouldBindJSON(&glowtype); err != nil {
+
+	var input GlowtypeMerged
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Ensure ID is preserved after JSON binding
-	glowtype.ID = uint(id)
+
+	// Update main glowtype record
+	glowtype.TypeCode = input.TypeCode
+	glowtype.PrimaryColor = input.PrimaryColor
+	glowtype.AuraGradient = input.Gradient
 	if err := database.GetDB().Save(&glowtype).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, glowtype)
+
+	// Update or create i18n records
+	db := database.GetDB()
+
+	// Chinese i18n
+	var zhI18n database.GlowtypeI18NDB
+	if err := db.Where("glowtype_id = ? AND lang = ?", id, "zh").First(&zhI18n).Error; err != nil {
+		// Create new
+		zhI18n = database.GlowtypeI18NDB{GlowtypeID: uint(id), Lang: "zh"}
+	}
+	zhI18n.Name = input.NameZh
+	zhI18n.Tagline = input.TaglineZh
+	zhI18n.Description = input.DescriptionZh
+	zhI18n.SelfCareTips = input.SelfCareTipsZh
+	zhI18n.Disclaimer = input.DisclaimerZh
+	db.Save(&zhI18n)
+
+	// English i18n
+	var enI18n database.GlowtypeI18NDB
+	if err := db.Where("glowtype_id = ? AND lang = ?", id, "en").First(&enI18n).Error; err != nil {
+		// Create new
+		enI18n = database.GlowtypeI18NDB{GlowtypeID: uint(id), Lang: "en"}
+	}
+	enI18n.Name = input.NameEn
+	enI18n.Tagline = input.TaglineEn
+	enI18n.Description = input.DescriptionEn
+	enI18n.SelfCareTips = input.SelfCareTipsEn
+	enI18n.Disclaimer = input.DisclaimerEn
+	db.Save(&enI18n)
+
+	// Return merged result
+	input.ID = uint(id)
+	c.JSON(http.StatusOK, input)
 }
 
 func DeleteGlowtype(c *gin.Context) {
