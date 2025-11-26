@@ -31,13 +31,14 @@ interface Glowtype {
 }
 
 export default function Glowtypes() {
-  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
+  const { t } = useTranslation('admin');
   const [glowtypes, setGlowtypes] = useState<Glowtype[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<Glowtype>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const api = useAdminApi();
 
@@ -80,12 +81,15 @@ export default function Glowtypes() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     if (isCreating) {
       const result = await api.createGlowtype(editForm);
       if (result) {
         await loadGlowtypes();
         setIsCreating(false);
         setEditForm({});
+      } else if (api.error) {
+        setSaveError(api.error);
       }
     } else if (editingId) {
       const result = await api.updateGlowtype(editingId, editForm);
@@ -93,13 +97,15 @@ export default function Glowtypes() {
         await loadGlowtypes();
         setEditingId(null);
         setEditForm({});
+      } else if (api.error) {
+        setSaveError(api.error);
       }
     }
     setSaving(false);
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this glowtype?')) return;
+    if (!confirm(t('glowtypes.confirmDelete'))) return;
     await api.deleteGlowtype(id);
     await loadGlowtypes();
   };
@@ -133,10 +139,10 @@ export default function Glowtypes() {
             await api.createGlowtype(g);
           }
           await loadGlowtypes();
-          alert('Import successful!');
+          alert(t('glowtypes.importSuccess'));
         }
       } catch (err) {
-        alert('Failed to parse JSON file');
+        alert(t('glowtypes.importFailed'));
       }
     };
     reader.readAsText(file);
@@ -156,13 +162,18 @@ export default function Glowtypes() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Glowtypes</h1>
-          <p className="text-gray-500">{glowtypes.length} types defined</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('glowtypes.title')}</h1>
+          <p className="text-gray-500">
+            {t('glowtypes.subtitle')}
+            <span className="ml-2 text-gray-400">
+              ({t('glowtypes.count', { count: glowtypes.length })})
+            </span>
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition">
             <Upload className="w-4 h-4" />
-            Import
+            {t('common.import')}
             <input type="file" accept=".json" onChange={handleImport} className="hidden" />
           </label>
           <button
@@ -170,14 +181,14 @@ export default function Glowtypes() {
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
           >
             <Download className="w-4 h-4" />
-            Export
+            {t('common.export')}
           </button>
           <button
             onClick={handleCreate}
             className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition"
           >
             <Plus className="w-4 h-4" />
-            Add Type
+            {t('glowtypes.add')}
           </button>
         </div>
       </div>
@@ -187,14 +198,14 @@ export default function Glowtypes() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-800">
-              {isCreating ? 'New Glowtype' : 'Edit Glowtype'}
+              {isCreating ? t('glowtypes.createTitle') : t('glowtypes.editTitle')}
             </h3>
             <button
               onClick={() => setPreviewMode(!previewMode)}
               className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 rounded-lg hover:bg-gray-200 transition"
             >
               <Eye className="w-4 h-4" />
-              {previewMode ? 'Edit' : 'Preview'}
+              {previewMode ? t('glowtypes.editMode') : t('glowtypes.preview')}
             </button>
           </div>
 
@@ -203,24 +214,24 @@ export default function Glowtypes() {
               className="p-6 rounded-xl text-white"
               style={{ background: editForm.gradient || '#8B5CF6' }}
             >
-              <h2 className="text-2xl font-bold mb-2">{editForm.nameZh || editForm.nameEn || 'Type Name'}</h2>
-              <p className="text-white/80 mb-4">{editForm.taglineZh || editForm.taglineEn || 'Tagline'}</p>
-              <p className="text-white/90">{editForm.descriptionZh || editForm.descriptionEn || 'Description'}</p>
+              <h2 className="text-2xl font-bold mb-2">{editForm.nameZh || editForm.nameEn || t('glowtypes.previewTitleFallback')}</h2>
+              <p className="text-white/80 mb-4">{editForm.taglineZh || editForm.taglineEn || t('glowtypes.previewTaglineFallback')}</p>
+              <p className="text-white/90">{editForm.descriptionZh || editForm.descriptionEn || t('glowtypes.previewDescriptionFallback')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type Code</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.typeCode')}</label>
                 <input
                   type="text"
                   value={editForm.typeCode || ''}
                   onChange={(e) => setEditForm({ ...editForm, typeCode: e.target.value.toUpperCase() })}
-                  placeholder="e.g., ENFJ"
+                  placeholder={t('glowtypes.codePlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Primary Color</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.primaryColor')}</label>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -237,7 +248,7 @@ export default function Glowtypes() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name (Chinese)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.nameZh')}</label>
                 <input
                   type="text"
                   value={editForm.nameZh || ''}
@@ -246,7 +257,7 @@ export default function Glowtypes() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name (English)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.nameEn')}</label>
                 <input
                   type="text"
                   value={editForm.nameEn || ''}
@@ -255,7 +266,7 @@ export default function Glowtypes() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tagline (Chinese)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.taglineZh')}</label>
                 <input
                   type="text"
                   value={editForm.taglineZh || ''}
@@ -264,7 +275,7 @@ export default function Glowtypes() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tagline (English)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.taglineEn')}</label>
                 <input
                   type="text"
                   value={editForm.taglineEn || ''}
@@ -273,17 +284,17 @@ export default function Glowtypes() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Gradient CSS</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.gradientCss')}</label>
                 <input
                   type="text"
                   value={editForm.gradient || ''}
                   onChange={(e) => setEditForm({ ...editForm, gradient: e.target.value })}
-                  placeholder="linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)"
+                  placeholder={t('glowtypes.gradientPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description (Chinese) - JSON array</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.descriptionZh')}</label>
                 <textarea
                   value={editForm.descriptionZh || ''}
                   onChange={(e) => setEditForm({ ...editForm, descriptionZh: e.target.value })}
@@ -292,7 +303,7 @@ export default function Glowtypes() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description (English) - JSON array</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.descriptionEn')}</label>
                 <textarea
                   value={editForm.descriptionEn || ''}
                   onChange={(e) => setEditForm({ ...editForm, descriptionEn: e.target.value })}
@@ -301,7 +312,7 @@ export default function Glowtypes() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Self-Care Tips (Chinese) - JSON array</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.tipsZh')}</label>
                 <textarea
                   value={editForm.selfCareTipsZh || ''}
                   onChange={(e) => setEditForm({ ...editForm, selfCareTipsZh: e.target.value })}
@@ -310,7 +321,7 @@ export default function Glowtypes() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Self-Care Tips (English) - JSON array</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.tipsEn')}</label>
                 <textarea
                   value={editForm.selfCareTipsEn || ''}
                   onChange={(e) => setEditForm({ ...editForm, selfCareTipsEn: e.target.value })}
@@ -319,7 +330,7 @@ export default function Glowtypes() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Disclaimer (Chinese)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.disclaimerZh')}</label>
                 <textarea
                   value={editForm.disclaimerZh || ''}
                   onChange={(e) => setEditForm({ ...editForm, disclaimerZh: e.target.value })}
@@ -328,7 +339,7 @@ export default function Glowtypes() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Disclaimer (English)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.disclaimerEn')}</label>
                 <textarea
                   value={editForm.disclaimerEn || ''}
                   onChange={(e) => setEditForm({ ...editForm, disclaimerEn: e.target.value })}
@@ -338,6 +349,11 @@ export default function Glowtypes() {
               </div>
             </div>
           )}
+          {saveError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {t('common.error')}: {saveError}
+            </div>
+          )}
           <div className="flex gap-2 mt-4">
             <button
               onClick={handleSave}
@@ -345,14 +361,14 @@ export default function Glowtypes() {
               className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save
+              {t('glowtypes.save')}
             </button>
             <button
               onClick={handleCancel}
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
             >
               <X className="w-4 h-4" />
-              Cancel
+              {t('glowtypes.cancel')}
             </button>
           </div>
         </div>
@@ -361,7 +377,7 @@ export default function Glowtypes() {
       {/* Glowtypes Grid */}
       {glowtypes.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center text-gray-400">
-          No glowtypes yet. Click "Add Type" to create one.
+          {t('glowtypes.empty')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -379,7 +395,7 @@ export default function Glowtypes() {
               </div>
               <div className="p-4 bg-white">
                 <p className="text-sm text-gray-600 line-clamp-2">
-                  {g.taglineZh || g.taglineEn || 'No tagline'}
+                  {g.taglineZh || g.taglineEn || t('glowtypes.noTagline')}
                 </p>
                 <div className="flex gap-2 mt-4">
                   <button
@@ -387,7 +403,7 @@ export default function Glowtypes() {
                     className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition"
                   >
                     <Edit2 className="w-3 h-3" />
-                    Edit
+                    {t('glowtypes.edit')}
                   </button>
                   <button
                     onClick={() => handleDelete(g.id)}

@@ -24,13 +24,14 @@ interface TraitDimension {
 }
 
 export default function Dimensions() {
-  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
+  const { t } = useTranslation('admin');
   const [dimensions, setDimensions] = useState<TraitDimension[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<TraitDimension>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const api = useAdminApi();
 
   const loadDimensions = async () => {
@@ -68,12 +69,15 @@ export default function Dimensions() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     if (isCreating) {
       const result = await api.createDimension(editForm);
       if (result) {
         await loadDimensions();
         setIsCreating(false);
         setEditForm({});
+      } else if (api.error) {
+        setSaveError(api.error);
       }
     } else if (editingId) {
       const result = await api.updateDimension(editingId, editForm);
@@ -81,13 +85,15 @@ export default function Dimensions() {
         await loadDimensions();
         setEditingId(null);
         setEditForm({});
+      } else if (api.error) {
+        setSaveError(api.error);
       }
     }
     setSaving(false);
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this dimension? This may affect existing rules.')) return;
+    if (!confirm(t('dimensions.confirmDelete'))) return;
     await api.deleteDimension(id);
     await loadDimensions();
   };
@@ -111,9 +117,9 @@ export default function Dimensions() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Trait Dimensions</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('dimensions.title')}</h1>
           <p className="text-gray-500">
-            {dimensions.length} dimension{dimensions.length !== 1 ? 's' : ''} - Define bipolar scoring axes
+            {t('dimensions.count', { count: dimensions.length })}
           </p>
         </div>
         <button
@@ -121,7 +127,7 @@ export default function Dimensions() {
           className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition"
         >
           <Plus className="w-4 h-4" />
-          Add Dimension
+          {t('dimensions.add')}
         </button>
       </div>
 
@@ -129,21 +135,21 @@ export default function Dimensions() {
       {(isCreating || editingId) && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h3 className="font-semibold text-gray-800 mb-4">
-            {isCreating ? 'New Dimension' : 'Edit Dimension'}
+            {isCreating ? t('dimensions.new') : t('dimensions.editTitle')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Key (unique)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.keyUnique')}</label>
               <input
                 type="text"
                 value={editForm.key || ''}
                 onChange={(e) => setEditForm({ ...editForm, key: e.target.value })}
-                placeholder="e.g., energy, style"
+                placeholder={t('dimensions.keyPlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.displayOrder')}</label>
               <input
                 type="number"
                 value={editForm.displayOrder ?? 0}
@@ -152,7 +158,7 @@ export default function Dimensions() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name (Chinese)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.nameZh')}</label>
               <input
                 type="text"
                 value={editForm.nameZh || ''}
@@ -161,7 +167,7 @@ export default function Dimensions() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name (English)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.nameEn')}</label>
               <input
                 type="text"
                 value={editForm.nameEn || ''}
@@ -170,27 +176,27 @@ export default function Dimensions() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Positive Pole (+)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.positivePole')}</label>
               <input
                 type="text"
                 value={editForm.positivePole || ''}
                 onChange={(e) => setEditForm({ ...editForm, positivePole: e.target.value })}
-                placeholder="e.g., extrovert"
+                placeholder={t('dimensions.positivePlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Negative Pole (-)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.negativePole')}</label>
               <input
                 type="text"
                 value={editForm.negativePole || ''}
                 onChange={(e) => setEditForm({ ...editForm, negativePole: e.target.value })}
-                placeholder="e.g., introvert"
+                placeholder={t('dimensions.negativePlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Strong Threshold</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.strongThreshold')}</label>
               <input
                 type="number"
                 value={editForm.strongThreshold ?? 3}
@@ -199,7 +205,7 @@ export default function Dimensions() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mild Threshold</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.mildThreshold')}</label>
               <input
                 type="number"
                 value={editForm.mildThreshold ?? 1}
@@ -208,7 +214,7 @@ export default function Dimensions() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('dimensions.description')}</label>
               <textarea
                 value={editForm.description || ''}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -217,6 +223,11 @@ export default function Dimensions() {
               />
             </div>
           </div>
+          {saveError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              Error: {saveError}
+            </div>
+          )}
           <div className="flex gap-2 mt-4">
             <button
               onClick={handleSave}
@@ -224,14 +235,14 @@ export default function Dimensions() {
               className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save
+              {t('dimensions.save')}
             </button>
             <button
               onClick={handleCancel}
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
             >
               <X className="w-4 h-4" />
-              Cancel
+              {t('dimensions.cancel')}
             </button>
           </div>
         </div>
@@ -241,7 +252,7 @@ export default function Dimensions() {
       <div className="space-y-3">
         {dimensions.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 text-center text-gray-400">
-            No dimensions yet. Click "Add Dimension" to create one.
+            {t('dimensions.empty')}
           </div>
         ) : (
           dimensions.map((dim) => (
@@ -255,7 +266,7 @@ export default function Dimensions() {
                     <span className="px-2 py-1 bg-purple-100 text-purple-600 text-xs font-medium rounded">
                       {dim.key}
                     </span>
-                    <span className="text-gray-400 text-xs">Order: {dim.displayOrder}</span>
+                    <span className="text-gray-400 text-xs">{t('dimensions.displayOrderLabel', { order: dim.displayOrder })}</span>
                   </div>
                   <p className="text-gray-800 font-medium">{dim.nameZh || dim.nameEn || dim.key}</p>
                   <p className="text-gray-500 text-sm mt-1">{dim.nameEn}</p>
@@ -263,7 +274,7 @@ export default function Dimensions() {
                     <span className="text-green-600">+ {dim.positivePole}</span>
                     <span className="text-red-600">- {dim.negativePole}</span>
                     <span className="text-gray-400">
-                      Thresholds: {dim.mildThreshold} / {dim.strongThreshold}
+                      {t('dimensions.thresholdLabel', { mild: dim.mildThreshold, strong: dim.strongThreshold })}
                     </span>
                   </div>
                 </div>

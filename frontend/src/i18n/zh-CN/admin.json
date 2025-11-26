@@ -36,10 +36,22 @@
   "dimensions": {
     "title": "特质维度",
     "subtitle": "管理人格特质维度",
+    "count": "{{count}} 个维度 - 定义两极评分轴",
+    "count_plural": "{{count}} 个维度 - 定义两极评分轴",
     "add": "添加维度",
+    "new": "新建维度",
+    "editTitle": "编辑维度",
     "key": "标识符",
+    "keyUnique": "标识符（唯一）",
     "name": "名称",
+    "nameZh": "名称（中文）",
+    "nameEn": "名称（英文）",
     "description": "描述",
+    "displayOrder": "展示顺序",
+    "positivePole": "正向标签（+）",
+    "negativePole": "反向标签（-）",
+    "strongThreshold": "强烈阈值",
+    "mildThreshold": "轻度阈值",
     "lowLabel": "低值标签",
     "highLabel": "高值标签",
     "actions": "操作",
@@ -47,7 +59,13 @@
     "delete": "删除",
     "save": "保存",
     "cancel": "取消",
-    "confirmDelete": "确定要删除这个维度吗？"
+    "confirmDelete": "确定要删除这个维度吗？这可能影响已有规则。",
+    "keyPlaceholder": "如 energy, style",
+    "positivePlaceholder": "如 外向",
+    "negativePlaceholder": "如 内向",
+    "empty": "暂无维度，点击“添加维度”创建。",
+    "displayOrderLabel": "排序：{{order}}",
+    "thresholdLabel": "阈值：{{mild}} / {{strong}}"
   },
   "questions": {
     "title": "测试题目",
@@ -69,11 +87,18 @@
     "delete": "删除",
     "save": "保存",
     "cancel": "取消",
-    "confirmDelete": "确定要删除这道题目吗？"
+    "confirmDelete": "确定要删除这道题目吗？",
+    "importSuccess": "导入成功！",
+    "importFailed": "JSON 解析失败",
+    "optionCount": "{{count}} 个选项",
+    "optionCount_plural": "{{count}} 个选项",
+    "inactive": "未启用",
+    "valuePlaceholder": "如 introvert"
   },
   "glowtypes": {
     "title": "Glowtype 类型",
     "subtitle": "管理结果类型",
+    "count": "{{count}} 个类型",
     "add": "添加类型",
     "code": "代码",
     "name": "名称",
@@ -87,13 +112,42 @@
     "delete": "删除",
     "save": "保存",
     "cancel": "取消",
-    "confirmDelete": "确定要删除这个类型吗？"
+    "confirmDelete": "确定要删除这个类型吗？",
+    "createTitle": "新建类型",
+    "editTitle": "编辑类型",
+    "typeCode": "类型代码",
+    "primaryColor": "主色",
+    "gradientCss": "渐变 CSS",
+    "nameZh": "名称（中文）",
+    "nameEn": "名称（英文）",
+    "taglineZh": "标语（中文）",
+    "taglineEn": "标语（英文）",
+    "descriptionZh": "描述（中文）- JSON 数组",
+    "descriptionEn": "描述（英文）- JSON 数组",
+    "tipsZh": "自我关怀建议（中文）- JSON 数组",
+    "tipsEn": "自我关怀建议（英文）- JSON 数组",
+    "disclaimerZh": "免责声明（中文）",
+    "disclaimerEn": "免责声明（英文）",
+    "preview": "预览",
+    "editMode": "编辑",
+    "empty": "暂无类型，点击“添加类型”创建。",
+    "noTagline": "暂无标语",
+    "previewTitleFallback": "类型名称",
+    "previewTaglineFallback": "标语",
+    "previewDescriptionFallback": "描述",
+    "codePlaceholder": "如 ENFJ",
+    "gradientPlaceholder": "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
+    "importSuccess": "导入成功！",
+    "importFailed": "JSON 解析失败"
   },
   "rules": {
     "title": "评分规则",
     "subtitle": "定义维度分数到类型的匹配规则",
+    "count": "{{count}} 条规则 - 定义分数如何映射到 Glowtype",
+    "count_plural": "{{count}} 条规则 - 定义分数如何映射到 Glowtype",
     "add": "添加规则",
     "name": "名称",
+    "namePlaceholder": "例如：静默彗星规则",
     "resultType": "结果类型",
     "priority": "优先级",
     "conditions": "条件",
@@ -107,7 +161,21 @@
     "delete": "删除",
     "save": "保存",
     "cancel": "取消",
-    "confirmDelete": "确定要删除这条规则吗？"
+    "confirmDelete": "确定要删除这条规则吗？",
+    "validationWarnings": "校验警告",
+    "validationOk": "规则校验通过",
+    "createTitle": "新建规则",
+    "editTitle": "编辑规则",
+    "priorityHint": "优先级（数值越大越先匹配）",
+    "active": "启用",
+    "description": "描述",
+    "dimensionConditions": "维度条件",
+    "dimensionConditionsHint": "为每个维度设置分数范围。留空则忽略该维度。",
+    "noDimensions": "暂无维度定义，请先创建。",
+    "empty": "暂无规则，点击“添加规则”创建。",
+    "priorityLabel": "优先级：{{priority}}",
+    "fallbackBadge": "兜底",
+    "inactiveBadge": "未启用"
   },
   "debugger": {
     "title": "规则调试器",
@@ -119,7 +187,18 @@
     "isFallback": "是否兜底",
     "evaluatedRules": "评估的规则",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "range": "{{negative}} ← → {{positive}}",
+    "noDimensions": "暂无维度定义，请先创建。",
+    "testRules": "测试规则",
+    "matchedRuleLabel": "匹配规则：{{rule}}",
+    "fallbackNote": "（兜底）",
+    "details": "规则评估详情",
+    "unmatchedDims": "所有规则都未通过的维度：{{dims}}",
+    "priorityLabel": "优先级：{{priority}}",
+    "ok": "通过",
+    "fail": "未通过",
+    "unmapped": "未匹配"
   },
   "prompts": {
     "title": "AI 提示词",
@@ -131,7 +210,36 @@
     "actions": "操作",
     "edit": "编辑",
     "save": "保存",
-    "cancel": "取消"
+    "cancel": "取消",
+    "refresh": "刷新",
+    "infoTitle": "提示词占位符",
+    "placeholderHelp": {
+      "prefix": "在提示词中可使用这些占位符：",
+      "glowtype": "表示用户的类型",
+      "language": "表示语言（中文/英文）。"
+    },
+    "editPlaceholder": "请输入提示词内容...",
+    "notConfigured": "（未配置）",
+    "noteTitle": "说明",
+    "noteBody": "AI 提示词目前仍写在前端代码中。数据迁移完成后，后台可动态管理。当前仅对数据库已有的记录生效。",
+    "defaults": {
+      "cosmicInsightSystem": {
+        "name": "Cosmic Insight - 系统",
+        "description": "用于生成宇宙洞察的系统提示词"
+      },
+      "cosmicInsightUser": {
+        "name": "Cosmic Insight - 用户提示",
+        "description": "宇宙洞察的用户提示模板。使用 {glowtype} 和 {language} 占位符。"
+      },
+      "chatSystem": {
+        "name": "聊天 - 系统",
+        "description": "AI 聊天功能的系统提示词"
+      },
+      "chatGreeting": {
+        "name": "聊天 - 问候语",
+        "description": "初始问候模板。使用 {glowtype} 和 {language} 占位符。"
+      }
+    }
   },
   "common": {
     "loading": "加载中...",
@@ -149,6 +257,8 @@
     "textEnglish": "文本（英文）",
     "value": "值",
     "dimensionScores": "维度分数",
-    "noDimensions": "暂无维度定义"
+    "noDimensions": "暂无维度定义",
+    "switchToEnglish": "切换到英文",
+    "switchToChinese": "切换到中文"
   }
 }

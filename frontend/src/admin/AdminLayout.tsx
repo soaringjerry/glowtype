@@ -95,7 +95,7 @@ export default function AdminLayout() {
           <button
             onClick={toggleLanguage}
             className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-            title={i18n.language === 'zh-CN' ? 'Switch to English' : '切换到中文'}
+            title={i18n.language === 'zh-CN' ? t('common.switchToEnglish') : t('common.switchToChinese')}
           >
             <Globe className="w-5 h-5" />
           </button>

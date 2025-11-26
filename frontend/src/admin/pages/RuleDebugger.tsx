@@ -39,7 +39,7 @@ interface DebugResult {
 }
 
 export default function RuleDebugger() {
-  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
+  const { t } = useTranslation('admin');
   const [dimensions, setDimensions] = useState<TraitDimension[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [result, setResult] = useState<DebugResult | null>(null);
@@ -67,7 +67,7 @@ export default function RuleDebugger() {
 
   const handleTest = async () => {
     setTesting(true);
-    const data = await api.debugRules({ scores });
+    const data = await api.debugRules(scores);
     if (data) {
       setResult(data);
     }
@@ -91,20 +91,20 @@ export default function RuleDebugger() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Rule Debugger</h1>
-        <p className="text-gray-500">Test how dimension scores map to Glowtypes</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('debugger.title')}</h1>
+        <p className="text-gray-500">{t('debugger.subtitle')}</p>
       </div>
 
       {/* Score Input */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h3 className="font-semibold text-gray-800 mb-4">Dimension Scores</h3>
+        <h3 className="font-semibold text-gray-800 mb-4">{t('common.dimensionScores')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {dimensions.map((dim) => (
             <div key={dim.id} className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-gray-700">{dim.key}</label>
                 <span className="text-sm text-gray-500">
-                  {dim.negativePole} ← → {dim.positivePole}
+                  {t('debugger.range', { negative: dim.negativePole, positive: dim.positivePole })}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -130,7 +130,7 @@ export default function RuleDebugger() {
 
         {dimensions.length === 0 && (
           <p className="text-gray-400 text-center py-4">
-            No dimensions defined. Create dimensions first.
+            {t('debugger.noDimensions')}
           </p>
         )}
 
@@ -144,14 +144,14 @@ export default function RuleDebugger() {
           ) : (
             <Play className="w-5 h-5" />
           )}
-          Test Rules
+          {t('debugger.testRules')}
         </button>
       </div>
 
       {/* Result */}
       {result && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-800 mb-4">Result</h3>
+          <h3 className="font-semibold text-gray-800 mb-4">{t('debugger.result')}</h3>
 
           {/* Match Summary */}
           <div
@@ -181,12 +181,12 @@ export default function RuleDebugger() {
                       : 'text-green-800'
                   }`}
                 >
-                  {result.resultTypeCode}
+                  {result.resultTypeCode === 'Unmapped' ? t('debugger.unmapped') : result.resultTypeCode}
                 </p>
                 {result.matchedRuleName && (
                   <p className="text-sm text-gray-600">
-                    Matched: {result.matchedRuleName}
-                    {result.isFallback && ' (Fallback)'}
+                    {t('debugger.matchedRuleLabel', { rule: result.matchedRuleName })}
+                    {result.isFallback && ` ${t('debugger.fallbackNote')}`}
                   </p>
                 )}
               </div>
@@ -196,11 +196,11 @@ export default function RuleDebugger() {
           {/* Debug Info */}
           {result.debugInfo && (
             <div className="space-y-4">
-              <h4 className="font-medium text-gray-700">Rule Evaluation Details</h4>
+              <h4 className="font-medium text-gray-700">{t('debugger.details')}</h4>
 
               {result.debugInfo.unmatchedDims && result.debugInfo.unmatchedDims.length > 0 && (
                 <div className="p-3 bg-red-50 rounded-lg text-sm text-red-700">
-                  Dimensions that failed in all rules: {result.debugInfo.unmatchedDims.join(', ')}
+                  {t('debugger.unmatchedDims', { dims: result.debugInfo.unmatchedDims.join(', ') })}
                 </div>
               )}
 
@@ -225,7 +225,7 @@ export default function RuleDebugger() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">
-                          Priority: {rule.priority}
+                          {t('debugger.priorityLabel', { priority: rule.priority })}
                         </span>
                         <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">
                           {rule.resultTypeCode}
@@ -247,7 +247,7 @@ export default function RuleDebugger() {
                           {dim}: {res.score}
                           {res.min !== undefined && ` >= ${res.min}`}
                           {res.max !== undefined && ` <= ${res.max}`}
-                          {res.inRange ? ' OK' : ' FAIL'}
+                          {res.inRange ? ` ${t('debugger.ok')}` : ` ${t('debugger.fail')}`}
                         </span>
                       ))}
                     </div>

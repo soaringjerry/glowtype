@@ -91,6 +91,8 @@ func UpdateDimension(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Ensure ID is preserved after JSON binding
+	dim.ID = uint(id)
 	if err := database.GetDB().Save(&dim).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -144,6 +146,8 @@ func UpdateQuestion(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Ensure ID is preserved after JSON binding
+	question.ID = uint(id)
 	if err := database.GetDB().Save(&question).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -215,6 +219,8 @@ func UpdateGlowtype(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Ensure ID is preserved after JSON binding
+	glowtype.ID = uint(id)
 	if err := database.GetDB().Save(&glowtype).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -257,6 +263,8 @@ func UpdateGlowtypeI18N(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Ensure ID is preserved after JSON binding
+	i18n.ID = uint(id)
 	if err := database.GetDB().Save(&i18n).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -301,6 +309,8 @@ func UpdateRule(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Ensure ID is preserved after JSON binding
+	rule.ID = uint(id)
 	if err := database.GetDB().Save(&rule).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -389,6 +399,8 @@ func UpdatePrompt(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Ensure ID is preserved after JSON binding
+	prompt.ID = uint(id)
 	if err := database.GetDB().Save(&prompt).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -47,6 +47,7 @@ export default function Questions() {
   const [editForm, setEditForm] = useState<Partial<QuizQuestion>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const api = useAdminApi();
 
@@ -94,12 +95,15 @@ export default function Questions() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     if (isCreating) {
       const result = await api.createQuestion(editForm);
       if (result) {
         await loadData();
         setIsCreating(false);
         setEditForm({});
+      } else if (api.error) {
+        setSaveError(api.error);
       }
     } else if (editingId) {
       const result = await api.updateQuestion(editingId, editForm);
@@ -107,6 +111,8 @@ export default function Questions() {
         await loadData();
         setEditingId(null);
         setEditForm({});
+      } else if (api.error) {
+        setSaveError(api.error);
       }
     }
     setSaving(false);
@@ -183,10 +189,10 @@ export default function Questions() {
             await api.createQuestion(q);
           }
           await loadData();
-          alert('Import successful!');
+          alert(t('questions.importSuccess'));
         }
       } catch (err) {
-        alert('Failed to parse JSON file');
+        alert(t('questions.importFailed'));
       }
     };
     reader.readAsText(file);
@@ -327,7 +333,7 @@ export default function Questions() {
                         type="text"
                         value={opt.value || ''}
                         onChange={(e) => updateOption(idx, 'value', e.target.value)}
-                        placeholder="e.g., introvert"
+                        placeholder={t('questions.valuePlaceholder')}
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       />
                     </div>
@@ -358,6 +364,11 @@ export default function Questions() {
             </div>
           </div>
 
+          {saveError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              Error: {saveError}
+            </div>
+          )}
           <div className="flex gap-2 mt-6">
             <button
               onClick={handleSave}
@@ -402,11 +413,11 @@ export default function Questions() {
                           #{q.order} - {q.questionId}
                         </span>
                         <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded">
-                          {q.options?.length || 0} options
+                          {t('questions.optionCount', { count: q.options?.length || 0 })}
                         </span>
                         {!q.isActive && (
                           <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">
-                            Inactive
+                            {t('common.inactive')}
                           </span>
                         )}
                       </div>

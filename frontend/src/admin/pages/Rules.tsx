@@ -45,7 +45,7 @@ interface Glowtype {
 }
 
 export default function Rules() {
-  const { t: _t } = useTranslation('admin'); // i18n ready, TODO: replace hardcoded strings
+  const { t } = useTranslation('admin');
   const [rules, setRules] = useState<ScoringRule[]>([]);
   const [dimensions, setDimensions] = useState<TraitDimension[]>([]);
   const [glowtypes, setGlowtypes] = useState<Glowtype[]>([]);
@@ -55,6 +55,7 @@ export default function Rules() {
   const [editForm, setEditForm] = useState<Partial<ScoringRule>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const api = useAdminApi();
 
   const loadData = async () => {
@@ -101,12 +102,15 @@ export default function Rules() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     if (isCreating) {
       const result = await api.createRule(editForm);
       if (result) {
         await loadData();
         setIsCreating(false);
         setEditForm({});
+      } else if (api.error) {
+        setSaveError(api.error);
       }
     } else if (editingId) {
       const result = await api.updateRule(editingId, editForm);
@@ -114,13 +118,15 @@ export default function Rules() {
         await loadData();
         setEditingId(null);
         setEditForm({});
+      } else if (api.error) {
+        setSaveError(api.error);
       }
     }
     setSaving(false);
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this rule?')) return;
+    if (!confirm(t('rules.confirmDelete'))) return;
     await api.deleteRule(id);
     await loadData();
   };
@@ -173,9 +179,9 @@ export default function Rules() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Scoring Rules</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('rules.title')}</h1>
           <p className="text-gray-500">
-            {rules.length} rule{rules.length !== 1 ? 's' : ''} - Define how scores map to Glowtypes
+            {t('rules.count', { count: rules.length })}
           </p>
         </div>
         <button
@@ -183,7 +189,7 @@ export default function Rules() {
           className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition"
         >
           <Plus className="w-4 h-4" />
-          Add Rule
+          {t('rules.add')}
         </button>
       </div>
 
@@ -192,7 +198,7 @@ export default function Rules() {
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <div className="flex items-center gap-2 text-yellow-800 font-medium mb-2">
             <AlertTriangle className="w-5 h-5" />
-            Validation Warnings
+            {t('rules.validationWarnings')}
           </div>
           <ul className="space-y-1 text-sm text-yellow-700">
             {warnings.map((w, i) => (
@@ -205,7 +211,7 @@ export default function Rules() {
       {warnings.length === 0 && rules.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2 text-green-800">
           <CheckCircle2 className="w-5 h-5" />
-          All rules validated successfully
+          {t('rules.validationOk')}
         </div>
       )}
 
@@ -213,21 +219,21 @@ export default function Rules() {
       {(isCreating || editingId) && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h3 className="font-semibold text-gray-800 mb-4">
-            {isCreating ? 'New Rule' : 'Edit Rule'}
+            {isCreating ? t('rules.createTitle') : t('rules.editTitle')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Rule Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('rules.name')}</label>
               <input
                 type="text"
                 value={editForm.name || ''}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                placeholder="e.g., Quiet Comet Rule"
+                placeholder={t('rules.namePlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Result Glowtype</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('rules.resultType')}</label>
               <select
                 value={editForm.resultTypeCode || ''}
                 onChange={(e) => setEditForm({ ...editForm, resultTypeCode: e.target.value })}
@@ -239,7 +245,7 @@ export default function Rules() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority (higher = checked first)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('rules.priorityHint')}</label>
               <input
                 type="number"
                 value={editForm.priority ?? 0}
@@ -255,7 +261,7 @@ export default function Rules() {
                   onChange={(e) => setEditForm({ ...editForm, isFallback: e.target.checked })}
                   className="rounded text-purple-500 focus:ring-purple-500"
                 />
-                <span className="text-sm font-medium text-gray-700">Fallback Rule</span>
+                <span className="text-sm font-medium text-gray-700">{t('rules.isFallback')}</span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -264,11 +270,11 @@ export default function Rules() {
                   onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
                   className="rounded text-purple-500 focus:ring-purple-500"
                 />
-                <span className="text-sm font-medium text-gray-700">Active</span>
+                <span className="text-sm font-medium text-gray-700">{t('common.active')}</span>
               </label>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('rules.description')}</label>
               <textarea
                 value={editForm.description || ''}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -280,16 +286,16 @@ export default function Rules() {
 
           {/* Dimension Conditions */}
           <div className="mt-6">
-            <h4 className="font-medium text-gray-800 mb-3">Dimension Conditions</h4>
+            <h4 className="font-medium text-gray-800 mb-3">{t('rules.dimensionConditions')}</h4>
             <p className="text-sm text-gray-500 mb-4">
-              Define score ranges for each dimension. Leave empty to ignore that dimension.
+              {t('rules.dimensionConditionsHint')}
             </p>
             <div className="space-y-3">
               {dimensions.map((dim) => (
                 <div key={dim.id} className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
                   <span className="w-32 font-medium text-gray-700">{dim.key}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">Min:</span>
+                    <span className="text-sm text-gray-500">{t('rules.min')}:</span>
                     <input
                       type="number"
                       value={getConditionValue(dim.key, 'min')}
@@ -299,7 +305,7 @@ export default function Rules() {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">Max:</span>
+                    <span className="text-sm text-gray-500">{t('rules.max')}:</span>
                     <input
                       type="number"
                       value={getConditionValue(dim.key, 'max')}
@@ -311,11 +317,16 @@ export default function Rules() {
                 </div>
               ))}
               {dimensions.length === 0 && (
-                <p className="text-gray-400 text-sm">No dimensions defined. Create dimensions first.</p>
+                <p className="text-gray-400 text-sm">{t('rules.noDimensions')}</p>
               )}
             </div>
           </div>
 
+          {saveError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {t('common.error')}: {saveError}
+            </div>
+          )}
           <div className="flex gap-2 mt-6">
             <button
               onClick={handleSave}
@@ -323,14 +334,14 @@ export default function Rules() {
               className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save
+              {t('rules.save')}
             </button>
             <button
               onClick={handleCancel}
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
             >
               <X className="w-4 h-4" />
-              Cancel
+              {t('rules.cancel')}
             </button>
           </div>
         </div>
@@ -340,7 +351,7 @@ export default function Rules() {
       <div className="space-y-3">
         {rules.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 text-center text-gray-400">
-            No rules yet. Click "Add Rule" to create one.
+            {t('rules.empty')}
           </div>
         ) : (
           rules
@@ -360,19 +371,19 @@ export default function Rules() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="px-2 py-1 bg-purple-100 text-purple-600 text-xs font-medium rounded">
-                        Priority: {rule.priority}
+                        {t('rules.priorityLabel', { priority: rule.priority })}
                       </span>
                       <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded">
                         {rule.resultTypeCode}
                       </span>
                       {rule.isFallback && (
                         <span className="px-2 py-1 bg-yellow-100 text-yellow-600 text-xs font-medium rounded">
-                          Fallback
+                          {t('rules.fallbackBadge')}
                         </span>
                       )}
                       {!rule.isActive && (
                         <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">
-                          Inactive
+                          {t('rules.inactiveBadge')}
                         </span>
                       )}
                     </div>

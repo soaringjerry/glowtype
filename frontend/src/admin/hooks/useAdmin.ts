@@ -119,8 +119,8 @@ export const useAdminApi = () => {
   const deleteRule = (id: number) => apiCall(`/admin/rules/${id}`, { method: 'DELETE' });
 
   // Rule Debugging
-  const debugRules = (data: { answers?: any[], scores?: Record<string, number> }) =>
-    apiCall<any>('/admin/rules/debug', { method: 'POST', body: JSON.stringify(data) });
+  const debugRules = (dimensionScores: Record<string, number>) =>
+    apiCall<any>('/admin/rules/debug', { method: 'POST', body: JSON.stringify({ dimensionScores }) });
   const validateRules = () => apiCall<{ warnings: string[] }>('/admin/rules/validate');
 
   // Prompts
