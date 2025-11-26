@@ -523,55 +523,50 @@ const QuizView = ({ onComplete, lang }) => {
   );
 };
 
+// Helper to find glowtype data from APP_CONFIG by code or name
+const findGlowtypeConfig = (typeId: string) => {
+  // Direct match by key (display name)
+  if (APP_CONFIG.glowtypes[typeId]) {
+    return APP_CONFIG.glowtypes[typeId];
+  }
+  // Match by code (e.g., "quiet-comet" -> "Quiet Comet")
+  const codeToName: Record<string, string> = {
+    'quiet-comet': 'Quiet Comet',
+    'radiant-nebula': 'Radiant Nebula',
+    'hidden-aurora': 'Quiet Comet', // fallback
+    'warm-ember': 'Radiant Nebula', // fallback
+  };
+  const mappedName = codeToName[typeId?.toLowerCase()];
+  if (mappedName && APP_CONFIG.glowtypes[mappedName]) {
+    return APP_CONFIG.glowtypes[mappedName];
+  }
+  // Default fallback
+  return APP_CONFIG.glowtypes["Quiet Comet"];
+};
+
 const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
-  const fallbackData = APP_CONFIG.glowtypes[resultType] || APP_CONFIG.glowtypes["Quiet Comet"];
-  const [data, setData] = useState(fallbackData);
-  const [loading, setLoading] = useState(true);
+  // Always use APP_CONFIG styling as the base
+  const configData = findGlowtypeConfig(resultType);
+  const [data, setData] = useState(configData);
   const t = TRANSLATIONS[lang].result;
   const [insight, setInsight] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  // Fetch glowtype data from API, fallback to hardcoded
+  // Update data if resultType changes, using APP_CONFIG styling
   useEffect(() => {
-    const fetchGlowtype = async () => {
-      if (!resultType) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const apiLang = lang === 'zh' ? 'zh-CN' : 'en';
-        const res = await fetch(`${window.location.origin}/api/v1/glowtypes/${encodeURIComponent(resultType)}?lang=${apiLang}`);
-        if (res.ok) {
-          const apiData = await res.json();
-          if (apiData && apiData.name) {
-            // Transform API response to match APP_CONFIG format
-            setData({
-              title: { en: apiData.name, zh: apiData.name },
-              tagline: { en: apiData.tagline || '', zh: apiData.tagline || '' },
-              description: { en: Array.isArray(apiData.description) ? apiData.description.join(' ') : apiData.description || '', zh: Array.isArray(apiData.description) ? apiData.description.join(' ') : apiData.description || '' },
-              auraGradient: apiData.auraGradient || fallbackData?.auraGradient || "radial-gradient(circle at center, #a5b4fc, #818cf8, #4f46e5, transparent 70%)",
-              cardAccent: apiData.cardAccent || fallbackData?.cardAccent || "from-indigo-50 to-blue-50",
-              textColor: apiData.textColor || fallbackData?.textColor || "text-indigo-900"
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to fetch glowtype from API, using fallback', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchGlowtype();
-  }, [resultType, lang]);
+    const newConfigData = findGlowtypeConfig(resultType);
+    setData(newConfigData);
+    setInsight(null);
+  }, [resultType]);
 
   useEffect(() => { setInsight(null); }, [lang]);
 
   const handleGenerateInsight = async () => {
     setIsGenerating(true);
     const systemPrompt = AI_PROMPTS.insight[lang];
-    const title = data.title?.[lang] || data.title?.en || resultType;
-    const description = data.description?.[lang] || data.description?.en || '';
+    const title = data.title[lang];
+    const description = data.description[lang];
     const userPrompt = lang === 'zh'
       ? `我的情绪原型是「${title}」：${description}。请给我一句简短的宇宙洞察。`
       : `My emotional archetype is "${title}": ${description}. Give me a brief cosmic insight.`;
@@ -580,28 +575,20 @@ const ResultView = ({ onChat, onTips, onHelp, lang, resultType }) => {
     setIsGenerating(false);
   };
 
-  if (loading || !data) {
-    return (
-      <div className="max-w-md mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col items-center justify-center relative z-10">
-        <Loader2 className="animate-spin text-gray-400" size={32} />
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-md mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col relative z-10">
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="flex-grow flex flex-col items-center">
         <div className="text-center mb-8">
           <p className="text-sm font-medium text-gray-500 uppercase tracking-widest mb-2">{t.label}</p>
-          <h2 className="text-4xl font-serif text-gray-900">{data.title?.[lang] || data.title?.en || resultType}</h2>
+          <h2 className="text-4xl font-serif text-gray-900">{data.title[lang]}</h2>
         </div>
 
         <div className="relative w-full aspect-[3/5] mb-8 group perspective-1000">
           <GlowtypeCard
             data={{
-              title: data.title?.[lang] || data.title?.en || resultType,
-              tagline: data.tagline?.[lang] || data.tagline?.en || '',
-              description: data.description?.[lang] || data.description?.en || '',
+              title: data.title[lang],
+              tagline: data.tagline[lang],
+              description: data.description[lang],
               auraGradient: data.auraGradient,
               cardAccent: data.cardAccent,
               textColor: data.textColor,
