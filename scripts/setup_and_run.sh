@@ -130,6 +130,12 @@ else
   echo "       (Set GLOWTYPE_LOCAL_BUILD=1 to force local docker-compose build.)"
 fi
 
+echo "[STEP] Stopping any existing containers to avoid conflicts..."
+(
+  cd "${ROOT_DIR}"
+  ${COMPOSE_CMD} down --remove-orphans 2>/dev/null || true
+)
+
 echo "[STEP] Starting services in the background..."
 (
   cd "${ROOT_DIR}"
