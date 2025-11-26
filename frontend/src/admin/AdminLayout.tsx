@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Routes, Route } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   HelpCircle,
@@ -11,7 +12,8 @@ import {
   ChevronRight,
   Compass,
   Settings2,
-  Bug
+  Bug,
+  Globe
 } from 'lucide-react';
 import { useAdminAuth } from './hooks/useAdmin';
 import AdminLogin from './AdminLogin';
@@ -24,20 +26,26 @@ import RuleDebugger from './pages/RuleDebugger';
 import Prompts from './pages/Prompts';
 
 const navItems = [
-  { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/admin/dimensions', label: 'Dimensions', icon: Compass },
-  { path: '/admin/questions', label: 'Quiz Questions', icon: HelpCircle },
-  { path: '/admin/glowtypes', label: 'Glowtypes', icon: Sparkles },
-  { path: '/admin/rules', label: 'Scoring Rules', icon: Settings2 },
-  { path: '/admin/debugger', label: 'Rule Debugger', icon: Bug },
-  { path: '/admin/prompts', label: 'AI Prompts', icon: MessageSquare },
+  { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { path: '/admin/dimensions', labelKey: 'nav.dimensions', icon: Compass },
+  { path: '/admin/questions', labelKey: 'nav.questions', icon: HelpCircle },
+  { path: '/admin/glowtypes', labelKey: 'nav.glowtypes', icon: Sparkles },
+  { path: '/admin/rules', labelKey: 'nav.rules', icon: Settings2 },
+  { path: '/admin/debugger', labelKey: 'nav.debugger', icon: Bug },
+  { path: '/admin/prompts', labelKey: 'nav.prompts', icon: MessageSquare },
 ];
 
 export default function AdminLayout() {
+  const { t, i18n } = useTranslation('admin');
   const { isAuthenticated, logout } = useAdminAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'zh-CN' ? 'en' : 'zh-CN';
+    i18n.changeLanguage(newLang);
+  };
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -63,7 +71,7 @@ export default function AdminLayout() {
         >
           {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
-        <span className="ml-4 font-semibold text-gray-800">Glowtype Admin</span>
+        <span className="ml-4 font-semibold text-gray-800">{t('title')}</span>
       </div>
 
       {/* Sidebar overlay (mobile) */}
@@ -80,10 +88,17 @@ export default function AdminLayout() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Glowtype Admin
+            {t('title')}
           </h1>
+          <button
+            onClick={toggleLanguage}
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+            title={i18n.language === 'zh-CN' ? 'Switch to English' : '切换到中文'}
+          >
+            <Globe className="w-5 h-5" />
+          </button>
         </div>
 
         <nav className="p-4 space-y-1">
@@ -100,7 +115,7 @@ export default function AdminLayout() {
                 }`}
               >
                 <item.icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
+                <span className="font-medium">{t(item.labelKey)}</span>
                 {isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
               </button>
             );
@@ -113,7 +128,7 @@ export default function AdminLayout() {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition"
           >
             <LogOut className="w-5 h-5" />
-            <span className="font-medium">Logout</span>
+            <span className="font-medium">{t('nav.logout')}</span>
           </button>
         </div>
       </aside>

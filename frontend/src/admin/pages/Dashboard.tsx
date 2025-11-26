@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   BarChart3,
   Users,
@@ -22,6 +23,7 @@ interface GlowtypeDistribution {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation('admin');
   const [stats, setStats] = useState<StatsOverview | null>(null);
   const [distribution, setDistribution] = useState<GlowtypeDistribution[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,15 +69,15 @@ export default function Dashboard() {
       <div className="grid grid-cols-3 gap-4">
         <div>
           <p className="text-2xl font-bold text-gray-900">{today}</p>
-          <p className="text-xs text-gray-500">Today</p>
+          <p className="text-xs text-gray-500">{t('dashboard.today')}</p>
         </div>
         <div>
           <p className="text-2xl font-bold text-gray-700">{week}</p>
-          <p className="text-xs text-gray-500">This Week</p>
+          <p className="text-xs text-gray-500">{t('dashboard.thisWeek')}</p>
         </div>
         <div>
           <p className="text-2xl font-bold text-gray-500">{total}</p>
-          <p className="text-xs text-gray-500">Total</p>
+          <p className="text-xs text-gray-500">{t('dashboard.total')}</p>
         </div>
       </div>
     </div>
@@ -94,22 +96,22 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500">Anonymous usage statistics (no PII collected)</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
+          <p className="text-gray-500">{t('dashboard.subtitle')}</p>
         </div>
         <button
           onClick={loadData}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
         >
           <RefreshCw className="w-4 h-4" />
-          Refresh
+          {t('dashboard.refresh')}
         </button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Quiz Completed"
+          title={t('dashboard.quizCompleted')}
           today={stats?.today.quizCompleted || 0}
           week={stats?.week.quizCompleted || 0}
           total={stats?.total.quizCompleted || 0}
@@ -117,7 +119,7 @@ export default function Dashboard() {
           color="bg-purple-500"
         />
         <StatCard
-          title="Shares Generated"
+          title={t('dashboard.sharesGenerated')}
           today={stats?.today.shareGenerated || 0}
           week={stats?.week.shareGenerated || 0}
           total={stats?.total.shareGenerated || 0}
@@ -125,7 +127,7 @@ export default function Dashboard() {
           color="bg-pink-500"
         />
         <StatCard
-          title="AI Chats Started"
+          title={t('dashboard.aiChatsStarted')}
           today={stats?.today.aiChatsStarted || 0}
           week={stats?.week.aiChatsStarted || 0}
           total={stats?.total.aiChatsStarted || 0}
@@ -133,7 +135,7 @@ export default function Dashboard() {
           color="bg-blue-500"
         />
         <StatCard
-          title="AI Insights Used"
+          title={t('dashboard.aiInsightsUsed')}
           today={stats?.today.aiInsightUsed || 0}
           week={stats?.week.aiInsightUsed || 0}
           total={stats?.total.aiInsightUsed || 0}
@@ -149,14 +151,14 @@ export default function Dashboard() {
             <BarChart3 className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">Glowtype Distribution</h3>
-            <p className="text-sm text-gray-500">All-time quiz results</p>
+            <h3 className="font-semibold text-gray-800">{t('dashboard.distribution')}</h3>
+            <p className="text-sm text-gray-500">{t('dashboard.distributionSubtitle')}</p>
           </div>
         </div>
 
         {distribution.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
-            No data yet. Complete some quizzes to see distribution.
+            {t('dashboard.noData')}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
@@ -184,8 +186,7 @@ export default function Dashboard() {
 
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
-        <strong>Privacy Note:</strong> All statistics are anonymous. We do not collect any personally identifiable information (PII).
-        Only aggregate counts are tracked.
+        <strong>{t('dashboard.privacyNote')}</strong> {t('dashboard.privacyText')}
       </div>
     </div>
   );

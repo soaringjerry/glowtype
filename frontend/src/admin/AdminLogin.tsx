@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAdminAuth } from './hooks/useAdmin';
 
@@ -7,6 +8,7 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
+  const { t } = useTranslation('admin');
   const [password, setPassword] = useState('');
   const { login, loading, error } = useAdminAuth();
 
@@ -25,21 +27,19 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-          <p className="text-gray-500 mt-2">Enter your password to continue</p>
+          <h1 className="text-2xl font-bold text-gray-800">{t('login.title')}</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+              {t('login.password')}
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
-              placeholder="Enter admin password"
               autoFocus
             />
           </div>
@@ -47,7 +47,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           {error && (
             <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
               <AlertCircle className="w-4 h-4" />
-              {error}
+              {t('login.error')}
             </div>
           )}
 
@@ -59,16 +59,16 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Logging in...
+                {t('common.loading')}
               </>
             ) : (
-              'Login'
+              t('login.submit')
             )}
           </button>
         </form>
 
         <p className="text-center text-gray-400 text-sm mt-6">
-          Glowtype Admin Panel
+          {t('title')}
         </p>
       </div>
     </div>

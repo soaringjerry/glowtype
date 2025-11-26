@@ -7,12 +7,14 @@ import enHome from './en/home.json';
 import enQuiz from './en/quiz.json';
 import enResult from './en/result.json';
 import enHelp from './en/help.json';
+import enAdmin from './en/admin.json';
 
 import zhCommon from './zh-CN/common.json';
 import zhHome from './zh-CN/home.json';
 import zhQuiz from './zh-CN/quiz.json';
 import zhResult from './zh-CN/result.json';
 import zhHelp from './zh-CN/help.json';
+import zhAdmin from './zh-CN/admin.json';
 
 export const defaultNS = 'common';
 
@@ -22,7 +24,7 @@ void i18n
   .init({
     fallbackLng: 'en',
     supportedLngs: ['en', 'zh-CN'],
-    ns: ['common', 'home', 'quiz', 'result', 'help'],
+    ns: ['common', 'home', 'quiz', 'result', 'help', 'admin'],
     defaultNS,
     resources: {
       en: {
@@ -31,6 +33,7 @@ void i18n
         quiz: enQuiz,
         result: enResult,
         help: enHelp,
+        admin: enAdmin,
       },
       'zh-CN': {
         common: zhCommon,
@@ -38,6 +41,7 @@ void i18n
         quiz: zhQuiz,
         result: zhResult,
         help: zhHelp,
+        admin: zhAdmin,
       },
     },
     detection: {
