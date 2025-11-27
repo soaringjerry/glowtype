@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/soaringjerry/glowtype/internal/database"
+	"github.com/soaringjerry/glowtype/internal/services"
 	"github.com/soaringjerry/glowtype/internal/utils"
 	"gorm.io/datatypes"
 )
@@ -32,19 +33,21 @@ func RecordEventHandler(c *gin.Context) {
 	db.Where("date = ?", today).FirstOrCreate(&stats, database.UsageStats{Date: today})
 
 	// Update the appropriate counter
+	typeCode := services.CanonicalizeGlowtype(req.TypeCode)
+
 	switch req.Event {
 	case "quiz_complete":
 		db.Model(&stats).Update("quiz_completed", stats.QuizCompleted+1)
 
 		// Also track glowtype distribution if provided
-		if req.TypeCode != "" {
+		if typeCode != "" {
 			var glowtypeStats database.GlowtypeStats
-			result := db.Where("date = ? AND type_code = ?", today, req.TypeCode).First(&glowtypeStats)
+			result := db.Where("date = ? AND type_code = ?", today, typeCode).First(&glowtypeStats)
 			if result.Error != nil {
 				// Create new
 				glowtypeStats = database.GlowtypeStats{
 					Date:     today,
-					TypeCode: req.TypeCode,
+					TypeCode: typeCode,
 					Count:    1,
 				}
 				db.Create(&glowtypeStats)
@@ -73,15 +76,15 @@ func RecordEventHandler(c *gin.Context) {
 // SubmitQuizResultHandler saves a complete quiz result (anonymous)
 func SubmitQuizResultHandler(c *gin.Context) {
 	var req struct {
-		SessionID       string             `json:"sessionId"`       // Anonymous session ID
-		Answers         []database.AnswerRecord `json:"answers"`    // User's answers
-		DimensionScores map[string]float64 `json:"dimensionScores"` // Computed scores
-		ResultTypeCode  string             `json:"resultTypeCode"`  // Final result
-		Language        string             `json:"language"`        // en or zh
-		Source          string             `json:"source"`          // web, app, embed
-		Channel         string             `json:"channel"`         // Distribution channel
-		EntryPoint      string             `json:"entryPoint"`      // Campaign/source
-		Referrer        string             `json:"referrer"`        // HTTP referrer
+		SessionID       string                  `json:"sessionId"`       // Anonymous session ID
+		Answers         []database.AnswerRecord `json:"answers"`         // User's answers
+		DimensionScores map[string]float64      `json:"dimensionScores"` // Computed scores
+		ResultTypeCode  string                  `json:"resultTypeCode"`  // Final result
+		Language        string                  `json:"language"`        // en or zh
+		Source          string                  `json:"source"`          // web, app, embed
+		Channel         string                  `json:"channel"`         // Distribution channel
+		EntryPoint      string                  `json:"entryPoint"`      // Campaign/source
+		Referrer        string                  `json:"referrer"`        // HTTP referrer
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -156,10 +159,10 @@ func GetEnhancedStatsHandler(c *gin.Context) {
 
 	var stats struct {
 		// Quiz results analytics
-		QuizByRegion  []RegionStat `json:"quizByRegion"`
-		QuizByDevice  []DeviceStat `json:"quizByDevice"`
-		QuizByHour    []HourStat   `json:"quizByHour"`
-		QuizByLang    []struct {
+		QuizByRegion []RegionStat `json:"quizByRegion"`
+		QuizByDevice []DeviceStat `json:"quizByDevice"`
+		QuizByHour   []HourStat   `json:"quizByHour"`
+		QuizByLang   []struct {
 			Language string `json:"language"`
 			Count    int    `json:"count"`
 		} `json:"quizByLang"`
