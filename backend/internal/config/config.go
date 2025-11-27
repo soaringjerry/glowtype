@@ -5,14 +5,15 @@ import (
 )
 
 type Config struct {
-	Env           string
-	Port          string
-	AllowedOrigin string
-	LogLevel      string
-	ChatProvider  string
-	OpenAIAPIKey  string
-	OpenAIBaseURL string
-	OpenAIModel   string
+	Env            string
+	Port           string
+	AllowedOrigin  string
+	LogLevel       string
+	ChatProvider   string
+	OpenAIAPIKey   string
+	OpenAIBaseURL  string
+	OpenAIModel    string
+	TrustedProxies string
 }
 
 func Load() Config {
@@ -26,6 +27,8 @@ func Load() Config {
 		OpenAIAPIKey:  getEnv("OPENAI_API_KEY", ""),
 		OpenAIBaseURL: getEnv("OPENAI_API_BASE", "https://api.openai.com/v1"),
 		OpenAIModel:   getEnv("OPENAI_MODEL", "gpt-4o-mini"),
+		// TRUSTED_PROXIES: comma-separated CIDR/IP, or "auto" to trust private/loopback (default).
+		TrustedProxies: getEnv("TRUSTED_PROXIES", "auto"),
 	}
 
 	return cfg

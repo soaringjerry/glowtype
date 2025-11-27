@@ -2,6 +2,7 @@ package server
 
 import (
 	"log"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/soaringjerry/glowtype/internal/config"
@@ -21,8 +22,8 @@ func New(cfg config.Config) *gin.Engine {
 	database.InitDB()
 
 	r := gin.New()
-	// Default to trusting no proxy headers to avoid spoofed client IPs; configure upstream proxies explicitly if needed.
-	if err := r.SetTrustedProxies(nil); err != nil {
+	proxies := buildTrustedProxies(cfg.TrustedProxies)
+	if err := r.SetTrustedProxies(proxies); err != nil {
 		log.Fatalf("failed to set trusted proxies: %v", err)
 	}
 	r.Use(middleware.PrivacyLogger())
@@ -145,4 +146,33 @@ func New(cfg config.Config) *gin.Engine {
 	}
 
 	return r
+}
+
+// buildTrustedProxies returns proxy CIDRs for Gin.
+// "auto" trusts loopback + private ranges (works for docker/k8s behind one hop reverse proxy).
+// Any other value: comma-separated CIDR/IP list. Empty = trust none.
+func buildTrustedProxies(raw string) []string {
+	value := strings.TrimSpace(strings.ToLower(raw))
+	var proxies []string
+
+	switch value {
+	case "", "none":
+		proxies = []string{}
+	case "auto":
+		proxies = []string{
+			"127.0.0.1",
+			"10.0.0.0/8",
+			"172.16.0.0/12",
+			"192.168.0.0/16",
+			"::1",
+		}
+	default:
+		for _, part := range strings.Split(raw, ",") {
+			if trimmed := strings.TrimSpace(part); trimmed != "" {
+				proxies = append(proxies, trimmed)
+			}
+		}
+	}
+
+	return proxies
 }

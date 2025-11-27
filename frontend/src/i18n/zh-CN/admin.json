@@ -388,6 +388,9 @@
     "dimensionScores": "维度分数",
     "noDimensions": "暂无维度定义",
     "switchToEnglish": "切换到英文",
-    "switchToChinese": "切换到中文"
+    "switchToChinese": "切换到中文",
+    "refresh": "刷新",
+    "save": "保存",
+    "cancel": "取消"
   }
 }

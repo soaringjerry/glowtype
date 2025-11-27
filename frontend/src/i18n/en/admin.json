@@ -388,6 +388,9 @@
     "dimensionScores": "Dimension Scores",
     "noDimensions": "No dimensions defined",
     "switchToEnglish": "Switch to English",
-    "switchToChinese": "Switch to Chinese"
+    "switchToChinese": "Switch to Chinese",
+    "refresh": "Refresh",
+    "save": "Save",
+    "cancel": "Cancel"
   }
 }
