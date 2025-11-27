@@ -65,6 +65,9 @@ export function Navbar() {
             <NavLink to="/chat" className={navLinkClass}>
               {t('nav.chat')}
             </NavLink>
+            <NavLink to="/learn" className={navLinkClass}>
+              {t('nav.learn')}
+            </NavLink>
             <NavLink to="/help" className={navLinkClass}>
               {t('nav.help')}
             </NavLink>
@@ -120,6 +123,9 @@ export function Navbar() {
             </NavLink>
             <NavLink to="/chat" className={mobileNavLinkClass} onClick={() => setIsMenuOpen(false)}>
               {t('nav.chat')}
+            </NavLink>
+            <NavLink to="/learn" className={mobileNavLinkClass} onClick={() => setIsMenuOpen(false)}>
+              {t('nav.learn')}
             </NavLink>
             <NavLink to="/help" className={mobileNavLinkClass} onClick={() => setIsMenuOpen(false)}>
               {t('nav.help')}
