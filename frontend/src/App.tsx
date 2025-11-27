@@ -29,6 +29,8 @@ import {
 import { ShareModal } from './components/ShareModal';
 import { GlowtypeCard } from './components/GlowtypeCard';
 import ShareRenderPage from './pages/ShareRenderPage';
+import { TermsContentZh, TermsContentEn } from './components/TermsContent';
+import { PrivacyContentZh, PrivacyContentEn } from './components/PrivacyContent';
 import { BrowserRouter } from 'react-router-dom';
 import AdminLayout from './admin/AdminLayout';
 import { getApiBaseUrl } from './api/baseUrl';
@@ -896,52 +898,16 @@ const LearnView = ({ onBack, lang }) => {
 const TermsView = ({ onBack, lang }) => {
   const isZh = lang === 'zh';
   return (
-    <div className="max-w-2xl mx-auto px-6 pt-28 pb-32 min-h-screen relative z-10">
+    <div className="max-w-3xl mx-auto px-6 pt-28 pb-32 min-h-screen relative z-10">
       <button onClick={onBack} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-8 transition-colors">
         <ArrowRight className="rotate-180" size={20} /> {isZh ? '返回' : 'Back'}
       </button>
       <h1 className="text-4xl font-serif text-gray-900 mb-2">{isZh ? '用户条款' : 'Terms & Conditions'}</h1>
-      <p className="text-sm text-gray-400 mb-8">{isZh ? '最后更新：2024年12月' : 'Last updated: December 2024'}</p>
+      <p className="text-sm text-gray-400 mb-8">{isZh ? '最后更新：2025年11月27日' : 'Last updated: November 27, 2025'}</p>
 
-      <div className="space-y-6 text-gray-600 leading-relaxed">
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '1. 服务说明' : '1. Service Description'}</h2>
-          <p>{isZh
-            ? 'Glowtype.me 是一款情绪探索工具，通过简短问答帮助用户了解自己的情绪倾向。本服务仅供娱乐和自我反思目的，不构成任何医疗、心理或专业诊断。'
-            : 'Glowtype.me is an emotional exploration tool that helps users understand their emotional tendencies through a short questionnaire. This service is for entertainment and self-reflection purposes only and does not constitute any medical, psychological, or professional diagnosis.'}</p>
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '2. 使用资格' : '2. Eligibility'}</h2>
-          <p>{isZh
-            ? '本服务面向 15-25 岁的用户设计。如果你未满 18 岁，我们建议在使用前征得家长或监护人的同意。'
-            : 'This service is designed for users aged 15-25. If you are under 18, we recommend obtaining parental or guardian consent before use.'}</p>
-        </GlassCard>
-
-        <GlassCard className="p-6 border-l-4 border-l-amber-400">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '3. 免责声明' : '3. Disclaimer'}</h2>
-          <ul className="space-y-2 list-disc list-inside">
-            <li>{isZh ? '本服务不是医疗或心理健康诊断工具' : 'This service is not a medical or mental health diagnostic tool'}</li>
-            <li>{isZh ? '测试结果仅供参考，不应被视为权威评估' : 'Test results are for reference only'}</li>
-            <li>{isZh ? 'AI 聊天可能产生不准确的回复' : 'AI chat may produce inaccurate responses'}</li>
-            <li>{isZh ? '如遇危机请立即联系专业热线' : 'Contact professional hotlines immediately in crisis'}</li>
-          </ul>
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '4. 知识产权' : '4. Intellectual Property'}</h2>
-          <p>{isZh
-            ? 'Glowtype.me 的内容、设计和代码可供个人学习和非商业用途使用。未经书面许可，禁止用于商业目的。'
-            : 'Content, design, and code of Glowtype.me may be used for personal learning and non-commercial purposes. Commercial use is prohibited without written permission.'}</p>
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '5. 责任限制' : '5. Limitation of Liability'}</h2>
-          <p>{isZh
-            ? '在法律允许的最大范围内，我们不对因使用本服务而产生的任何损害承担责任。'
-            : 'To the maximum extent permitted by law, we shall not be liable for any damages arising from the use of this service.'}</p>
-        </GlassCard>
-      </div>
+      <GlassCard className="p-6 md:p-8">
+        {isZh ? <TermsContentZh /> : <TermsContentEn />}
+      </GlassCard>
     </div>
   );
 };
@@ -950,62 +916,16 @@ const TermsView = ({ onBack, lang }) => {
 const PrivacyView = ({ onBack, lang }) => {
   const isZh = lang === 'zh';
   return (
-    <div className="max-w-2xl mx-auto px-6 pt-28 pb-32 min-h-screen relative z-10">
+    <div className="max-w-3xl mx-auto px-6 pt-28 pb-32 min-h-screen relative z-10">
       <button onClick={onBack} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-8 transition-colors">
         <ArrowRight className="rotate-180" size={20} /> {isZh ? '返回' : 'Back'}
       </button>
       <h1 className="text-4xl font-serif text-gray-900 mb-2">{isZh ? '隐私政策' : 'Privacy Policy'}</h1>
-      <p className="text-sm text-gray-400 mb-8">{isZh ? '最后更新：2024年12月' : 'Last updated: December 2024'}</p>
+      <p className="text-sm text-gray-400 mb-8">{isZh ? '最后更新：2025年11月27日' : 'Last updated: November 27, 2025'}</p>
 
-      <div className="space-y-6 text-gray-600 leading-relaxed">
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '1. 信息收集' : '1. Information We Collect'}</h2>
-          <p className="mb-3">{isZh ? 'Glowtype.me 致力于最小化数据收集：' : 'Glowtype.me is committed to minimizing data collection:'}</p>
-          <ul className="space-y-2 list-disc list-inside">
-            <li><strong>{isZh ? '测试答案：' : 'Quiz Responses: '}</strong>{isZh ? '仅用于生成结果，不关联个人身份' : 'Used only to generate results, not linked to identity'}</li>
-            <li><strong>{isZh ? '聊天内容：' : 'Chat Messages: '}</strong>{isZh ? '仅在会话期间临时存储' : 'Temporarily stored only during session'}</li>
-            <li><strong>{isZh ? '技术数据：' : 'Technical Data: '}</strong>{isZh ? '标准服务器日志，不用于用户追踪' : 'Standard server logs, not used for tracking'}</li>
-          </ul>
-        </GlassCard>
-
-        <GlassCard className="p-6 border-l-4 border-l-green-400">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '2. 我们不收集的信息' : '2. What We Do NOT Collect'}</h2>
-          <ul className="space-y-2 list-disc list-inside">
-            <li>{isZh ? '姓名、邮箱、电话等个人身份信息' : 'Personal identifiers like name, email, phone'}</li>
-            <li>{isZh ? '精确地理位置' : 'Precise geolocation'}</li>
-            <li>{isZh ? '支付或财务信息' : 'Payment or financial information'}</li>
-            <li>{isZh ? '社交媒体账户信息' : 'Social media account information'}</li>
-          </ul>
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '3. Cookie 和追踪' : '3. Cookies and Tracking'}</h2>
-          <p>{isZh
-            ? '我们不使用广告追踪或第三方分析工具。仅使用必要的功能性 Cookie（如语言偏好）。'
-            : 'We do not use advertising tracking or third-party analytics. Only essential functional cookies (like language preference) are used.'}</p>
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '4. 数据安全' : '4. Data Security'}</h2>
-          <p>{isZh
-            ? '所有数据传输通过 HTTPS 加密。测试结果和聊天内容主要在你的浏览器会话中处理。'
-            : 'All data transmission is encrypted via HTTPS. Quiz results and chat content are primarily processed in your browser session.'}</p>
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '5. 第三方服务' : '5. Third-Party Services'}</h2>
-          <p>{isZh
-            ? 'AI 聊天由第三方服务支持。建议不要在聊天中分享敏感个人信息。'
-            : 'AI chat is powered by third-party services. We recommend not sharing sensitive personal information in chat.'}</p>
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '6. 联系我们' : '6. Contact Us'}</h2>
-          <p>{isZh
-            ? '如有隐私相关问题，请通过帮助页面联系我们。'
-            : 'For privacy-related questions, please contact us through the help page.'}</p>
-        </GlassCard>
-      </div>
+      <GlassCard className="p-6 md:p-8">
+        {isZh ? <PrivacyContentZh /> : <PrivacyContentEn />}
+      </GlassCard>
     </div>
   );
 };
