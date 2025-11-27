@@ -325,20 +325,23 @@ export default function Glowtypes() {
           </div>
 
           {previewMode ? (
-            <div className="flex justify-center py-8">
-              <div className="w-72 aspect-[3/5]">
-                <GlowtypeCard
-                  data={{
-                    title: editForm.nameZh || editForm.nameEn || 'Glowtype Name',
-                    tagline: editForm.taglineZh || editForm.taglineEn || 'Tagline here',
-                    description: arrayToText(editForm.descriptionZh || editForm.descriptionEn || 'Description here'),
-                    auraGradient: editForm.gradient || 'radial-gradient(circle at center, #a5b4fc, #818cf8, #4f46e5, transparent 70%)',
-                    cardAccent: editForm.cardAccent || 'from-indigo-50 to-blue-50',
-                    textColor: editForm.textColor || 'text-indigo-900',
-                  }}
-                  lang="zh"
-                  animated={false}
-                />
+            <div className="flex justify-center py-8 overflow-hidden">
+              {/* Use transform scale to show accurate preview - render at real size then scale down */}
+              <div className="origin-top" style={{ transform: 'scale(0.75)' }}>
+                <div className="w-[400px] aspect-[3/5]">
+                  <GlowtypeCard
+                    data={{
+                      title: editForm.nameZh || editForm.nameEn || 'Glowtype Name',
+                      tagline: editForm.taglineZh || editForm.taglineEn || 'Tagline here',
+                      description: arrayToText(editForm.descriptionZh || editForm.descriptionEn || 'Description here'),
+                      auraGradient: editForm.gradient || 'radial-gradient(circle at center, #a5b4fc, #818cf8, #4f46e5, transparent 70%)',
+                      cardAccent: editForm.cardAccent || 'from-indigo-50 to-blue-50',
+                      textColor: editForm.textColor || 'text-indigo-900',
+                    }}
+                    lang="zh"
+                    animated={false}
+                  />
+                </div>
               </div>
             </div>
           ) : (
