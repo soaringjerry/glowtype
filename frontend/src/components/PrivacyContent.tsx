@@ -1,6 +1,5 @@
-export const PrivacyContentZh = () => (
-  <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
-{`**隐私政策**
+export const PrivacyContentZh = () => {
+  const content = `**隐私政策**
 
 最后更新：2025年11月27日
 
@@ -204,13 +203,17 @@ OpenAI、Anthropic、Google，提供AI功能的技术支持。您与AI的对话�
 
 如您对本隐私政策有任何疑问，请发送邮件至 glowtype@forgotmail.com 与我们联系。
 
-对于欧盟用户，若您对我们的数据处理方式有疑虑，您有权向您所在成员国的数据保护监管机构提出投诉。`}
-  </div>
-);
+对于欧盟用户，若您对我们的数据处理方式有疑虑，您有权向您所在成员国的数据保护监管机构提出投诉。`;
 
-export const PrivacyContentEn = () => (
-  <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
-{`**Privacy Policy**
+  return (
+    <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
+      {content.replace(/\*\*/g, '')}
+    </div>
+  );
+};
+
+export const PrivacyContentEn = () => {
+  const content = `**Privacy Policy**
 
 Last Updated: November 27, 2025
 
@@ -414,6 +417,11 @@ We may update this Privacy Policy from time to time by posting a new version on 
 
 If you have any questions about this Privacy Policy, please send an email to glowtype@forgotmail.com.
 
-For EU users, if you have concerns about how we handle your data, you have the right to lodge a complaint with the data protection supervisory authority in your member state.`}
-  </div>
-);
+For EU users, if you have concerns about how we handle your data, you have the right to lodge a complaint with the data protection supervisory authority in your member state.`;
+
+  return (
+    <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
+      {content.replace(/\*\*/g, '')}
+    </div>
+  );
+};
