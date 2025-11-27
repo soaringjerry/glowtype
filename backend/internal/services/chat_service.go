@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -25,14 +26,43 @@ type ChatService struct {
 	client      *http.Client
 }
 
+const defaultOpenAIBase = "https://api.openai.com/v1"
+
 func NewChatService(cfg config.Config) *ChatService {
+	provider := strings.ToLower(strings.TrimSpace(cfg.ChatProvider))
+	apiKey := strings.TrimSpace(cfg.OpenAIAPIKey)
+	baseURL := strings.TrimRight(strings.TrimSpace(cfg.OpenAIBaseURL), "/")
+	model := strings.TrimSpace(cfg.OpenAIModel)
+
+	// Default base URL if not set
+	if baseURL == "" {
+		baseURL = defaultOpenAIBase
+	}
+	// Default model if not set
+	if model == "" {
+		model = "gpt-4o-mini"
+	}
+
+	// Log config on startup
+	keyPreview := ""
+	if len(apiKey) > 8 {
+		keyPreview = apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
+	} else if apiKey != "" {
+		keyPreview = "***"
+	}
+	log.Printf("[ChatService] provider=%q, baseURL=%q, model=%q, apiKey=%q", provider, baseURL, model, keyPreview)
+
+	if provider == "openai" && apiKey == "" {
+		log.Printf("[ChatService] WARNING: provider=openai but OPENAI_API_KEY is empty!")
+	}
+
 	return &ChatService{
 		sessions:    make(map[string]time.Time),
-		provider:    strings.ToLower(strings.TrimSpace(cfg.ChatProvider)),
-		openAIKey:   strings.TrimSpace(cfg.OpenAIAPIKey),
-		openAIBase:  strings.TrimRight(strings.TrimSpace(cfg.OpenAIBaseURL), "/"),
-		openAIModel: strings.TrimSpace(cfg.OpenAIModel),
-		client:      &http.Client{Timeout: 15 * time.Second},
+		provider:    provider,
+		openAIKey:   apiKey,
+		openAIBase:  baseURL,
+		openAIModel: model,
+		client:      &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -62,12 +92,17 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 
 	// Provider-backed AI reply
 	if s.provider == "openai" && s.openAIKey != "" {
-		if aiReply, err := s.callOpenAIChat(req.Message, req.Language); err == nil && aiReply != "" {
+		aiReply, err := s.callOpenAIChat(req.Message, req.Language)
+		if err != nil {
+			log.Printf("[ChatService] Reply: OpenAI call failed: %v", err)
+		} else if aiReply != "" {
 			return models.ChatMessageResponse{
 				Reply:        aiReply,
 				SafetyNotice: safetyNotice(req.Language),
 			}
 		}
+	} else {
+		log.Printf("[ChatService] Reply: skipping AI (provider=%q, hasKey=%v)", s.provider, s.openAIKey != "")
 	}
 
 	reply := fmt.Sprintf("%sI hear that you are going through something difficult. This space is for gentle reflection, not diagnosis.", prefix)
@@ -84,12 +119,17 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 // GenerateInsight returns a concise insight via provider (OpenAI) if configured, otherwise a static fallback.
 func (s *ChatService) GenerateInsight(systemPrompt, userPrompt, lang string) string {
 	if s.provider == "openai" && s.openAIKey != "" {
-		if aiReply, err := s.callOpenAI([]openAIMessage{
+		aiReply, err := s.callOpenAI([]openAIMessage{
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
-		}); err == nil && aiReply != "" {
+		})
+		if err != nil {
+			log.Printf("[ChatService] GenerateInsight: OpenAI call failed: %v", err)
+		} else if aiReply != "" {
 			return aiReply
 		}
+	} else {
+		log.Printf("[ChatService] GenerateInsight: skipping AI (provider=%q, hasKey=%v)", s.provider, s.openAIKey != "")
 	}
 
 	if lang == "zh" || lang == "zh-CN" {
@@ -132,22 +172,26 @@ func (s *ChatService) callOpenAI(messages []openAIMessage) (string, error) {
 	}
 
 	payload, _ := json.Marshal(body)
+	url := s.openAIBase + "/chat/completions"
 
-	req, err := http.NewRequest(http.MethodPost, s.openAIBase+"/chat/completions", bytes.NewReader(payload))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+s.openAIKey)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("http request to %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("openai status %d", resp.StatusCode)
+		// Read error body for more details
+		var errBody map[string]any
+		json.NewDecoder(resp.Body).Decode(&errBody)
+		return "", fmt.Errorf("openai status %d: %v", resp.StatusCode, errBody)
 	}
 
 	var result struct {
@@ -158,11 +202,11 @@ func (s *ChatService) callOpenAI(messages []openAIMessage) (string, error) {
 		} `json:"choices"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
+		return "", fmt.Errorf("decode response: %w", err)
 	}
 
 	if len(result.Choices) == 0 {
-		return "", fmt.Errorf("no choices")
+		return "", fmt.Errorf("no choices in response")
 	}
 
 	return strings.TrimSpace(result.Choices[0].Message.Content), nil
