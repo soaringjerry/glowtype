@@ -220,6 +220,21 @@ safelist: [
 
 **如需使用其他深度**，需在 `tailwind.config.js` 的 pattern 中添加。
 
+**更激进的方案**（会增加 CSS 体积）：
+如果想覆盖所有可能的颜色组合，可以用更宽泛的正则：
+
+```javascript
+safelist: [
+  // 覆盖所有颜色的所有深度
+  { pattern: /^from-.+-\d+$/ },
+  { pattern: /^to-.+-\d+$/ },
+  { pattern: /^text-.+-\d+$/ },
+  { pattern: /^bg-.+-\d+$/ },
+]
+```
+
+但这会显著增加 CSS 文件大小，建议仅在确实需要极大灵活性时使用。
+
 ---
 
 ### 3.4 AI 集成
