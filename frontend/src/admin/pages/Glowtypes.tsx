@@ -326,7 +326,7 @@ export default function Glowtypes() {
 
           {previewMode ? (
             <div className="flex justify-center py-8">
-              <div className="w-80 h-[480px]">
+              <div className="w-72 aspect-[3/5]">
                 <GlowtypeCard
                   data={{
                     title: editForm.nameZh || editForm.nameEn || 'Glowtype Name',
