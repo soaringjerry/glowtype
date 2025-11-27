@@ -333,10 +333,10 @@ export const ShareModal: FC<ShareModalProps> = ({
             initial={{ opacity: 0, scale: 0.97, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 12 }}
-            className="relative w-full max-w-6xl bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col md:flex-row"
+            className="relative w-full max-w-6xl max-h-[90vh] bg-white rounded-[24px] md:rounded-[32px] shadow-2xl overflow-y-auto md:overflow-hidden flex flex-col md:flex-row"
           >
             {/* Preview */}
-            <div className="flex-1 bg-gray-50 relative overflow-hidden flex items-center justify-center p-6 md:p-10">
+            <div className="flex-1 bg-gray-50 relative overflow-hidden flex items-center justify-center p-4 md:p-10 min-h-[280px] md:min-h-0">
               <div
                 className="absolute inset-0 opacity-[0.04]"
                 style={{
@@ -345,18 +345,12 @@ export const ShareModal: FC<ShareModalProps> = ({
                 }}
               />
               <div
-                className="relative shadow-2xl rounded-[28px] overflow-hidden ring-8 ring-white/60 bg-white"
-                style={{ width: 400, height: 400 }}
+                className="relative shadow-2xl rounded-[20px] md:rounded-[28px] overflow-hidden ring-4 md:ring-8 ring-white/60 bg-white w-[240px] h-[240px] md:w-[400px] md:h-[400px]"
               >
                 <div
                   id="share-card-preview"
                   ref={cardRef}
-                  style={{
-                    width: 1080,
-                    height: 1080,
-                    transform: 'scale(0.37)',
-                    transformOrigin: 'top left',
-                  }}
+                  className="w-[1080px] h-[1080px] origin-top-left scale-[0.222] md:scale-[0.37]"
                 >
                   <InlineShareCard data={shareData} insight={insight} lang={lang} glowDataUrl={glowDataUrl} />
                 </div>
@@ -381,7 +375,7 @@ export const ShareModal: FC<ShareModalProps> = ({
             </div>
 
             {/* Actions */}
-            <div className="w-full md:w-[420px] bg-white p-8 md:p-12 flex flex-col gap-6 border-t md:border-t-0 md:border-l border-gray-100">
+            <div className="w-full md:w-[360px] lg:w-[420px] bg-white p-6 md:p-10 lg:p-12 flex flex-col gap-4 md:gap-6 border-t md:border-t-0 md:border-l border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm">
                   <Share2 size={24} />
@@ -398,20 +392,20 @@ export const ShareModal: FC<ShareModalProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2 md:space-y-3">
                 <button
                   onClick={handleDownload}
                   disabled={isGenerating}
-                  className="w-full py-4 px-6 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-gray-900/10"
+                  className="w-full py-3 md:py-4 px-4 md:px-6 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 md:gap-3 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-gray-900/10 text-sm md:text-base"
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2 size={20} className="animate-spin" />
+                      <Loader2 size={18} className="animate-spin" />
                       <span>{lang === 'zh' ? '生成中...' : 'Generating...'}</span>
                     </>
                   ) : (
                     <>
-                      <Download size={20} />
+                      <Download size={18} />
                       <span>{lang === 'zh' ? '保存卡片' : 'Save card image'}</span>
                     </>
                   )}
@@ -419,18 +413,18 @@ export const ShareModal: FC<ShareModalProps> = ({
 
                 <button
                   onClick={handleCopyLink}
-                  className="w-full py-4 px-6 bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 text-gray-700 rounded-xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95"
+                  className="w-full py-3 md:py-4 px-4 md:px-6 bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 text-gray-700 rounded-xl font-bold flex items-center justify-center gap-2 md:gap-3 transition-all active:scale-95 text-sm md:text-base"
                 >
                   {hasCopied ? (
                     <>
-                      <Check size={20} className="text-green-500" />
+                      <Check size={18} className="text-green-500" />
                       <span className="text-green-600">
                         {lang === 'zh' ? '已复制链接' : 'Link copied'}
                       </span>
                     </>
                   ) : (
                     <>
-                      <Copy size={20} />
+                      <Copy size={18} />
                       <span>{lang === 'zh' ? '复制链接' : 'Copy link'}</span>
                     </>
                   )}

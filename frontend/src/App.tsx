@@ -1087,7 +1087,7 @@ const LearnView = ({ onBack, lang, userType = null }) => {
   const currentChapter = chapters.find(c => c.id === selectedChapter);
 
   return (
-    <div className="min-h-screen relative z-10 flex flex-col items-center justify-center px-6 py-20">
+    <div className="min-h-screen relative z-10 flex flex-col items-center justify-center px-4 md:px-6 py-24 md:py-20">
       {/* Magical background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden bg-gradient-to-b from-slate-900 via-purple-950 to-slate-900">
         {/* Floating particles */}
@@ -1103,9 +1103,9 @@ const LearnView = ({ onBack, lang, userType = null }) => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-purple-500/10 rounded-full blur-[120px]" />
       </div>
 
-      {/* Back button */}
-      <button onClick={onBack} className="absolute top-6 left-6 flex items-center gap-2 text-white/60 hover:text-white transition-colors z-20">
-        <ArrowRight className="rotate-180" size={20} /> {t.back}
+      {/* Back button - positioned below navbar */}
+      <button onClick={onBack} className="fixed top-20 md:top-[76px] left-4 md:left-6 flex items-center gap-2 text-white/60 hover:text-white transition-colors z-20 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm">
+        <ArrowRight className="rotate-180" size={16} /> {t.back}
       </button>
 
       {/* Main content */}
@@ -1476,7 +1476,7 @@ const Navbar = memo(({ view, setView, lang, toggleLang, tNav }) => {
     <nav className={`fixed top-0 w-full z-40 px-6 flex justify-between items-center transition-all duration-500 ease-in-out border-b ${isScrolled ? "py-3 bg-white/70 backdrop-blur-xl border-gray-200/50 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]" : "py-6 bg-transparent border-transparent"}`}>
       <div className="cursor-pointer z-50" onClick={() => setView('landing')}><BrandLogo /></div>
       <div className="flex items-center gap-3">
-        <button onClick={() => setView('learn')} className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-full hover:bg-indigo-50"><BookOpen size={16} /> {tNav.learn}</button>
+        <button onClick={() => setView('learn')} className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors px-2 sm:px-3 py-1.5 rounded-full hover:bg-indigo-50"><BookOpen size={16} /> <span className="hidden sm:inline">{tNav.learn}</span></button>
         {view === 'landing' && (<button onClick={() => setView('safety')} className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">{tNav.safety}</button>)}
         <button onClick={toggleLang} className="flex items-center gap-1 bg-gray-100/80 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold transition-colors tracking-wide backdrop-blur-sm"><Globe size={12} />{tNav.lang}</button>
       </div>
@@ -1499,11 +1499,14 @@ const AppShell = () => {
     return <ShareRenderPage />;
   }
 
-  // Check for /terms or /privacy routes on initial load
+  // Check for special routes on initial load
   const getInitialView = () => {
     if (typeof window !== 'undefined') {
       if (window.location.pathname === '/terms') return 'terms';
       if (window.location.pathname === '/privacy') return 'privacy';
+      if (window.location.pathname === '/learn') return 'learn';
+      if (window.location.pathname === '/quiz') return 'quiz';
+      if (window.location.pathname === '/safety') return 'safety';
     }
     return 'landing';
   };
@@ -1549,7 +1552,7 @@ const AppShell = () => {
     }
   }, []);
 
-  // Keep URL in sync with current language and result
+  // Keep URL in sync with current view and params
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -1560,12 +1563,44 @@ const AppShell = () => {
         params.delete('type');
       }
       const search = params.toString();
-      const newUrl = `${window.location.pathname}${search ? `?${search}` : ''}`;
-      window.history.replaceState({}, '', newUrl);
+
+      // Determine the correct pathname based on view
+      const viewToPath: Record<string, string> = {
+        landing: '/',
+        learn: '/learn',
+        quiz: '/quiz',
+        safety: '/safety',
+        terms: '/terms',
+        privacy: '/privacy',
+      };
+      const pathname = viewToPath[view] || '/';
+      const newUrl = `${pathname}${search ? `?${search}` : ''}`;
+
+      // Only update if different to avoid infinite loops
+      if (window.location.pathname !== pathname) {
+        window.history.pushState({}, '', newUrl);
+      } else {
+        window.history.replaceState({}, '', newUrl);
+      }
     } catch (e) {
       console.error('Failed to sync URL params', e);
     }
-  }, [lang, resultType]);
+  }, [lang, resultType, view]);
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/learn') setView('learn');
+      else if (path === '/quiz') setView('quiz');
+      else if (path === '/safety') setView('safety');
+      else if (path === '/terms') setView('terms');
+      else if (path === '/privacy') setView('privacy');
+      else setView('landing');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const showChrome = view !== 'chat' && view !== 'crisis';
 
