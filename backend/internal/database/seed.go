@@ -470,31 +470,34 @@ var DefaultGlowSticks = []GlowStickDB{
 	{TitleZH: "小步也算数", TitleEN: "Small Steps Count", MessageZH: "你不必今天就爬完整座山。往前一步，依然是前进。", MessageEN: "You don't have to climb the whole mountain today. One step forward is still forward.", Color: "from-green-400 to-emerald-500", ChapterID: "courage", ForTypes: "Quiet Comet,Radiant Nebula", Order: 11, IsActive: true},
 }
 
-// EnsureDefaultGlowpedia ensures all default chapters and glow sticks exist in the database.
+// EnsureDefaultGlowpedia seeds default chapters and glow sticks ONLY if tables are empty.
+// This allows users to delete items without them being recreated on restart.
 func EnsureDefaultGlowpedia(db *gorm.DB) {
-	// Seed chapters
-	for _, ch := range DefaultBookChapters {
-		var existing BookChapterDB
-		if db.Where("chapter_id = ?", ch.ChapterID).First(&existing).Error == nil {
-			continue // Already exists
-		}
-		if err := db.Create(&ch).Error; err != nil {
-			log.Printf("  Failed to create chapter '%s': %v", ch.ChapterID, err)
-		} else {
-			log.Printf("  Created default chapter '%s'", ch.ChapterID)
+	// Only seed chapters if table is empty
+	var chapterCount int64
+	db.Model(&BookChapterDB{}).Count(&chapterCount)
+	if chapterCount == 0 {
+		log.Println("Seeding default Glowpedia chapters...")
+		for _, ch := range DefaultBookChapters {
+			if err := db.Create(&ch).Error; err != nil {
+				log.Printf("  Failed to create chapter '%s': %v", ch.ChapterID, err)
+			} else {
+				log.Printf("  Created default chapter '%s'", ch.ChapterID)
+			}
 		}
 	}
 
-	// Seed glow sticks
-	for _, gs := range DefaultGlowSticks {
-		var existing GlowStickDB
-		if db.Where("title_zh = ?", gs.TitleZH).First(&existing).Error == nil {
-			continue // Already exists
-		}
-		if err := db.Create(&gs).Error; err != nil {
-			log.Printf("  Failed to create glow stick '%s': %v", gs.TitleZH, err)
-		} else {
-			log.Printf("  Created default glow stick '%s'", gs.TitleZH)
+	// Only seed glow sticks if table is empty
+	var stickCount int64
+	db.Model(&GlowStickDB{}).Count(&stickCount)
+	if stickCount == 0 {
+		log.Println("Seeding default Glowpedia glow sticks...")
+		for _, gs := range DefaultGlowSticks {
+			if err := db.Create(&gs).Error; err != nil {
+				log.Printf("  Failed to create glow stick '%s': %v", gs.TitleZH, err)
+			} else {
+				log.Printf("  Created default glow stick '%s'", gs.TitleZH)
+			}
 		}
 	}
 }
