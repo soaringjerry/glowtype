@@ -542,7 +542,7 @@ const QuizView = ({ onComplete, lang }) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   onClick={() => handleAnswer(opt.value)}
-                  className="w-full text-left p-5 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 hover:bg-purple-50/30 transition-all duration-300 group"
+                  className="quiz-option w-full text-left p-5 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-200 hover:bg-purple-50/30 active:bg-purple-50/50 active:border-purple-300 transition-all duration-300 group"
                 >
                   <span className="text-lg text-gray-700 group-hover:text-gray-900">{opt.text[lang]}</span>
                 </motion.button>
