@@ -192,7 +192,7 @@ const TRANSLATIONS = {
     result: { label: "Your Glowtype", insightBtn: "Reveal Cosmic Insight", insightLoading: "Decoding Signal...", note: "Note: This is not a medical diagnosis. It's a tool for self-reflection.", btnChat: "Chat about this (AI)", btnHelp: "Find professional help", shareTitle: "Share your Glow", shareDesc: "Save this card or share link", promptContext: "Answer in English." },
     chat: { header: "Anonymous Chat", end: "End Chat", disclaimer: "Private • No Data Saved • Powered by Gemini", intro: "Hi there. I'm Glowtype AI. I'm here to listen gently. I'm not a human, but I care about what you have to say.", placeholder: "Type here...", crisisResponse: "I hear that you are in pain, but I am just an AI. Please, for your safety, use the red Crisis Help button below to talk to a real person who can help." },
     safety: { back: "Back", title: "Is it safe?", card1Title: "Privacy First", card1Desc: "We do not ask for your real name, phone number, or email. Your answers are processed in your browser session.", card2Title: "Anonymous AI Chat", card2Desc: "The chat is powered by AI (Gemini). It does not judge. Chat logs are transient. Please do not share personal info.", card3Title: "Crisis Support", card3Desc: "Glowtype is NOT a replacement for professional therapy. If you are in danger, please use the red button below." },
-    learn: { title: "Glowpedia", subtitle: "Understanding the science of you.", back: "Home" },
+    learn: { title: "Glow Sticks", subtitle: "Draw a light for your soul", back: "Home", draw: "Draw a Glow Stick", redraw: "Draw Again", keep: "Keep This Light" },
     crisis: { title: "Here for you", subtitle: "Whatever you're going through, help is available.", back: "Close", sectionCall: "Immediate Help (24/7)", sectionText: "Text & Counseling" },
     footer: { label: "Need someone to talk to?", btn: "Support is here" }
   },
@@ -203,7 +203,7 @@ const TRANSLATIONS = {
     result: { label: "你的光芒类型", insightBtn: "揭示宇宙洞察", insightLoading: "正在连接星辰...", note: "注意：这不是医疗诊断。这只是一个自我探索的工具。", btnChat: "聊聊这个 (AI 陪伴)", btnHelp: "寻找专业帮助", shareTitle: "分享你的光芒", shareDesc: "保存卡片或复制链接", promptContext: "请用温暖、治愈的中文回答，像个知心朋友。" },
     chat: { header: "匿名树洞", end: "结束对话", disclaimer: "隐私保护 • 不保存数据 • Gemini AI 驱动", intro: "你好呀。我是 Glowtype AI。我会在这里静静倾听。虽然我不是人类，但我很在乎你想说的话。", placeholder: "在这里输入...", crisisResponse: "我听到了你的痛苦，但我只是一个 AI。为了你的安全，请立刻点击下方的红色“获取危机援助”按钮，寻找真人的帮助。" },
     safety: { back: "返回", title: "这安全吗？", card1Title: "隐私优先", card1Desc: "我们不需要你的真名、电话或邮箱。你的测试答案仅在浏览器中处理，不会建立个人档案。", card2Title: "匿名 AI 聊天", card2Desc: "聊天由 AI (Gemini) 驱动。它不会评判你。聊天记录是暂时的，结束后即销毁。请勿分享个人隐私。", card3Title: "危机支持", card3Desc: "Glowtype 不能替代专业治疗。如果你处于危险中，请务必使用屏幕底部的红色按钮求助。" },
-    learn: { title: "光芒百科", subtitle: "探索情绪背后的科学。", back: "返回首页" },
+    learn: { title: "光签", subtitle: "为灵魂抽一道光", back: "返回首页", draw: "抽一支光签", redraw: "再抽一签", keep: "收下这道光" },
     crisis: { title: "我们在这里", subtitle: "无论你在经历什么，都有人愿意倾听。", back: "关闭", sectionCall: "立即通话 (24/7)", sectionText: "文字 & 辅导支持" },
     footer: { label: "想要找人聊聊？", btn: "温暖支持" }
   }
@@ -233,13 +233,79 @@ const APP_CONFIG = {
       textColor: "text-rose-900"
     }
   },
-  learnContent: [
-    { id: 1, icon: BrainCircuit, title: { en: "The Science of 'Feeling'", zh: "情绪的科学机制" }, desc: { en: "Emotions are chemical signals—real, but not always accurate. Understanding this helps you respond, not just react.", zh: "情绪是大脑的化学信号——真实存在，但不一定准确。理解这点能帮你回应，而非冲动反应。" } },
-    { id: 2, icon: Lightbulb, title: { en: "Grounding 101", zh: "着陆练习入门" }, desc: { en: "Try 5-4-3-2-1: notice 5 things you see, 4 you touch, 3 you hear, 2 you smell, 1 you taste.", zh: "试试 5-4-3-2-1：注意5样看到的、4样触碰的、3样听到的、2样闻到的、1样尝到的。" } },
-    { id: 3, icon: Heart, title: { en: "What Anxiety Feels Like", zh: "焦虑是什么感觉" }, desc: { en: "Racing heart, tight chest, endless \"what ifs\"—it's your alarm system working overtime. Uncomfortable, but not dangerous.", zh: "心跳加速、胸口发紧、无尽的「万一」——是警报系统过度运转。不舒服，但不危险。" } },
-    { id: 4, icon: Sun, title: { en: "Mood Swings Are Normal", zh: "情绪波动是正常的" }, desc: { en: "Hormonal changes make emotions intense, especially in your teens and twenties. You're not broken—you're developing.", zh: "荷尔蒙变化会让情绪更强烈，尤其在青春期。你没有坏掉——你在成长。" } },
-    { id: 5, icon: Sparkles, title: { en: "Self-Care Isn't Selfish", zh: "自我关怀不是自私" }, desc: { en: "You can't pour from an empty cup. Taking care of yourself is necessary for being there for others.", zh: "你没法从空杯子里倒水。照顾自己是能够支持他人的前提。" } },
-    { id: 6, icon: Stars, title: { en: "Asking for Help Is Brave", zh: "寻求帮助是勇敢的" }, desc: { en: "Reaching out isn't weakness—it's wisdom. You don't have to figure it all out alone.", zh: "寻求帮助不是软弱——而是智慧。你不必独自搞清楚一切。" } }
+  glowSticks: [
+    {
+      id: 1,
+      title: { en: "Feelings Are Signals", zh: "情绪是信号" },
+      message: {
+        en: "Your emotions are messengers, not commanders. They bring information, but you decide what to do with it.",
+        zh: "情绪是信使，不是指挥官。它们带来信息，但由你决定如何回应。"
+      },
+      color: "from-violet-400 to-indigo-500"
+    },
+    {
+      id: 2,
+      title: { en: "Ground Yourself", zh: "让自己落地" },
+      message: {
+        en: "When thoughts spiral, try 5-4-3-2-1: See 5 things, touch 4, hear 3, smell 2, taste 1. You're here, now.",
+        zh: "当思绪翻涌时，试试 5-4-3-2-1：看5样、摸4样、听3样、闻2样、尝1样。你在这里，此刻。"
+      },
+      color: "from-emerald-400 to-teal-500"
+    },
+    {
+      id: 3,
+      title: { en: "Anxiety Is Your Alarm", zh: "焦虑是你的警报" },
+      message: {
+        en: "That racing heart? Your brain protecting you. It's uncomfortable, not dangerous. Breathe—the alarm will quiet.",
+        zh: "心跳加速？那是大脑在保护你。不舒服，但不危险。深呼吸——警报会平息。"
+      },
+      color: "from-amber-400 to-orange-500"
+    },
+    {
+      id: 4,
+      title: { en: "You're Not Broken", zh: "你没有坏掉" },
+      message: {
+        en: "Mood swings in your teens and twenties are normal—hormones are intense. You're not broken, you're becoming.",
+        zh: "青春期情绪波动是正常的——荷尔蒙在作祟。你没有坏掉，你在成长。"
+      },
+      color: "from-rose-400 to-pink-500"
+    },
+    {
+      id: 5,
+      title: { en: "Rest Is Sacred", zh: "休息是神圣的" },
+      message: {
+        en: "You can't pour from an empty cup. Rest isn't laziness—it's how you refill. Take care of yourself first.",
+        zh: "空杯子倒不出水。休息不是懒惰——是重新注满自己。先照顾好自己。"
+      },
+      color: "from-sky-400 to-blue-500"
+    },
+    {
+      id: 6,
+      title: { en: "Asking for Help", zh: "寻求帮助" },
+      message: {
+        en: "Reaching out isn't weakness—it's wisdom. The strongest people know they don't have to carry everything alone.",
+        zh: "求助不是软弱——是智慧。最坚强的人知道，不必独自扛下一切。"
+      },
+      color: "from-fuchsia-400 to-purple-500"
+    },
+    {
+      id: 7,
+      title: { en: "This Moment Will Pass", zh: "这一刻会过去" },
+      message: {
+        en: "No feeling is final. Like weather, emotions come and go. The storm always passes, even when it doesn't feel that way.",
+        zh: "没有任何情绪是永恒的。像天气一样，情绪来了又走。风暴终会过去，即使此刻感觉不到。"
+      },
+      color: "from-cyan-400 to-teal-500"
+    },
+    {
+      id: 8,
+      title: { en: "You Deserve Kindness", zh: "你值得被温柔对待" },
+      message: {
+        en: "Talk to yourself like you'd talk to a friend. You deserve the same kindness you give to others.",
+        zh: "用对待朋友的方式对待自己。你值得拥有你给予他人的那份温柔。"
+      },
+      color: "from-lime-400 to-green-500"
+    }
   ],
   // NEW: Structured hotlines for better UX
   hotlines: [
@@ -865,33 +931,204 @@ const SafetyView = ({ onBack, lang }) => {
 
 const LearnView = ({ onBack, lang }) => {
   const t = TRANSLATIONS[lang].learn;
-  const content = APP_CONFIG.learnContent;
+  const sticks = APP_CONFIG.glowSticks;
+  const [phase, setPhase] = useState<'idle' | 'shaking' | 'revealed'>('idle');
+  const [currentStick, setCurrentStick] = useState<typeof sticks[0] | null>(null);
+
+  const drawStick = () => {
+    setPhase('shaking');
+    // Random delay for suspense
+    setTimeout(() => {
+      const randomStick = sticks[Math.floor(Math.random() * sticks.length)];
+      setCurrentStick(randomStick);
+      setPhase('revealed');
+    }, 1500);
+  };
+
+  const redraw = () => {
+    setPhase('idle');
+    setCurrentStick(null);
+  };
+
   return (
-    <div className="max-w-2xl mx-auto px-6 pt-28 pb-12 min-h-screen relative z-10">
-      <button onClick={onBack} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-8 transition-colors">
+    <div className="min-h-screen relative z-10 flex flex-col items-center justify-center px-6 py-20">
+      {/* Background glow */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 4, repeat: Infinity }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] bg-gradient-to-r from-purple-300/40 via-indigo-300/40 to-pink-300/40 rounded-full blur-[100px]"
+        />
+      </div>
+
+      {/* Back button */}
+      <button onClick={onBack} className="absolute top-6 left-6 flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors z-20">
         <ArrowRight className="rotate-180" size={20} /> {t.back}
       </button>
-      <div className="mb-10">
-        <h1 className="text-4xl font-serif text-gray-900 mb-2">{t.title}</h1>
-        <p className="text-gray-500">{t.subtitle}</p>
-      </div>
-      <div className="grid gap-4">
-        {content.map((item) => (
-          <GlassCard key={item.id} className="p-6 hover:bg-white/80 transition-colors cursor-pointer group">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-600 group-hover:scale-110 transition-transform duration-500">
-                <item.icon size={24} />
+
+      {/* Title */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center mb-12 relative z-10"
+      >
+        <h1 className="text-5xl font-serif text-gray-900 mb-3">{t.title}</h1>
+        <p className="text-gray-500 text-lg">{t.subtitle}</p>
+      </motion.div>
+
+      {/* Main content area */}
+      <div className="relative z-10 w-full max-w-sm">
+        <AnimatePresence mode="wait">
+          {/* Idle state - show draw button */}
+          {phase === 'idle' && (
+            <motion.div
+              key="idle"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="flex flex-col items-center"
+            >
+              {/* Glowing container */}
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={drawStick}
+                className="relative cursor-pointer group"
+              >
+                <div className="w-40 h-56 rounded-3xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 backdrop-blur-xl border border-white/40 shadow-2xl flex items-center justify-center overflow-hidden">
+                  {/* Floating sticks inside */}
+                  <div className="absolute inset-4 flex flex-col items-center justify-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{
+                          x: [0, (i % 2 === 0 ? 3 : -3), 0],
+                          rotate: [(i - 2) * 3, (i - 2) * 3 + 2, (i - 2) * 3]
+                        }}
+                        transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }}
+                        className={`w-2 h-24 rounded-full bg-gradient-to-b ${sticks[i]?.color || 'from-indigo-400 to-purple-500'} shadow-lg`}
+                        style={{ transform: `rotate(${(i - 2) * 8}deg)` }}
+                      />
+                    ))}
+                  </div>
+                  {/* Glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent" />
+                </div>
+                {/* Outer glow */}
+                <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </motion.div>
+
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                onClick={drawStick}
+                className="mt-8 px-8 py-4 bg-gray-900 text-white rounded-2xl font-medium shadow-xl hover:bg-gray-800 transition-all flex items-center gap-2"
+              >
+                <Sparkles size={18} /> {t.draw}
+              </motion.button>
+            </motion.div>
+          )}
+
+          {/* Shaking state */}
+          {phase === 'shaking' && (
+            <motion.div
+              key="shaking"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center"
+            >
+              <motion.div
+                animate={{
+                  rotate: [-5, 5, -5, 5, -3, 3, 0],
+                  y: [0, -10, 0, -8, 0, -5, 0]
+                }}
+                transition={{ duration: 1.5, ease: "easeInOut" }}
+                className="w-40 h-56 rounded-3xl bg-gradient-to-br from-indigo-500/30 via-purple-500/30 to-pink-500/30 backdrop-blur-xl border border-white/40 shadow-2xl flex items-center justify-center overflow-hidden"
+              >
+                {/* Sticks shaking */}
+                <div className="flex flex-col items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{
+                        x: [-5, 5, -5, 5, 0],
+                        rotate: [-10, 10, -10, 10, 0]
+                      }}
+                      transition={{ duration: 0.3, repeat: 5, delay: i * 0.05 }}
+                      className={`w-2 h-24 rounded-full bg-gradient-to-b ${sticks[i]?.color || 'from-indigo-400 to-purple-500'} shadow-lg`}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+              <p className="mt-6 text-gray-500 animate-pulse">{lang === 'zh' ? '正在抽签...' : 'Drawing...'}</p>
+            </motion.div>
+          )}
+
+          {/* Revealed state */}
+          {phase === 'revealed' && currentStick && (
+            <motion.div
+              key="revealed"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              transition={{ type: "spring", damping: 20 }}
+              className="flex flex-col items-center w-full"
+            >
+              {/* The revealed stick card */}
+              <motion.div
+                initial={{ rotateY: 180, opacity: 0 }}
+                animate={{ rotateY: 0, opacity: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="w-full"
+              >
+                <div className={`relative p-8 rounded-3xl bg-gradient-to-br ${currentStick.color} shadow-2xl overflow-hidden`}>
+                  {/* Shimmer effect */}
+                  <motion.div
+                    animate={{ x: ['-100%', '200%'] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                  />
+
+                  {/* Content */}
+                  <div className="relative z-10 text-white text-center">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.3, type: "spring" }}
+                      className="w-12 h-12 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
+                    >
+                      <Stars size={24} />
+                    </motion.div>
+                    <h3 className="text-2xl font-bold mb-4">{currentStick.title[lang]}</h3>
+                    <p className="text-white/90 text-lg leading-relaxed">{currentStick.message[lang]}</p>
+                  </div>
+
+                  {/* Decorative elements */}
+                  <div className="absolute top-4 right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
+                  <div className="absolute bottom-4 left-4 w-16 h-16 bg-white/10 rounded-full blur-xl" />
+                </div>
+              </motion.div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={redraw}
+                  className="px-6 py-3 bg-white/80 backdrop-blur-sm text-gray-700 rounded-xl font-medium border border-gray-200 hover:bg-white transition-all flex items-center gap-2"
+                >
+                  <ArrowRight className="rotate-180" size={16} /> {t.redraw}
+                </button>
+                <button
+                  onClick={onBack}
+                  className="px-6 py-3 bg-gray-900 text-white rounded-xl font-medium shadow-lg hover:bg-gray-800 transition-all flex items-center gap-2"
+                >
+                  <Heart size={16} /> {t.keep}
+                </button>
               </div>
-              <div className="flex-grow">
-                <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">{item.title[lang]}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{item.desc[lang]}</p>
-              </div>
-              <div className="text-gray-300 group-hover:text-indigo-400 transition-colors">
-                <ArrowRight size={20} />
-              </div>
-            </div>
-          </GlassCard>
-        ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
