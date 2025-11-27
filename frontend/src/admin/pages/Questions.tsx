@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
@@ -51,7 +51,7 @@ export default function Questions() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const api = useAdminApi();
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     setLoading(true);
     const [questionsData, dimsData] = await Promise.all([
       api.listQuestions(),
@@ -60,11 +60,12 @@ export default function Questions() {
     if (questionsData) setQuestions(questionsData);
     if (dimsData) setDimensions(dimsData);
     setLoading(false);
-  }, [api]);
+  };
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEdit = (question: QuizQuestion) => {
     setEditingId(question.id);
