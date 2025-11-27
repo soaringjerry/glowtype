@@ -1,6 +1,7 @@
-export const TermsContentZh = () => (
-  <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
-{`**用户条款**
+const stripMarkdown = (text: string) => text.replace(/\*\*/g, '');
+
+export const TermsContentZh = () => {
+  const content = `**用户条款**
 
 最后更新：2025年11月27日
 
@@ -312,13 +313,16 @@ AI功能不具备识别或应对心理危机的能力，不能提供危机干预
 
 **十六、联系方式**
 
-如您对本条款有任何疑问或投诉，请发送邮件至 glowtype@forgotmail.com 与我们联系。`}
-  </div>
-);
+如您对本条款有任何疑问或投诉，请发送邮件至 glowtype@forgotmail.com 与我们联系。`;
+  return (
+    <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
+      {stripMarkdown(content)}
+    </div>
+  );
+};
 
-export const TermsContentEn = () => (
-  <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
-{`**Terms of Use**
+export const TermsContentEn = () => {
+  const content = `**Terms of Use**
 
 Last Updated: November 27, 2025
 
@@ -630,6 +634,10 @@ If required by the laws of the People's Republic of China, disputes related to t
 
 **16. Contact Information**
 
-If you have any questions or complaints about these terms, please send an email to glowtype@forgotmail.com.`}
-  </div>
-);
+If you have any questions or complaints about these terms, please send an email to glowtype@forgotmail.com.`;
+  return (
+    <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">
+      {stripMarkdown(content)}
+    </div>
+  );
+};
