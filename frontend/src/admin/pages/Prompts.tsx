@@ -43,6 +43,7 @@ export default function Prompts() {
 
   useEffect(() => {
     loadPrompts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getIcon = (key: string) => {

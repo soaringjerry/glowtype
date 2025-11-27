@@ -51,6 +51,7 @@ export default function Glowtypes() {
 
   useEffect(() => {
     loadGlowtypes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleEdit = (glowtype: Glowtype) => {

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -8,20 +8,12 @@ import {
   MessageCircle,
   Phone,
   Sparkles,
-  Wind,
-  Sun,
   Loader2,
   Stars,
   Globe,
-  Zap,
-  Download,
-  Copy,
   Share2,
   BookOpen,
-  BrainCircuit,
-  Lightbulb,
   X,
-  Coffee,
   Moon,
   MessageSquare,
   ExternalLink

@@ -43,6 +43,7 @@ export default function Dimensions() {
 
   useEffect(() => {
     loadDimensions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleEdit = (dim: TraitDimension) => {
