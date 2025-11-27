@@ -119,9 +119,6 @@ func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models
 		}
 	}
 
-	// Normalize legacy codes to keep analytics/UI consistent
-	result.ResultTypeCode = CanonicalizeGlowtype(result.ResultTypeCode)
-
 	// Save quiz result to database (async, don't block response)
 	go s.saveQuizResult(answers, result, req.Language, meta)
 

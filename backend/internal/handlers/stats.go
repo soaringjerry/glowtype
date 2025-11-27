@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/soaringjerry/glowtype/internal/database"
-	"github.com/soaringjerry/glowtype/internal/services"
 	"github.com/soaringjerry/glowtype/internal/utils"
 	"gorm.io/datatypes"
 )
@@ -33,21 +32,19 @@ func RecordEventHandler(c *gin.Context) {
 	db.Where("date = ?", today).FirstOrCreate(&stats, database.UsageStats{Date: today})
 
 	// Update the appropriate counter
-	typeCode := services.CanonicalizeGlowtype(req.TypeCode)
-
 	switch req.Event {
 	case "quiz_complete":
 		db.Model(&stats).Update("quiz_completed", stats.QuizCompleted+1)
 
 		// Also track glowtype distribution if provided
-		if typeCode != "" {
+		if req.TypeCode != "" {
 			var glowtypeStats database.GlowtypeStats
-			result := db.Where("date = ? AND type_code = ?", today, typeCode).First(&glowtypeStats)
+			result := db.Where("date = ? AND type_code = ?", today, req.TypeCode).First(&glowtypeStats)
 			if result.Error != nil {
 				// Create new
 				glowtypeStats = database.GlowtypeStats{
 					Date:     today,
-					TypeCode: typeCode,
+					TypeCode: req.TypeCode,
 					Count:    1,
 				}
 				db.Create(&glowtypeStats)
