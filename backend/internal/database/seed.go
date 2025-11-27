@@ -444,3 +444,57 @@ func EnsureDefaultPrompts(db *gorm.DB) {
 		}
 	}
 }
+
+// DefaultBookChapters defines the default Glowpedia chapters
+var DefaultBookChapters = []BookChapterDB{
+	{ChapterID: "calm", NameZH: "静心篇", NameEN: "Chapter of Stillness", DescZH: "当你需要慢下来", DescEN: "When you need to slow down", Icon: "🌙", Color: "indigo", Order: 0, IsActive: true},
+	{ChapterID: "anxiety", NameZH: "着陆篇", NameEN: "Chapter of Grounding", DescZH: "当思绪翻涌", DescEN: "For racing thoughts", Icon: "🌿", Color: "emerald", Order: 1, IsActive: true},
+	{ChapterID: "self-care", NameZH: "温柔篇", NameEN: "Chapter of Kindness", DescZH: "善待自己", DescEN: "Be gentle with yourself", Icon: "💗", Color: "rose", Order: 2, IsActive: true},
+	{ChapterID: "courage", NameZH: "勇气篇", NameEN: "Chapter of Courage", DescZH: "寻找力量", DescEN: "Find your strength", Icon: "🔥", Color: "amber", Order: 3, IsActive: true},
+	{ChapterID: "random", NameZH: "神秘页", NameEN: "Mystery Page", DescZH: "让命运决定", DescEN: "Let fate decide", Icon: "✨", Color: "violet", Order: 4, IsActive: true},
+}
+
+// DefaultGlowSticks defines the default Glowpedia glow sticks
+var DefaultGlowSticks = []GlowStickDB{
+	{TitleZH: "情绪是信号", TitleEN: "Feelings Are Signals", MessageZH: "情绪是信使，不是指挥官。它们带来信息，但由你决定如何回应。", MessageEN: "Your emotions are messengers, not commanders. They bring information, but you decide what to do with it.", Color: "from-violet-400 to-indigo-500", ChapterID: "calm", ForTypes: "Quiet Comet,Radiant Nebula", Order: 0, IsActive: true},
+	{TitleZH: "让自己落地", TitleEN: "Ground Yourself", MessageZH: "当思绪翻涌时，试试 5-4-3-2-1：看5样、摸4样、听3样、闻2样、尝1样。你在这里，此刻。", MessageEN: "When thoughts spiral, try 5-4-3-2-1: See 5 things, touch 4, hear 3, smell 2, taste 1. You're here, now.", Color: "from-emerald-400 to-teal-500", ChapterID: "anxiety", ForTypes: "Quiet Comet,Radiant Nebula", Order: 1, IsActive: true},
+	{TitleZH: "焦虑是你的警报", TitleEN: "Anxiety Is Your Alarm", MessageZH: "心跳加速？那是大脑在保护你。不舒服，但不危险。深呼吸——警报会平息。", MessageEN: "That racing heart? Your brain protecting you. It's uncomfortable, not dangerous. Breathe—the alarm will quiet.", Color: "from-amber-400 to-orange-500", ChapterID: "anxiety", ForTypes: "Quiet Comet,Radiant Nebula", Order: 2, IsActive: true},
+	{TitleZH: "你没有坏掉", TitleEN: "You're Not Broken", MessageZH: "青春期情绪波动是正常的——荷尔蒙在作祟。你没有坏掉，你在成长。", MessageEN: "Mood swings in your teens and twenties are normal—hormones are intense. You're not broken, you're becoming.", Color: "from-rose-400 to-pink-500", ChapterID: "self-care", ForTypes: "Radiant Nebula", Order: 3, IsActive: true},
+	{TitleZH: "休息是神圣的", TitleEN: "Rest Is Sacred", MessageZH: "空杯子倒不出水。休息不是懒惰——是重新注满自己。先照顾好自己。", MessageEN: "You can't pour from an empty cup. Rest isn't laziness—it's how you refill. Take care of yourself first.", Color: "from-sky-400 to-blue-500", ChapterID: "calm", ForTypes: "Quiet Comet,Radiant Nebula", Order: 4, IsActive: true},
+	{TitleZH: "寻求帮助", TitleEN: "Asking for Help", MessageZH: "求助不是软弱——是智慧。最坚强的人知道，不必独自扛下一切。", MessageEN: "Reaching out isn't weakness—it's wisdom. The strongest people know they don't have to carry everything alone.", Color: "from-fuchsia-400 to-purple-500", ChapterID: "courage", ForTypes: "Quiet Comet,Radiant Nebula", Order: 5, IsActive: true},
+	{TitleZH: "这一刻会过去", TitleEN: "This Moment Will Pass", MessageZH: "没有任何情绪是永恒的。像天气一样，情绪来了又走。风暴终会过去，即使此刻感觉不到。", MessageEN: "No feeling is final. Like weather, emotions come and go. The storm always passes, even when it doesn't feel that way.", Color: "from-cyan-400 to-teal-500", ChapterID: "anxiety", ForTypes: "Radiant Nebula", Order: 6, IsActive: true},
+	{TitleZH: "你值得被温柔对待", TitleEN: "You Deserve Kindness", MessageZH: "用对待朋友的方式对待自己。你值得拥有你给予他人的那份温柔。", MessageEN: "Talk to yourself like you'd talk to a friend. You deserve the same kindness you give to others.", Color: "from-lime-400 to-green-500", ChapterID: "self-care", ForTypes: "Quiet Comet,Radiant Nebula", Order: 7, IsActive: true},
+	{TitleZH: "你的混乱是创造力", TitleEN: "Your Chaos Is Creative", MessageZH: "内心的风暴？不是缺陷——是原始的创造能量。引导它，而非对抗它。", MessageEN: "That whirlwind inside you? It's not a flaw—it's raw creative energy. Channel it, don't fight it.", Color: "from-orange-400 to-red-500", ChapterID: "courage", ForTypes: "Radiant Nebula", Order: 8, IsActive: true},
+	{TitleZH: "沉默是力量", TitleEN: "Silence Is Strength", MessageZH: "你的安静观察不是缺席——是在场。你看到别人忽略的。这是你的超能力。", MessageEN: "Your quiet observation isn't absence—it's presence. You see what others miss. That's your superpower.", Color: "from-indigo-400 to-blue-500", ChapterID: "courage", ForTypes: "Quiet Comet", Order: 9, IsActive: true},
+	{TitleZH: "呼吸穿越它", TitleEN: "Breathe Through It", MessageZH: "吸入平静，呼出紧张。呼吸永远与你同在——随身携带的神经系统重启键。", MessageEN: "Inhale calm, exhale tension. Your breath is always with you—a portable reset button for your nervous system.", Color: "from-teal-400 to-cyan-500", ChapterID: "anxiety", ForTypes: "Quiet Comet,Radiant Nebula", Order: 10, IsActive: true},
+	{TitleZH: "小步也算数", TitleEN: "Small Steps Count", MessageZH: "你不必今天就爬完整座山。往前一步，依然是前进。", MessageEN: "You don't have to climb the whole mountain today. One step forward is still forward.", Color: "from-green-400 to-emerald-500", ChapterID: "courage", ForTypes: "Quiet Comet,Radiant Nebula", Order: 11, IsActive: true},
+}
+
+// EnsureDefaultGlowpedia ensures all default chapters and glow sticks exist in the database.
+func EnsureDefaultGlowpedia(db *gorm.DB) {
+	// Seed chapters
+	for _, ch := range DefaultBookChapters {
+		var existing BookChapterDB
+		if db.Where("chapter_id = ?", ch.ChapterID).First(&existing).Error == nil {
+			continue // Already exists
+		}
+		if err := db.Create(&ch).Error; err != nil {
+			log.Printf("  Failed to create chapter '%s': %v", ch.ChapterID, err)
+		} else {
+			log.Printf("  Created default chapter '%s'", ch.ChapterID)
+		}
+	}
+
+	// Seed glow sticks
+	for _, gs := range DefaultGlowSticks {
+		var existing GlowStickDB
+		if db.Where("title_zh = ?", gs.TitleZH).First(&existing).Error == nil {
+			continue // Already exists
+		}
+		if err := db.Create(&gs).Error; err != nil {
+			log.Printf("  Failed to create glow stick '%s': %v", gs.TitleZH, err)
+		} else {
+			log.Printf("  Created default glow stick '%s'", gs.TitleZH)
+		}
+	}
+}

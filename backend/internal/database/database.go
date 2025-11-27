@@ -68,6 +68,9 @@ func InitDB() *gorm.DB {
 	// Always ensure default prompts exist (supports upgrades)
 	EnsureDefaultPrompts(db)
 
+	// Always ensure default Glowpedia content exists (supports upgrades)
+	EnsureDefaultGlowpedia(db)
+
 	// Auto-seed if SEED_DB=true
 	// SEED_DB_FORCE=true will clear existing data and re-seed
 	if getEnv("SEED_DB", "") == "true" {
