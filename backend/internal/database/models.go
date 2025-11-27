@@ -273,11 +273,12 @@ type AnswerRecord struct {
 
 // AIPromptDB represents an AI prompt configuration
 type AIPromptDB struct {
-	ID       uint   `gorm:"primaryKey" json:"id"`
-	TenantID *uint  `gorm:"index" json:"tenantId"`
-	Key      string `gorm:"uniqueIndex:idx_tenant_prompt;not null" json:"key"`
-	Name     string `json:"name"`
-	Content  string `gorm:"type:text;not null" json:"content"`
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	TenantID    *uint  `gorm:"index" json:"tenantId"`
+	Key         string `gorm:"uniqueIndex:idx_tenant_prompt;not null" json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`                      // What this prompt is used for
+	Content     string `gorm:"type:text;not null" json:"content"`
 
 	Version  int  `gorm:"default:1" json:"version"`
 	IsActive bool `gorm:"default:true" json:"isActive"`

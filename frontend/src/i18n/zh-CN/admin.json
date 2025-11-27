@@ -307,55 +307,36 @@
   },
   "prompts": {
     "title": "AI 提示词",
-    "subtitle": "管理 AI 提示词模板",
-    "add": "添加提示词",
+    "subtitle": "配置各功能模块的 AI 提示词",
     "name": "名称",
     "key": "标识符",
     "keyHelp": "唯一标识符（如 cosmic_insight_system_zh）",
-    "content": "内容",
-    "template": "模板",
-    "variables": "变量",
-    "actions": "操作",
+    "content": "提示词内容",
     "edit": "编辑",
     "save": "保存",
     "cancel": "取消",
     "refresh": "刷新",
-    "createTitle": "新建提示词",
     "editTitle": "编辑提示词",
-    "empty": "暂无提示词，点击「添加提示词」创建。",
-    "defaultsTitle": "推荐默认提示词",
-    "defaultsDesc": "数据库中暂无提示词。以下是推荐的默认配置，点击「使用此模板」快速创建：",
-    "useThis": "使用此模板",
-    "inactive": "未启用",
-    "infoTitle": "提示词占位符",
+    "empty": "没有配置提示词。这不应该发生，请重启后端服务。",
+    "inactive": "已禁用",
+    "customized": "已自定义",
+    "resetToDefault": "恢复默认",
+    "confirmReset": "确定要将此提示词恢复为默认内容吗？您的自定义内容将会丢失。",
+    "showDefault": "显示默认内容",
+    "infoTitle": "关于 AI 提示词",
+    "infoDesc": "这些提示词控制 AI 在不同功能中的响应方式。每个提示词插槽是预定义的，无法删除，但您可以自定义内容或禁用它。",
     "placeholderHelp": {
-      "prefix": "在提示词中可使用这些占位符：",
-      "glowtype": "表示用户的类型",
-      "language": "表示语言（中文/英文）。"
+      "prefix": "可用占位符：",
+      "glowtype": "- 用户的 Glowtype 类型",
+      "language": "- 当前语言"
     },
     "editPlaceholder": "请输入提示词内容...",
-    "notConfigured": "（未配置）",
-    "successNoteTitle": "提示词已由数据库管理",
-    "successNoteBody": "AI 提示词现已存储在数据库中并动态加载。您在此处所做的更改将立即生效。",
-    "noteTitle": "说明",
-    "noteBody": "AI 提示词目前仍写在前端代码中。数据迁移完成后，后台可动态管理。当前仅对数据库已有的记录生效。",
-    "defaults": {
-      "cosmicInsightSystem": {
-        "name": "Cosmic Insight - 系统",
-        "description": "用于生成宇宙洞察的系统提示词"
-      },
-      "cosmicInsightUser": {
-        "name": "Cosmic Insight - 用户提示",
-        "description": "宇宙洞察的用户提示模板。使用 {glowtype} 和 {language} 占位符。"
-      },
-      "chatSystem": {
-        "name": "聊天 - 系统",
-        "description": "AI 聊天功能的系统提示词"
-      },
-      "chatGreeting": {
-        "name": "聊天 - 问候语",
-        "description": "初始问候模板。使用 {glowtype} 和 {language} 占位符。"
-      }
+    "successNoteTitle": "更改立即生效",
+    "successNoteBody": "AI 提示词存储在数据库中并动态加载。您在此处所做的任何更改都会立即应用。",
+    "category": {
+      "cosmicInsight": "宇宙洞察",
+      "chat": "AI 对话",
+      "other": "其他"
     }
   },
   "glowpedia": {

@@ -114,10 +114,10 @@ func New(cfg config.Config) *gin.Engine {
 		admin.POST("/rules/debug", handlers.DebugRules)
 		admin.GET("/rules/validate", handlers.ValidateRules)
 
-		// AI Prompts
+		// AI Prompts (fixed slots - can update/reset but not create/delete)
 		admin.GET("/prompts", handlers.ListPrompts)
-		admin.POST("/prompts", handlers.CreatePrompt)
 		admin.PUT("/prompts/:id", handlers.UpdatePrompt)
+		admin.POST("/prompts/:key/reset", handlers.ResetPrompt)
 
 		// Statistics
 		admin.GET("/stats/overview", handlers.GetStatsOverview)

@@ -781,48 +781,151 @@ func ValidateRules(c *gin.Context) {
 
 // ============ AI Prompts CRUD ============
 
+// PromptSlot represents a prompt slot with its current value and default
+type PromptSlot struct {
+	Key            string `json:"key"`
+	Name           string `json:"name"`
+	Description    string `json:"description"`
+	DefaultContent string `json:"defaultContent"`
+	CurrentContent string `json:"currentContent"`
+	IsCustomized   bool   `json:"isCustomized"`
+	IsActive       bool   `json:"isActive"`
+	ID             uint   `json:"id,omitempty"`
+}
+
+// ListPrompts returns all prompt slots with their current values and defaults
 func ListPrompts(c *gin.Context) {
-	var prompts []database.AIPromptDB
-	if err := database.GetDB().Where("is_active = ?", true).Order("key asc").Find(&prompts).Error; err != nil {
+	// Get all prompts from database
+	var dbPrompts []database.AIPromptDB
+	if err := database.GetDB().Order("key asc").Find(&dbPrompts).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, prompts)
+
+	// Create a map for quick lookup
+	promptMap := make(map[string]database.AIPromptDB)
+	for _, p := range dbPrompts {
+		promptMap[p.Key] = p
+	}
+
+	// Build response with all default slots
+	var slots []PromptSlot
+	for _, def := range database.DefaultPrompts {
+		slot := PromptSlot{
+			Key:            def.Key,
+			Name:           def.Name,
+			Description:    def.Description,
+			DefaultContent: def.Content,
+			CurrentContent: def.Content,
+			IsCustomized:   false,
+			IsActive:       true,
+		}
+
+		// Check if there's a customized version in DB
+		if dbPrompt, exists := promptMap[def.Key]; exists {
+			slot.ID = dbPrompt.ID
+			slot.CurrentContent = dbPrompt.Content
+			slot.IsActive = dbPrompt.IsActive
+			slot.IsCustomized = dbPrompt.Content != def.Content
+			// Use DB name/description if set
+			if dbPrompt.Name != "" {
+				slot.Name = dbPrompt.Name
+			}
+			if dbPrompt.Description != "" {
+				slot.Description = dbPrompt.Description
+			}
+		}
+
+		slots = append(slots, slot)
+	}
+
+	c.JSON(http.StatusOK, slots)
 }
 
+// CreatePrompt is deprecated - prompts are auto-created from defaults
+// Kept for API compatibility but should not be used
 func CreatePrompt(c *gin.Context) {
-	var prompt database.AIPromptDB
-	if err := c.ShouldBindJSON(&prompt); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	prompt.IsActive = true
-	prompt.Version = 1
-	if err := database.GetDB().Create(&prompt).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusCreated, prompt)
+	c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create new prompt slots. Use PUT to update existing prompts."})
 }
 
+// UpdatePrompt updates the content of an existing prompt by key
 func UpdatePrompt(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	key := c.Param("id") // Can be either ID or key
+
 	var prompt database.AIPromptDB
-	if err := database.GetDB().First(&prompt, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Prompt not found"})
-		return
+
+	// Try to find by ID first (for backwards compatibility)
+	if id, err := strconv.Atoi(key); err == nil {
+		if err := database.GetDB().First(&prompt, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Prompt not found"})
+			return
+		}
+	} else {
+		// Find by key
+		if err := database.GetDB().Where("key = ?", key).First(&prompt).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Prompt not found"})
+			return
+		}
 	}
-	if err := c.ShouldBindJSON(&prompt); err != nil {
+
+	// Parse update request
+	var req struct {
+		Content  string `json:"content"`
+		IsActive *bool  `json:"isActive,omitempty"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Ensure ID is preserved after JSON binding
-	prompt.ID = uint(id)
+
+	// Update fields
+	prompt.Content = req.Content
+	if req.IsActive != nil {
+		prompt.IsActive = *req.IsActive
+	}
+	prompt.Version++
+
 	if err := database.GetDB().Save(&prompt).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, prompt)
+}
+
+// ResetPrompt resets a prompt to its default content
+func ResetPrompt(c *gin.Context) {
+	key := c.Param("key")
+
+	// Find the default
+	var defaultPrompt *database.AIPromptDB
+	for _, def := range database.DefaultPrompts {
+		if def.Key == key {
+			defaultPrompt = &def
+			break
+		}
+	}
+	if defaultPrompt == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Unknown prompt key"})
+		return
+	}
+
+	// Update DB prompt to default content
+	var prompt database.AIPromptDB
+	if err := database.GetDB().Where("key = ?", key).First(&prompt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Prompt not found in database"})
+		return
+	}
+
+	prompt.Content = defaultPrompt.Content
+	prompt.IsActive = true
+	prompt.Version++
+
+	if err := database.GetDB().Save(&prompt).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Prompt reset to default"})
 }
 
 // GetPublicPrompts returns prompts as a map for frontend use (no auth required)

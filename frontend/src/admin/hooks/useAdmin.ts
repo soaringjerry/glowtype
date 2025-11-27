@@ -65,6 +65,18 @@ export interface EnhancedStats {
   chatByHour: HourStat[];
 }
 
+// AI Prompt slot (fixed, cannot be deleted)
+export interface PromptSlot {
+  key: string;
+  name: string;
+  description: string;
+  defaultContent: string;
+  currentContent: string;
+  isCustomized: boolean;
+  isActive: boolean;
+  id?: number;
+}
+
 const ADMIN_TOKEN_KEY = 'admin_token';
 const ADMIN_USER_KEY = 'admin_user';
 
@@ -253,10 +265,12 @@ export const useAdminApi = () => {
     apiCall<any>('/admin/rules/debug', { method: 'POST', body: JSON.stringify({ dimensionScores }) });
   const validateRules = () => apiCall<{ warnings: string[] }>('/admin/rules/validate');
 
-  // Prompts
-  const listPrompts = () => apiCall<any[]>('/admin/prompts');
-  const createPrompt = (data: any) => apiCall('/admin/prompts', { method: 'POST', body: JSON.stringify(data) });
-  const updatePrompt = (id: number, data: any) => apiCall(`/admin/prompts/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  // Prompts (fixed slots - can update/reset but not create/delete)
+  const listPrompts = () => apiCall<PromptSlot[]>('/admin/prompts');
+  const updatePrompt = (keyOrId: string | number, data: { content: string; isActive?: boolean }) =>
+    apiCall(`/admin/prompts/${keyOrId}`, { method: 'PUT', body: JSON.stringify(data) });
+  const resetPrompt = (key: string) =>
+    apiCall<{ success: boolean; message: string }>(`/admin/prompts/${key}/reset`, { method: 'POST' });
 
   // Stats
   const getStatsOverview = () => apiCall<any>('/admin/stats/overview');
@@ -314,8 +328,8 @@ export const useAdminApi = () => {
     validateRules,
     // Prompts
     listPrompts,
-    createPrompt,
     updatePrompt,
+    resetPrompt,
     // Stats
     getStatsOverview,
     getDailyStats,

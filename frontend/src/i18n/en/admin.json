@@ -307,55 +307,36 @@
   },
   "prompts": {
     "title": "AI Prompts",
-    "subtitle": "Manage AI prompt templates",
-    "add": "Add Prompt",
+    "subtitle": "Configure AI prompts for different features",
     "name": "Name",
     "key": "Key",
     "keyHelp": "Unique identifier (e.g., cosmic_insight_system_en)",
-    "content": "Content",
-    "template": "Template",
-    "variables": "Variables",
-    "actions": "Actions",
+    "content": "Prompt Content",
     "edit": "Edit",
     "save": "Save",
     "cancel": "Cancel",
     "refresh": "Refresh",
-    "createTitle": "Create New Prompt",
     "editTitle": "Edit Prompt",
-    "empty": "No prompts yet. Click \"Add Prompt\" to create one.",
-    "defaultsTitle": "Recommended Default Prompts",
-    "defaultsDesc": "No prompts in the database yet. Here are the recommended defaults - click \"Use This\" to create:",
-    "useThis": "Use This",
-    "inactive": "Inactive",
-    "infoTitle": "Prompt Placeholders",
+    "empty": "No prompts configured. This shouldn't happen - please restart the backend.",
+    "inactive": "Disabled",
+    "customized": "Customized",
+    "resetToDefault": "Reset to Default",
+    "confirmReset": "Are you sure you want to reset this prompt to its default content? Your customizations will be lost.",
+    "showDefault": "Show default content",
+    "infoTitle": "About AI Prompts",
+    "infoDesc": "These prompts control how the AI responds in different features. Each prompt slot is pre-defined and cannot be deleted, but you can customize the content or disable it.",
     "placeholderHelp": {
-      "prefix": "Use these placeholders in your prompts:",
-      "glowtype": "for the user's type",
-      "language": "for the language (Chinese/English)."
+      "prefix": "Available placeholders:",
+      "glowtype": "- user's Glowtype",
+      "language": "- current language"
     },
     "editPlaceholder": "Enter prompt content...",
-    "notConfigured": "(Not configured)",
-    "successNoteTitle": "Prompts are database-managed",
-    "successNoteBody": "AI prompts are now stored in the database and loaded dynamically. Changes you make here will take effect immediately.",
-    "noteTitle": "Note",
-    "noteBody": "AI prompts are currently configured in the frontend code. This admin panel will allow you to manage them dynamically once the data migration is complete. For now, prompts are read-only unless already stored in the database.",
-    "defaults": {
-      "cosmicInsightSystem": {
-        "name": "Cosmic Insight - System",
-        "description": "System instruction for generating cosmic insights"
-      },
-      "cosmicInsightUser": {
-        "name": "Cosmic Insight - User Prompt",
-        "description": "User prompt template for cosmic insights. Use {glowtype} and {language} placeholders."
-      },
-      "chatSystem": {
-        "name": "Chat - System",
-        "description": "System instruction for the AI chat feature"
-      },
-      "chatGreeting": {
-        "name": "Chat - Greeting",
-        "description": "Initial greeting message template. Use {glowtype} and {language} placeholders."
-      }
+    "successNoteTitle": "Changes take effect immediately",
+    "successNoteBody": "AI prompts are stored in the database and loaded dynamically. Any changes you make here will be applied right away.",
+    "category": {
+      "cosmicInsight": "Cosmic Insight",
+      "chat": "AI Chat",
+      "other": "Other"
     }
   },
   "glowpedia": {

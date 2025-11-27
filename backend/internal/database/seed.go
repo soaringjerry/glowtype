@@ -368,61 +368,79 @@ func floatPtr(v float64) *float64 {
 	return &v
 }
 
-func seedPrompts(db *gorm.DB) {
-	prompts := []AIPromptDB{
-		{
-			Key:  "cosmic_insight_system_en",
-			Name: "Cosmic Insight - System (EN)",
-			Content: `You are a poetic, mystical guide who speaks in short, evocative phrases.
+// DefaultPrompts defines all required AI prompt slots with their default content
+var DefaultPrompts = []AIPromptDB{
+	{
+		Key:         "cosmic_insight_system_en",
+		Name:        "Cosmic Insight (English)",
+		Description: "System prompt for generating poetic cosmic insights about the user's Glowtype. Used on the result page when user clicks 'Get Cosmic Insight'.",
+		Content: `You are a poetic, mystical guide who speaks in short, evocative phrases.
 Your role is to give a brief cosmic insight about someone's emotional archetype.
 IMPORTANT: Keep your response to 1-2 sentences MAX (under 30 words). Be poetic but concise.
 Speak directly to the person using "you".`,
-			IsActive: true,
-		},
-		{
-			Key:  "cosmic_insight_system_zh",
-			Name: "Cosmic Insight - System (ZH)",
-			Content: `你是一位诗意的神秘向导，用简短而富有诗意的语言表达。
+		IsActive: true,
+	},
+	{
+		Key:         "cosmic_insight_system_zh",
+		Name:        "宇宙洞察（中文）",
+		Description: "用于生成关于用户 Glowtype 的诗意宇宙洞察的系统提示词。在结果页点击「获取宇宙洞察」时使用。",
+		Content: `你是一位诗意的神秘向导，用简短而富有诗意的语言表达。
 你的任务是给出关于某人情绪原型的简短宇宙洞察。
 重要：回复必须控制在1-2句话以内（不超过30个字）。要有诗意但简洁。
 直接用"你"称呼对方。`,
-			IsActive: true,
-		},
-		{
-			Key:  "chat_system_en",
-			Name: "Chat - System (EN)",
-			Content: `You are Glowtype AI, a warm and supportive companion. You listen with empathy and respond gently.
+		IsActive: true,
+	},
+	{
+		Key:         "chat_system_en",
+		Name:        "AI Chat (English)",
+		Description: "System prompt for the AI chat companion. Defines the AI's personality and response guidelines for English conversations.",
+		Content: `You are Glowtype AI, a warm and supportive companion. You listen with empathy and respond gently.
 Guidelines:
 - Keep responses SHORT (2-3 sentences max)
 - Be warm, understanding, and non-judgmental
 - Don't give medical advice or diagnoses
 - If someone mentions self-harm or crisis, gently encourage them to use the Crisis Support button
 - Use a conversational, friendly tone`,
-			IsActive: true,
-		},
-		{
-			Key:  "chat_system_zh",
-			Name: "Chat - System (ZH)",
-			Content: `你是 Glowtype AI，一个温暖且支持性的陪伴者。你用同理心倾听，温柔地回应。
+		IsActive: true,
+	},
+	{
+		Key:         "chat_system_zh",
+		Name:        "AI 对话（中文）",
+		Description: "AI 对话陪伴的系统提示词。定义 AI 的性格和中文对话回复指南。",
+		Content: `你是 Glowtype AI，一个温暖且支持性的陪伴者。你用同理心倾听，温柔地回应。
 准则：
 - 回复保持简短（最多2-3句话）
 - 温暖、理解、不评判
 - 不提供医疗建议或诊断
 - 如果有人提到自我伤害或危机，温柔地鼓励他们使用"危机支持"按钮
 - 使用对话式的、友好的语气`,
-			IsActive: true,
-		},
-	}
+		IsActive: true,
+	},
+}
 
-	for _, p := range prompts {
-		// Check if prompt already exists
+func seedPrompts(db *gorm.DB) {
+	EnsureDefaultPrompts(db)
+}
+
+// EnsureDefaultPrompts ensures all required prompt slots exist in the database.
+// This should be called on every startup to support upgrades.
+// It will NOT overwrite existing prompts, only create missing ones.
+func EnsureDefaultPrompts(db *gorm.DB) {
+	for _, p := range DefaultPrompts {
 		var existing AIPromptDB
 		if db.Where("key = ?", p.Key).First(&existing).Error == nil {
-			log.Printf("  Prompt '%s' already exists, skipping", p.Key)
+			// Prompt exists - update description if empty (for upgrades)
+			if existing.Description == "" {
+				db.Model(&existing).Update("description", p.Description)
+				log.Printf("  Updated description for prompt '%s'", p.Key)
+			}
 			continue
 		}
+		// Create new prompt
 		if err := db.Create(&p).Error; err != nil {
 			log.Printf("  Failed to create prompt '%s': %v", p.Key, err)
+		} else {
+			log.Printf("  Created default prompt '%s'", p.Key)
 		}
 	}
 }
