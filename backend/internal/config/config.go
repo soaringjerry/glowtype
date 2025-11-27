@@ -27,8 +27,9 @@ func Load() Config {
 		OpenAIAPIKey:  getEnv("OPENAI_API_KEY", ""),
 		OpenAIBaseURL: getEnv("OPENAI_API_BASE", "https://api.openai.com/v1"),
 		OpenAIModel:   getEnv("OPENAI_MODEL", "gpt-4o-mini"),
-		// TRUSTED_PROXIES: comma-separated CIDR/IP, or "auto" to trust private/loopback (default).
-		TrustedProxies: getEnv("TRUSTED_PROXIES", "auto"),
+		// TRUSTED_PROXIES: comma-separated CIDR/IP, or "auto" to trust private/loopback.
+		// Default "auto,cloudflare" tries to recover real client IP when behind Cloudflare while staying safe elsewhere.
+		TrustedProxies: getEnv("TRUSTED_PROXIES", "auto,cloudflare"),
 	}
 
 	return cfg

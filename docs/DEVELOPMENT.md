@@ -262,6 +262,8 @@ ENV=development
 ALLOWED_ORIGINS=http://localhost:5173
 ADMIN_PASSWORD=your_secure_password
 JWT_SECRET=your_jwt_secret
+# 获取真实 IP：Cloudflare 前置时设置为 auto,cloudflare（同时信任容器内网与 CF 边缘）
+TRUSTED_PROXIES=auto,cloudflare
 ```
 
 前端（`frontend/.env.local`）：
