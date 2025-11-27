@@ -175,10 +175,10 @@ func seedGlowtypes(db *gorm.DB) {
 	}{
 		{
 			TypeCode:     "radiant-nebula",
-			AuraGradient: "linear-gradient(135deg, #FF6B6B 0%, #FFE66D 50%, #4ECDC4 100%)",
-			CardAccent:   "#FF6B6B",
-			TextColor:    "#2C3E50",
-			PrimaryColor: "#FF6B6B",
+			AuraGradient: "radial-gradient(circle at center, #fbcfe8, #f472b6, #db2777, transparent 70%)",
+			CardAccent:   "from-rose-50 to-orange-50",
+			TextColor:    "text-rose-900",
+			PrimaryColor: "#db2777",
 			IconName:     "sun",
 			I18N: []struct {
 				Lang         string
@@ -194,10 +194,10 @@ func seedGlowtypes(db *gorm.DB) {
 		},
 		{
 			TypeCode:     "quiet-comet",
-			AuraGradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-			CardAccent:   "#667eea",
-			TextColor:    "#2C3E50",
-			PrimaryColor: "#667eea",
+			AuraGradient: "radial-gradient(circle at center, #a5b4fc, #818cf8, #4f46e5, transparent 70%)",
+			CardAccent:   "from-indigo-50 to-blue-50",
+			TextColor:    "text-indigo-900",
+			PrimaryColor: "#4f46e5",
 			IconName:     "moon",
 			I18N: []struct {
 				Lang         string
@@ -213,10 +213,10 @@ func seedGlowtypes(db *gorm.DB) {
 		},
 		{
 			TypeCode:     "hidden-aurora",
-			AuraGradient: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
-			CardAccent:   "#a8edea",
-			TextColor:    "#2C3E50",
-			PrimaryColor: "#a8edea",
+			AuraGradient: "radial-gradient(circle at center, #a8edea, #86d3ce, #5eead4, transparent 70%)",
+			CardAccent:   "from-teal-50 to-cyan-50",
+			TextColor:    "text-teal-900",
+			PrimaryColor: "#5eead4",
 			IconName:     "sparkles",
 			I18N: []struct {
 				Lang         string
@@ -232,10 +232,10 @@ func seedGlowtypes(db *gorm.DB) {
 		},
 		{
 			TypeCode:     "warm-ember",
-			AuraGradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-			CardAccent:   "#f5576c",
-			TextColor:    "#2C3E50",
-			PrimaryColor: "#f5576c",
+			AuraGradient: "radial-gradient(circle at center, #fcd34d, #f59e0b, #d97706, transparent 70%)",
+			CardAccent:   "from-amber-50 to-yellow-50",
+			TextColor:    "text-amber-900",
+			PrimaryColor: "#d97706",
 			IconName:     "flame",
 			I18N: []struct {
 				Lang         string
