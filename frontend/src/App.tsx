@@ -241,7 +241,8 @@ const APP_CONFIG = {
         en: "Your emotions are messengers, not commanders. They bring information, but you decide what to do with it.",
         zh: "情绪是信使，不是指挥官。它们带来信息，但由你决定如何回应。"
       },
-      color: "from-violet-400 to-indigo-500"
+      color: "from-violet-400 to-indigo-500",
+      forTypes: ["Quiet Comet", "Radiant Nebula"] // 通用
     },
     {
       id: 2,
@@ -250,7 +251,8 @@ const APP_CONFIG = {
         en: "When thoughts spiral, try 5-4-3-2-1: See 5 things, touch 4, hear 3, smell 2, taste 1. You're here, now.",
         zh: "当思绪翻涌时，试试 5-4-3-2-1：看5样、摸4样、听3样、闻2样、尝1样。你在这里，此刻。"
       },
-      color: "from-emerald-400 to-teal-500"
+      color: "from-emerald-400 to-teal-500",
+      forTypes: ["Quiet Comet"] // 内向者更容易思绪翻涌
     },
     {
       id: 3,
@@ -259,7 +261,8 @@ const APP_CONFIG = {
         en: "That racing heart? Your brain protecting you. It's uncomfortable, not dangerous. Breathe—the alarm will quiet.",
         zh: "心跳加速？那是大脑在保护你。不舒服，但不危险。深呼吸——警报会平息。"
       },
-      color: "from-amber-400 to-orange-500"
+      color: "from-amber-400 to-orange-500",
+      forTypes: ["Quiet Comet", "Radiant Nebula"] // 通用
     },
     {
       id: 4,
@@ -268,7 +271,8 @@ const APP_CONFIG = {
         en: "Mood swings in your teens and twenties are normal—hormones are intense. You're not broken, you're becoming.",
         zh: "青春期情绪波动是正常的——荷尔蒙在作祟。你没有坏掉，你在成长。"
       },
-      color: "from-rose-400 to-pink-500"
+      color: "from-rose-400 to-pink-500",
+      forTypes: ["Radiant Nebula"] // 情绪波动大的创造者
     },
     {
       id: 5,
@@ -277,7 +281,8 @@ const APP_CONFIG = {
         en: "You can't pour from an empty cup. Rest isn't laziness—it's how you refill. Take care of yourself first.",
         zh: "空杯子倒不出水。休息不是懒惰——是重新注满自己。先照顾好自己。"
       },
-      color: "from-sky-400 to-blue-500"
+      color: "from-sky-400 to-blue-500",
+      forTypes: ["Quiet Comet"] // 内向者需要更多独处恢复
     },
     {
       id: 6,
@@ -286,7 +291,8 @@ const APP_CONFIG = {
         en: "Reaching out isn't weakness—it's wisdom. The strongest people know they don't have to carry everything alone.",
         zh: "求助不是软弱——是智慧。最坚强的人知道，不必独自扛下一切。"
       },
-      color: "from-fuchsia-400 to-purple-500"
+      color: "from-fuchsia-400 to-purple-500",
+      forTypes: ["Quiet Comet"] // 内向者更难开口求助
     },
     {
       id: 7,
@@ -295,7 +301,8 @@ const APP_CONFIG = {
         en: "No feeling is final. Like weather, emotions come and go. The storm always passes, even when it doesn't feel that way.",
         zh: "没有任何情绪是永恒的。像天气一样，情绪来了又走。风暴终会过去，即使此刻感觉不到。"
       },
-      color: "from-cyan-400 to-teal-500"
+      color: "from-cyan-400 to-teal-500",
+      forTypes: ["Radiant Nebula"] // 情绪强烈的人需要这个提醒
     },
     {
       id: 8,
@@ -304,7 +311,28 @@ const APP_CONFIG = {
         en: "Talk to yourself like you'd talk to a friend. You deserve the same kindness you give to others.",
         zh: "用对待朋友的方式对待自己。你值得拥有你给予他人的那份温柔。"
       },
-      color: "from-lime-400 to-green-500"
+      color: "from-lime-400 to-green-500",
+      forTypes: ["Quiet Comet", "Radiant Nebula"] // 通用
+    },
+    {
+      id: 9,
+      title: { en: "Your Chaos Is Creative", zh: "你的混乱是创造力" },
+      message: {
+        en: "That whirlwind inside you? It's not a flaw—it's raw creative energy. Channel it, don't fight it.",
+        zh: "内心的风暴？不是缺陷——是原始的创造能量。引导它，而非对抗它。"
+      },
+      color: "from-orange-400 to-red-500",
+      forTypes: ["Radiant Nebula"] // 创造者专属
+    },
+    {
+      id: 10,
+      title: { en: "Silence Is Strength", zh: "沉默是力量" },
+      message: {
+        en: "Your quiet observation isn't absence—it's presence. You see what others miss. That's your superpower.",
+        zh: "你的安静观察不是缺席——是在场。你看到别人忽略的。这是你的超能力。"
+      },
+      color: "from-indigo-400 to-blue-500",
+      forTypes: ["Quiet Comet"] // 内向者专属
     }
   ],
   // NEW: Structured hotlines for better UX
@@ -929,18 +957,47 @@ const SafetyView = ({ onBack, lang }) => {
   );
 };
 
-const LearnView = ({ onBack, lang }) => {
+const LearnView = ({ onBack, lang, userType = null }) => {
   const t = TRANSLATIONS[lang].learn;
-  const sticks = APP_CONFIG.glowSticks;
+  const allSticks = APP_CONFIG.glowSticks;
   const [phase, setPhase] = useState<'idle' | 'shaking' | 'revealed'>('idle');
-  const [currentStick, setCurrentStick] = useState<typeof sticks[0] | null>(null);
+  const [currentStick, setCurrentStick] = useState<typeof allSticks[0] | null>(null);
+  const [drawnIds, setDrawnIds] = useState<number[]>([]); // Track drawn sticks to avoid repeats
+
+  // Get sticks pool based on user type (prioritize matching, then all)
+  const getStickPool = () => {
+    const availableSticks = allSticks.filter(s => !drawnIds.includes(s.id));
+    if (availableSticks.length === 0) {
+      // Reset if all drawn
+      setDrawnIds([]);
+      return allSticks;
+    }
+
+    if (userType) {
+      // Map type codes to display names
+      const typeMapping: Record<string, string> = {
+        'quiet-comet': 'Quiet Comet',
+        'radiant-nebula': 'Radiant Nebula',
+        'Quiet Comet': 'Quiet Comet',
+        'Radiant Nebula': 'Radiant Nebula'
+      };
+      const mappedType = typeMapping[userType] || userType;
+      const matchingSticks = availableSticks.filter(s => s.forTypes?.includes(mappedType));
+      // 70% chance to pick from matching, 30% from all (adds variety)
+      if (matchingSticks.length > 0 && Math.random() < 0.7) {
+        return matchingSticks;
+      }
+    }
+    return availableSticks;
+  };
 
   const drawStick = () => {
     setPhase('shaking');
-    // Random delay for suspense
     setTimeout(() => {
-      const randomStick = sticks[Math.floor(Math.random() * sticks.length)];
+      const pool = getStickPool();
+      const randomStick = pool[Math.floor(Math.random() * pool.length)];
       setCurrentStick(randomStick);
+      setDrawnIds(prev => [...prev, randomStick.id]);
       setPhase('revealed');
     }, 1500);
   };
@@ -1382,7 +1439,7 @@ const AppShell = () => {
           {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => { trackEvent('ai_chat_start'); setView('chat'); }} onTips={() => alert("Hydrate & Rest!")} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} apiPrompts={apiPrompts} /></motion.div>)}
           {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} apiPrompts={apiPrompts} /></motion.div>)}
           {view === 'safety' && (<motion.div key="safety" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute w-full top-0 z-30"><SafetyView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
-          {view === 'learn' && (<motion.div key="learn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><LearnView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
+          {view === 'learn' && (<motion.div key="learn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><LearnView onBack={() => setView('landing')} lang={lang} userType={resultType} /></motion.div>)}
           {view === 'terms' && (<motion.div key="terms" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><TermsView onBack={() => { setView('landing'); window.history.pushState({}, '', '/'); }} lang={lang} /></motion.div>)}
           {view === 'privacy' && (<motion.div key="privacy" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><PrivacyView onBack={() => { setView('landing'); window.history.pushState({}, '', '/'); }} lang={lang} /></motion.div>)}
         </AnimatePresence>
