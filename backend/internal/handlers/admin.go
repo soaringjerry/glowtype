@@ -1178,3 +1178,588 @@ func DeleteGlowStick(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+// ============ Bulk Import/Export ============
+
+// ImportMode defines how to handle existing data during import
+type ImportMode string
+
+const (
+	ImportModeMerge   ImportMode = "merge"   // Upsert: update existing, create new
+	ImportModeReplace ImportMode = "replace" // Clear all and import fresh
+)
+
+// ImportResult contains the result of an import operation
+type ImportResult struct {
+	Success  bool              `json:"success"`
+	Mode     ImportMode        `json:"mode"`
+	Total    int               `json:"total"`
+	Created  int               `json:"created"`
+	Updated  int               `json:"updated"`
+	Skipped  int               `json:"skipped"`
+	Errors   []ImportError     `json:"errors,omitempty"`
+	Warnings []string          `json:"warnings,omitempty"`
+}
+
+// ImportError describes an error for a specific item
+type ImportError struct {
+	Index   int    `json:"index"`
+	ID      string `json:"id,omitempty"`
+	Message string `json:"message"`
+}
+
+// QuestionImportItem represents a question in import format
+type QuestionImportItem struct {
+	QuestionID         string             `json:"questionId"`
+	Order              int                `json:"order"`
+	QuestionZH         string             `json:"questionZh"`
+	QuestionEN         string             `json:"questionEn"`
+	Options            []database.OptionConfig `json:"options"`
+	PrimaryDimensionID *uint              `json:"primaryDimensionId,omitempty"`
+}
+
+// ImportQuestions handles bulk question import with validation
+func ImportQuestions(c *gin.Context) {
+	var req struct {
+		Mode  ImportMode           `json:"mode"`
+		Items []QuestionImportItem `json:"items"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON: " + err.Error()})
+		return
+	}
+
+	// Default to merge mode
+	if req.Mode == "" {
+		req.Mode = ImportModeMerge
+	}
+
+	// Validate mode
+	if req.Mode != ImportModeMerge && req.Mode != ImportModeReplace {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mode. Use 'merge' or 'replace'"})
+		return
+	}
+
+	// Validate items array
+	if len(req.Items) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No items to import"})
+		return
+	}
+
+	// Limit import size to prevent abuse
+	if len(req.Items) > 500 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Too many items. Maximum 500 questions per import"})
+		return
+	}
+
+	// Get valid dimension keys for validation
+	var dimensions []database.TraitDimensionDB
+	database.GetDB().Find(&dimensions)
+	validDimKeys := make(map[string]bool)
+	for _, d := range dimensions {
+		validDimKeys[d.Key] = true
+	}
+
+	// Validate all items first
+	result := ImportResult{
+		Mode:  req.Mode,
+		Total: len(req.Items),
+	}
+
+	seenIDs := make(map[string]int) // Track duplicate questionIds within import
+	for i, item := range req.Items {
+		errors := validateQuestionItem(item, i, validDimKeys)
+
+		// Check for duplicate questionId within import
+		if prev, exists := seenIDs[item.QuestionID]; exists {
+			errors = append(errors, ImportError{
+				Index:   i,
+				ID:      item.QuestionID,
+				Message: fmt.Sprintf("Duplicate questionId '%s' (first seen at index %d)", item.QuestionID, prev),
+			})
+		}
+		seenIDs[item.QuestionID] = i
+
+		result.Errors = append(result.Errors, errors...)
+	}
+
+	// If there are validation errors, return without importing
+	if len(result.Errors) > 0 {
+		result.Success = false
+		c.JSON(http.StatusBadRequest, result)
+		return
+	}
+
+	db := database.GetDB()
+
+	// For replace mode, use transaction to clear and import
+	if req.Mode == ImportModeReplace {
+		tx := db.Begin()
+
+		// Soft delete all existing questions
+		if err := tx.Model(&database.QuizQuestionDB{}).Where("1=1").Update("is_active", false).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear existing questions: " + err.Error()})
+			return
+		}
+
+		// Hard delete for clean replace
+		if err := tx.Unscoped().Where("1=1").Delete(&database.QuizQuestionDB{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete existing questions: " + err.Error()})
+			return
+		}
+
+		// Import all items
+		for _, item := range req.Items {
+			optionsJSON, _ := json.Marshal(item.Options)
+			q := database.QuizQuestionDB{
+				QuestionID:         item.QuestionID,
+				Order:              item.Order,
+				QuestionZH:         item.QuestionZH,
+				QuestionEN:         item.QuestionEN,
+				Options:            optionsJSON,
+				PrimaryDimensionID: item.PrimaryDimensionID,
+				IsActive:           true,
+				Version:            1,
+			}
+			if err := tx.Create(&q).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create question '%s': %s", item.QuestionID, err.Error())})
+				return
+			}
+			result.Created++
+		}
+
+		tx.Commit()
+	} else {
+		// Merge mode: upsert each item
+		for _, item := range req.Items {
+			var existing database.QuizQuestionDB
+			err := db.Where("question_id = ?", item.QuestionID).First(&existing).Error
+
+			optionsJSON, _ := json.Marshal(item.Options)
+
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Create new
+				q := database.QuizQuestionDB{
+					QuestionID:         item.QuestionID,
+					Order:              item.Order,
+					QuestionZH:         item.QuestionZH,
+					QuestionEN:         item.QuestionEN,
+					Options:            optionsJSON,
+					PrimaryDimensionID: item.PrimaryDimensionID,
+					IsActive:           true,
+					Version:            1,
+				}
+				if err := db.Create(&q).Error; err != nil {
+					result.Errors = append(result.Errors, ImportError{
+						ID:      item.QuestionID,
+						Message: "Failed to create: " + err.Error(),
+					})
+					result.Skipped++
+					continue
+				}
+				result.Created++
+			} else if err != nil {
+				result.Errors = append(result.Errors, ImportError{
+					ID:      item.QuestionID,
+					Message: "Database error: " + err.Error(),
+				})
+				result.Skipped++
+			} else {
+				// Update existing
+				existing.Order = item.Order
+				existing.QuestionZH = item.QuestionZH
+				existing.QuestionEN = item.QuestionEN
+				existing.Options = optionsJSON
+				existing.PrimaryDimensionID = item.PrimaryDimensionID
+				existing.IsActive = true
+				existing.Version++
+				if err := db.Save(&existing).Error; err != nil {
+					result.Errors = append(result.Errors, ImportError{
+						ID:      item.QuestionID,
+						Message: "Failed to update: " + err.Error(),
+					})
+					result.Skipped++
+					continue
+				}
+				result.Updated++
+			}
+		}
+	}
+
+	result.Success = len(result.Errors) == 0
+
+	c.Set("auditMetadata", map[string]any{
+		"importMode": req.Mode,
+		"total":      result.Total,
+		"created":    result.Created,
+		"updated":    result.Updated,
+	})
+
+	c.JSON(http.StatusOK, result)
+}
+
+// validateQuestionItem validates a single question import item
+func validateQuestionItem(item QuestionImportItem, index int, validDimKeys map[string]bool) []ImportError {
+	var errors []ImportError
+
+	// Required: questionId
+	if strings.TrimSpace(item.QuestionID) == "" {
+		errors = append(errors, ImportError{
+			Index:   index,
+			Message: "questionId is required",
+		})
+	} else if len(item.QuestionID) > 50 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.QuestionID,
+			Message: "questionId too long (max 50 characters)",
+		})
+	}
+
+	// Required: at least one question text
+	if strings.TrimSpace(item.QuestionZH) == "" && strings.TrimSpace(item.QuestionEN) == "" {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.QuestionID,
+			Message: "At least one of questionZh or questionEn is required",
+		})
+	}
+
+	// Required: at least 2 options
+	if len(item.Options) < 2 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.QuestionID,
+			Message: "At least 2 options are required",
+		})
+	}
+
+	// Validate each option
+	for optIdx, opt := range item.Options {
+		// Option must have at least one text
+		if strings.TrimSpace(opt.Text["zh"]) == "" && strings.TrimSpace(opt.Text["en"]) == "" {
+			errors = append(errors, ImportError{
+				Index:   index,
+				ID:      item.QuestionID,
+				Message: fmt.Sprintf("Option %d: at least one text (zh or en) is required", optIdx+1),
+			})
+		}
+
+		// Validate dimension keys in scores
+		for dimKey := range opt.Scores {
+			if !validDimKeys[dimKey] {
+				errors = append(errors, ImportError{
+					Index:   index,
+					ID:      item.QuestionID,
+					Message: fmt.Sprintf("Option %d: unknown dimension key '%s'", optIdx+1, dimKey),
+				})
+			}
+		}
+	}
+
+	// Validate order is reasonable
+	if item.Order < 0 || item.Order > 10000 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.QuestionID,
+			Message: "Order must be between 0 and 10000",
+		})
+	}
+
+	return errors
+}
+
+// RuleImportItem represents a scoring rule in import format
+type RuleImportItem struct {
+	Name           string                    `json:"name"`
+	Description    string                    `json:"description,omitempty"`
+	Conditions     database.RuleConditions   `json:"conditions"`
+	ResultTypeCode string                    `json:"resultTypeCode"`
+	Priority       int                       `json:"priority"`
+	IsFallback     bool                      `json:"isFallback"`
+}
+
+// ImportRules handles bulk scoring rules import with validation
+func ImportRules(c *gin.Context) {
+	var req struct {
+		Mode  ImportMode       `json:"mode"`
+		Items []RuleImportItem `json:"items"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON: " + err.Error()})
+		return
+	}
+
+	// Default to merge mode
+	if req.Mode == "" {
+		req.Mode = ImportModeMerge
+	}
+
+	// Validate mode
+	if req.Mode != ImportModeMerge && req.Mode != ImportModeReplace {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mode. Use 'merge' or 'replace'"})
+		return
+	}
+
+	// Validate items array
+	if len(req.Items) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No items to import"})
+		return
+	}
+
+	// Limit import size
+	if len(req.Items) > 200 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Too many items. Maximum 200 rules per import"})
+		return
+	}
+
+	// Get valid dimension keys and glowtype codes for validation
+	var dimensions []database.TraitDimensionDB
+	database.GetDB().Find(&dimensions)
+	validDimKeys := make(map[string]bool)
+	for _, d := range dimensions {
+		validDimKeys[d.Key] = true
+	}
+
+	var glowtypes []database.GlowtypeDB
+	database.GetDB().Where("is_active = ?", true).Find(&glowtypes)
+	validTypeCodes := make(map[string]bool)
+	for _, g := range glowtypes {
+		validTypeCodes[g.TypeCode] = true
+	}
+
+	// Validate all items first
+	result := ImportResult{
+		Mode:  req.Mode,
+		Total: len(req.Items),
+	}
+
+	seenNames := make(map[string]int)
+	fallbackCount := 0
+	for i, item := range req.Items {
+		errors := validateRuleItem(item, i, validDimKeys, validTypeCodes)
+
+		// Check for duplicate names within import
+		if prev, exists := seenNames[item.Name]; exists {
+			errors = append(errors, ImportError{
+				Index:   i,
+				ID:      item.Name,
+				Message: fmt.Sprintf("Duplicate rule name '%s' (first seen at index %d)", item.Name, prev),
+			})
+		}
+		seenNames[item.Name] = i
+
+		if item.IsFallback {
+			fallbackCount++
+		}
+
+		result.Errors = append(result.Errors, errors...)
+	}
+
+	// Warn if multiple fallbacks
+	if fallbackCount > 1 {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("Multiple fallback rules detected (%d). Only one should be marked as fallback.", fallbackCount))
+	}
+
+	// If there are validation errors, return without importing
+	if len(result.Errors) > 0 {
+		result.Success = false
+		c.JSON(http.StatusBadRequest, result)
+		return
+	}
+
+	db := database.GetDB()
+
+	// For replace mode, use transaction
+	if req.Mode == ImportModeReplace {
+		tx := db.Begin()
+
+		// Hard delete all existing rules
+		if err := tx.Unscoped().Where("1=1").Delete(&database.ScoringRuleDB{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete existing rules: " + err.Error()})
+			return
+		}
+
+		// Import all items
+		for _, item := range req.Items {
+			conditionsJSON, _ := json.Marshal(item.Conditions)
+			rule := database.ScoringRuleDB{
+				Name:           item.Name,
+				Description:    item.Description,
+				Conditions:     conditionsJSON,
+				ResultTypeCode: item.ResultTypeCode,
+				Priority:       item.Priority,
+				IsFallback:     item.IsFallback,
+				IsActive:       true,
+				Version:        1,
+			}
+			if err := tx.Create(&rule).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create rule '%s': %s", item.Name, err.Error())})
+				return
+			}
+			result.Created++
+		}
+
+		tx.Commit()
+	} else {
+		// Merge mode: upsert by name
+		for _, item := range req.Items {
+			var existing database.ScoringRuleDB
+			err := db.Where("name = ?", item.Name).First(&existing).Error
+
+			conditionsJSON, _ := json.Marshal(item.Conditions)
+
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Create new
+				rule := database.ScoringRuleDB{
+					Name:           item.Name,
+					Description:    item.Description,
+					Conditions:     conditionsJSON,
+					ResultTypeCode: item.ResultTypeCode,
+					Priority:       item.Priority,
+					IsFallback:     item.IsFallback,
+					IsActive:       true,
+					Version:        1,
+				}
+				if err := db.Create(&rule).Error; err != nil {
+					result.Errors = append(result.Errors, ImportError{
+						ID:      item.Name,
+						Message: "Failed to create: " + err.Error(),
+					})
+					result.Skipped++
+					continue
+				}
+				result.Created++
+			} else if err != nil {
+				result.Errors = append(result.Errors, ImportError{
+					ID:      item.Name,
+					Message: "Database error: " + err.Error(),
+				})
+				result.Skipped++
+			} else {
+				// Update existing
+				existing.Description = item.Description
+				existing.Conditions = conditionsJSON
+				existing.ResultTypeCode = item.ResultTypeCode
+				existing.Priority = item.Priority
+				existing.IsFallback = item.IsFallback
+				existing.IsActive = true
+				existing.Version++
+				if err := db.Save(&existing).Error; err != nil {
+					result.Errors = append(result.Errors, ImportError{
+						ID:      item.Name,
+						Message: "Failed to update: " + err.Error(),
+					})
+					result.Skipped++
+					continue
+				}
+				result.Updated++
+			}
+		}
+	}
+
+	result.Success = len(result.Errors) == 0
+
+	c.Set("auditMetadata", map[string]any{
+		"importMode": req.Mode,
+		"total":      result.Total,
+		"created":    result.Created,
+		"updated":    result.Updated,
+	})
+
+	c.JSON(http.StatusOK, result)
+}
+
+// validateRuleItem validates a single rule import item
+func validateRuleItem(item RuleImportItem, index int, validDimKeys, validTypeCodes map[string]bool) []ImportError {
+	var errors []ImportError
+
+	// Required: name
+	if strings.TrimSpace(item.Name) == "" {
+		errors = append(errors, ImportError{
+			Index:   index,
+			Message: "name is required",
+		})
+	} else if len(item.Name) > 100 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Name,
+			Message: "name too long (max 100 characters)",
+		})
+	}
+
+	// Required: resultTypeCode
+	if strings.TrimSpace(item.ResultTypeCode) == "" {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Name,
+			Message: "resultTypeCode is required",
+		})
+	} else if !validTypeCodes[item.ResultTypeCode] {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Name,
+			Message: fmt.Sprintf("Unknown glowtype code '%s'", item.ResultTypeCode),
+		})
+	}
+
+	// Validate dimension keys in conditions
+	for dimKey := range item.Conditions.Dimensions {
+		if !validDimKeys[dimKey] {
+			errors = append(errors, ImportError{
+				Index:   index,
+				ID:      item.Name,
+				Message: fmt.Sprintf("Unknown dimension key '%s' in conditions", dimKey),
+			})
+		}
+	}
+
+	// Validate priority range
+	if item.Priority < -1000 || item.Priority > 1000 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Name,
+			Message: "Priority must be between -1000 and 1000",
+		})
+	}
+
+	return errors
+}
+
+// ExportRules exports all active scoring rules in import-compatible format
+func ExportRules(c *gin.Context) {
+	var rules []database.ScoringRuleDB
+	if err := database.GetDB().Where("is_active = ?", true).Order("priority desc").Find(&rules).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to export format
+	items := make([]RuleImportItem, 0, len(rules))
+	for _, r := range rules {
+		var conditions database.RuleConditions
+		if err := json.Unmarshal(r.Conditions, &conditions); err != nil {
+			// Use empty conditions if parsing fails
+			conditions = database.RuleConditions{Dimensions: map[string]database.DimensionCondition{}}
+		}
+
+		items = append(items, RuleImportItem{
+			Name:           r.Name,
+			Description:    r.Description,
+			Conditions:     conditions,
+			ResultTypeCode: r.ResultTypeCode,
+			Priority:       r.Priority,
+			IsFallback:     r.IsFallback,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items": items,
+		"count": len(items),
+	})
+}

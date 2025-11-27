@@ -98,6 +98,7 @@ func New(cfg config.Config) *gin.Engine {
 		admin.POST("/questions", handlers.CreateQuestion)
 		admin.PUT("/questions/:id", handlers.UpdateQuestion)
 		admin.DELETE("/questions/:id", handlers.DeleteQuestion)
+		admin.POST("/questions/import", handlers.ImportQuestions)
 
 		// Glowtypes CRUD
 		admin.GET("/glowtypes", handlers.ListGlowtypes)
@@ -115,6 +116,8 @@ func New(cfg config.Config) *gin.Engine {
 		admin.POST("/rules", handlers.CreateRule)
 		admin.PUT("/rules/:id", handlers.UpdateRule)
 		admin.DELETE("/rules/:id", handlers.DeleteRule)
+		admin.POST("/rules/import", handlers.ImportRules)
+		admin.GET("/rules/export", handlers.ExportRules)
 
 		// Rule Debugging
 		admin.POST("/rules/debug", handlers.DebugRules)

@@ -77,6 +77,50 @@ export interface PromptSlot {
   id?: number;
 }
 
+// Import/Export types
+export type ImportMode = 'merge' | 'replace';
+
+export interface ImportError {
+  index: number;
+  id?: string;
+  message: string;
+}
+
+export interface ImportResult {
+  success: boolean;
+  mode: ImportMode;
+  total: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors?: ImportError[];
+  warnings?: string[];
+}
+
+export interface QuestionImportItem {
+  questionId: string;
+  order: number;
+  questionZh: string;
+  questionEn: string;
+  options: Array<{
+    text: { en: string; zh: string };
+    value: string;
+    scores: Record<string, number>;
+  }>;
+  primaryDimensionId?: number;
+}
+
+export interface RuleImportItem {
+  name: string;
+  description?: string;
+  conditions: {
+    dimensions: Record<string, { min?: number; max?: number }>;
+  };
+  resultTypeCode: string;
+  priority: number;
+  isFallback: boolean;
+}
+
 const ADMIN_TOKEN_KEY = 'admin_token';
 const ADMIN_USER_KEY = 'admin_user';
 
@@ -257,6 +301,8 @@ export const useAdminApi = () => {
   const createQuestion = (data: any) => apiCall('/admin/questions', { method: 'POST', body: JSON.stringify(data) });
   const updateQuestion = (id: number, data: any) => apiCall(`/admin/questions/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   const deleteQuestion = (id: number) => apiCall(`/admin/questions/${id}`, { method: 'DELETE' });
+  const importQuestions = (items: QuestionImportItem[], mode: ImportMode = 'merge') =>
+    apiCall<ImportResult>('/admin/questions/import', { method: 'POST', body: JSON.stringify({ items, mode }) });
 
   // Glowtypes
   const listGlowtypes = () => apiCall<any[]>('/admin/glowtypes');
@@ -274,6 +320,9 @@ export const useAdminApi = () => {
   const createRule = (data: any) => apiCall('/admin/rules', { method: 'POST', body: JSON.stringify(data) });
   const updateRule = (id: number, data: any) => apiCall(`/admin/rules/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   const deleteRule = (id: number) => apiCall(`/admin/rules/${id}`, { method: 'DELETE' });
+  const importRules = (items: RuleImportItem[], mode: ImportMode = 'merge') =>
+    apiCall<ImportResult>('/admin/rules/import', { method: 'POST', body: JSON.stringify({ items, mode }) });
+  const exportRules = () => apiCall<{ items: RuleImportItem[]; count: number }>('/admin/rules/export');
 
   // Rule Debugging
   const debugRules = (dimensionScores: Record<string, number>) =>
@@ -325,6 +374,7 @@ export const useAdminApi = () => {
     createQuestion,
     updateQuestion,
     deleteQuestion,
+    importQuestions,
     // Glowtypes
     listGlowtypes,
     getGlowtype,
@@ -339,6 +389,8 @@ export const useAdminApi = () => {
     createRule,
     updateRule,
     deleteRule,
+    importRules,
+    exportRules,
     debugRules,
     validateRules,
     // Prompts
