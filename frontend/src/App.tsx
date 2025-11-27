@@ -810,8 +810,14 @@ interface ResultViewProps {
 }
 
 const ResultView = ({ onChat, onHelp, lang, resultType, apiPrompts = {} }: ResultViewProps) => {
-  // Use useMemo to compute data from resultType (no setState needed)
-  const data = useMemo(() => findGlowtypeConfig(resultType), [resultType]);
+  // Use useMemo to compute fallback data from resultType
+  const fallbackData = useMemo(() => findGlowtypeConfig(resultType), [resultType]);
+  // State for API-fetched styling
+  const [apiStyling, setApiStyling] = useState<{
+    auraGradient?: string;
+    cardAccent?: string;
+    textColor?: string;
+  }>({});
   const t = TRANSLATIONS[lang].result;
   const [insight, setInsight] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -819,6 +825,37 @@ const ResultView = ({ onChat, onHelp, lang, resultType, apiPrompts = {} }: Resul
   // Track previous resultType and lang to reset insight
   const prevResultType = useRef(resultType);
   const prevLang = useRef(lang);
+
+  // Fetch glowtype styling from API
+  useEffect(() => {
+    if (!resultType) return;
+    const fetchStyling = async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/glowtypes/${resultType}?lang=${lang}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.auraGradient || json.cardAccent || json.textColor) {
+            setApiStyling({
+              auraGradient: json.auraGradient,
+              cardAccent: json.cardAccent,
+              textColor: json.textColor,
+            });
+          }
+        }
+      } catch {
+        // Silently fall back to hardcoded styling
+      }
+    };
+    fetchStyling();
+  }, [resultType, lang]);
+
+  // Merge API styling with fallback data
+  const data = useMemo(() => ({
+    ...fallbackData,
+    auraGradient: apiStyling.auraGradient || fallbackData.auraGradient,
+    cardAccent: apiStyling.cardAccent || fallbackData.cardAccent,
+    textColor: apiStyling.textColor || fallbackData.textColor,
+  }), [fallbackData, apiStyling]);
 
   // Reset insight when resultType or lang changes (using ref comparison)
   if (prevResultType.current !== resultType || prevLang.current !== lang) {

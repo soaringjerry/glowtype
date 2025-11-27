@@ -28,6 +28,8 @@ interface Glowtype {
   disclaimerEn: string;
   primaryColor: string;
   gradient: string;
+  cardAccent: string;
+  textColor: string;
 }
 
 export default function Glowtypes() {
@@ -76,7 +78,9 @@ export default function Glowtypes() {
       disclaimerZh: '',
       disclaimerEn: '',
       primaryColor: '#8B5CF6',
-      gradient: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
+      gradient: 'radial-gradient(circle at center, #a5b4fc, #818cf8, #4f46e5, transparent 70%)',
+      cardAccent: 'from-indigo-50 to-blue-50',
+      textColor: 'text-indigo-900',
     });
   };
 
@@ -293,6 +297,28 @@ export default function Glowtypes() {
                   placeholder={t('glowtypes.gradientPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.cardAccent')}</label>
+                <input
+                  type="text"
+                  value={editForm.cardAccent || ''}
+                  onChange={(e) => setEditForm({ ...editForm, cardAccent: e.target.value })}
+                  placeholder="from-indigo-50 to-blue-50"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('glowtypes.cardAccentHint')}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.textColor')}</label>
+                <input
+                  type="text"
+                  value={editForm.textColor || ''}
+                  onChange={(e) => setEditForm({ ...editForm, textColor: e.target.value })}
+                  placeholder="text-indigo-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('glowtypes.textColorHint')}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('glowtypes.descriptionZh')}</label>

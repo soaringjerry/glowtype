@@ -173,6 +173,8 @@ type GlowtypeMerged struct {
 	TypeCode        string `json:"typeCode"`
 	PrimaryColor    string `json:"primaryColor"`
 	Gradient        string `json:"gradient"`
+	CardAccent      string `json:"cardAccent"`
+	TextColor       string `json:"textColor"`
 	NameZh          string `json:"nameZh"`
 	NameEn          string `json:"nameEn"`
 	TaglineZh       string `json:"taglineZh"`
@@ -200,6 +202,8 @@ func ListGlowtypes(c *gin.Context) {
 			TypeCode:     gt.TypeCode,
 			PrimaryColor: gt.PrimaryColor,
 			Gradient:     gt.AuraGradient,
+			CardAccent:   gt.CardAccent,
+			TextColor:    gt.TextColor,
 		}
 
 		// Load i18n records
@@ -255,6 +259,8 @@ func CreateGlowtype(c *gin.Context) {
 		TypeCode:     input.TypeCode,
 		PrimaryColor: input.PrimaryColor,
 		AuraGradient: input.Gradient,
+		CardAccent:   input.CardAccent,
+		TextColor:    input.TextColor,
 		IsActive:     true,
 		Version:      1,
 	}
@@ -312,6 +318,8 @@ func UpdateGlowtype(c *gin.Context) {
 	glowtype.TypeCode = input.TypeCode
 	glowtype.PrimaryColor = input.PrimaryColor
 	glowtype.AuraGradient = input.Gradient
+	glowtype.CardAccent = input.CardAccent
+	glowtype.TextColor = input.TextColor
 	if err := database.GetDB().Save(&glowtype).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
