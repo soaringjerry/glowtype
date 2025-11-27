@@ -97,7 +97,7 @@ var (
 )
 
 // GetRegionFromIP derives region code from IP address.
-// External lookup is disabled by default; set ENABLE_GEOIP_LOOKUP=true to enable HTTPS lookups.
+// External lookup is enabled by default (HTTPS); set DISABLE_GEOIP_LOOKUP=true to turn it off.
 // The IP is NOT stored, only the derived region.
 func GetRegionFromIP(ip string) string {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
@@ -198,8 +198,16 @@ func isPrivateIP(ipStr string) bool {
 }
 
 func isGeoLookupEnabled() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("ENABLE_GEOIP_LOOKUP")))
-	return v == "1" || v == "true" || v == "yes"
+	disable := strings.ToLower(strings.TrimSpace(os.Getenv("DISABLE_GEOIP_LOOKUP")))
+	if disable == "1" || disable == "true" || disable == "yes" {
+		return false
+	}
+
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("ENABLE_GEOIP_LOOKUP"))); v != "" {
+		return v == "1" || v == "true" || v == "yes"
+	}
+
+	return true
 }
 
 // ParseDeviceType extracts device type from User-Agent
