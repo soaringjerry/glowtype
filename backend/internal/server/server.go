@@ -22,9 +22,13 @@ func New(cfg config.Config) *gin.Engine {
 	database.InitDB()
 
 	r := gin.New()
-	proxies := buildTrustedProxies(cfg.TrustedProxies)
-	if err := r.SetTrustedProxies(proxies); err != nil {
+	proxyCfg := buildTrustedProxies(cfg.TrustedProxies)
+	if err := r.SetTrustedProxies(proxyCfg.proxies); err != nil {
 		log.Fatalf("failed to set trusted proxies: %v", err)
+	}
+	if proxyCfg.enableCloudflareHeader {
+		// Prefer Cloudflare-provided client IP when the request comes from a trusted CF edge.
+		r.RemoteIPHeaders = mergeHeaders([]string{gin.PlatformCloudflare}, r.RemoteIPHeaders)
 	}
 	r.Use(middleware.PrivacyLogger())
 	r.Use(gin.Recovery())
@@ -153,29 +157,95 @@ func New(cfg config.Config) *gin.Engine {
 
 // buildTrustedProxies returns proxy CIDRs for Gin.
 // "auto" trusts loopback + private ranges (works for docker/k8s behind one hop reverse proxy).
-// Any other value: comma-separated CIDR/IP list. Empty = trust none.
-func buildTrustedProxies(raw string) []string {
-	value := strings.TrimSpace(strings.ToLower(raw))
-	var proxies []string
+// "cloudflare" (or "cf") expands to official Cloudflare edge CIDRs, and also enables the CF-Connecting-IP header.
+// Any other value: comma-separated CIDR/IP list. Empty/none = trust none.
+func buildTrustedProxies(raw string) proxyConfig {
+	value := strings.TrimSpace(raw)
+	if value == "" || strings.EqualFold(value, "none") {
+		return proxyConfig{proxies: []string{}}
+	}
 
-	switch value {
-	case "", "none":
-		proxies = []string{}
-	case "auto":
-		proxies = []string{
-			"127.0.0.1",
-			"10.0.0.0/8",
-			"172.16.0.0/12",
-			"192.168.0.0/16",
-			"::1",
+	var proxies []string
+	enableCloudflareHeader := false
+
+	for _, part := range strings.Split(value, ",") {
+		token := strings.ToLower(strings.TrimSpace(part))
+		if token == "" {
+			continue
 		}
-	default:
-		for _, part := range strings.Split(raw, ",") {
-			if trimmed := strings.TrimSpace(part); trimmed != "" {
-				proxies = append(proxies, trimmed)
-			}
+
+		switch token {
+		case "auto":
+			proxies = append(proxies, defaultAutoTrustedProxies...)
+		case "cloudflare", "cf":
+			proxies = append(proxies, cloudflareTrustedProxies...)
+			enableCloudflareHeader = true
+		default:
+			proxies = append(proxies, token)
 		}
 	}
 
-	return proxies
+	return proxyConfig{
+		proxies:                dedupeStrings(proxies),
+		enableCloudflareHeader: enableCloudflareHeader,
+	}
+}
+
+type proxyConfig struct {
+	proxies                []string
+	enableCloudflareHeader bool
+}
+
+var defaultAutoTrustedProxies = []string{
+	"127.0.0.1",
+	"10.0.0.0/8",
+	"172.16.0.0/12",
+	"192.168.0.0/16",
+	"::1",
+}
+
+// Cloudflare edge CIDRs as of 2025-01-02 (https://www.cloudflare.com/ips/).
+var cloudflareTrustedProxies = []string{
+	"173.245.48.0/20",
+	"103.21.244.0/22",
+	"103.22.200.0/22",
+	"103.31.4.0/22",
+	"141.101.64.0/18",
+	"108.162.192.0/18",
+	"190.93.240.0/20",
+	"188.114.96.0/20",
+	"197.234.240.0/22",
+	"198.41.128.0/17",
+	"162.158.0.0/15",
+	"104.16.0.0/13",
+	"104.24.0.0/14",
+	"172.64.0.0/13",
+	"131.0.72.0/22",
+	"2400:cb00::/32",
+	"2606:4700::/32",
+	"2803:f800::/32",
+	"2405:b500::/32",
+	"2405:8100::/32",
+	"2a06:98c0::/29",
+	"2c0f:f248::/32",
+}
+
+func dedupeStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, v := range values {
+		if v == "" {
+			continue
+		}
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		result = append(result, v)
+	}
+	return result
+}
+
+func mergeHeaders(prefix []string, existing []string) []string {
+	return dedupeStrings(append(prefix, existing...))
 }

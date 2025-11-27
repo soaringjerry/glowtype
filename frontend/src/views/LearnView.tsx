@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { TRANSLATIONS, type Lang } from '../config/translations';
-import { APP_CONFIG, type GlowStick } from '../config/appConfig';
 import { getApiBaseUrl } from '../api/baseUrl';
 
 type GlowpediaResponse = {
@@ -28,81 +27,113 @@ type GlowpediaResponse = {
   }[];
 };
 
+// Chapter and GlowStick types (no longer imported from appConfig)
+interface Chapter {
+  id: string;
+  name: { en: string; zh: string };
+  desc: { en: string; zh: string };
+  icon: string;
+  color: string;
+}
+
+interface GlowStick {
+  id: number;
+  title: { en: string; zh: string };
+  message: { en: string; zh: string };
+  color: string;
+  planet: string;
+  forTypes: string[];
+}
+
+// Default "mystery page" chapter (always shown as option)
+const RANDOM_CHAPTER: Chapter = {
+  id: 'random',
+  name: { en: 'Mystery Page', zh: '神秘页' },
+  desc: { en: 'Let fate decide', zh: '让命运决定' },
+  icon: '✨',
+  color: 'violet'
+};
+
 interface LearnViewProps {
   onBack: () => void;
   lang: Lang;
   userType?: string | null;
 }
 
-type Phase = 'cover' | 'chapters' | 'drawing' | 'revealed';
+type Phase = 'loading' | 'cover' | 'chapters' | 'drawing' | 'revealed' | 'error';
 
 export const LearnView = ({ onBack, lang, userType = null }: LearnViewProps) => {
   const t = TRANSLATIONS[lang].learn;
-  const randomChapter = APP_CONFIG.bookChapters.find((ch) => ch.id === 'random');
-  const [chapters, setChapters] = useState(APP_CONFIG.bookChapters);
-  const [allSticks, setAllSticks] = useState(APP_CONFIG.glowSticks);
-  const [phase, setPhase] = useState<Phase>('cover');
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [allSticks, setAllSticks] = useState<GlowStick[]>([]);
+  const [phase, setPhase] = useState<Phase>('loading');
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [currentStick, setCurrentStick] = useState<GlowStick | null>(null);
   const [drawnIds, setDrawnIds] = useState<number[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchGlowpedia = async () => {
+      setFetchError(null);
       try {
         const res = await fetch(`${getApiBaseUrl()}/glowpedia`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          throw new Error('Failed to fetch Glowpedia');
+        }
         const data: GlowpediaResponse = await res.json();
 
-        if (data.chapters?.length) {
-          const mapped = data.chapters
-            .filter((ch) => ch.chapterId)
-            .map((ch) => ({
-              id: ch.chapterId,
-              name: { en: ch.nameEn || ch.nameZh || ch.chapterId, zh: ch.nameZh || ch.nameEn || ch.chapterId },
-              desc: { en: ch.descEn || ch.descZh || '', zh: ch.descZh || ch.descEn || '' },
-              icon: ch.icon || '✨',
-              color: ch.color || 'violet',
-            }));
-
-          let nextChapters = mapped;
-          if (randomChapter && !nextChapters.some((ch) => ch.id === 'random')) {
-            nextChapters = [...nextChapters, randomChapter];
-          }
-
-          if (nextChapters.length) {
-            setChapters(nextChapters);
-          }
-        }
-
-        if (data.glowSticks?.length) {
-          const parseForTypes = (val?: string) =>
-            val ? val.split(',').map((s) => s.trim()).filter(Boolean) : [];
-          const fallbackChapter = (data.chapters && data.chapters[0]?.chapterId) || 'random';
-
-          const mappedSticks = data.glowSticks.map((stick) => ({
-            id: stick.id,
-            title: {
-              en: stick.titleEn || stick.titleZh || '',
-              zh: stick.titleZh || stick.titleEn || '',
-            },
-            message: {
-              en: stick.messageEn || stick.messageZh || '',
-              zh: stick.messageZh || stick.messageEn || '',
-            },
-            color: stick.color || 'from-violet-400 to-indigo-500',
-            planet: stick.chapterId || fallbackChapter,
-            forTypes: parseForTypes(stick.forTypes),
+        // Process chapters
+        const mappedChapters: Chapter[] = (data.chapters || [])
+          .filter((ch) => ch.chapterId)
+          .map((ch) => ({
+            id: ch.chapterId,
+            name: { en: ch.nameEn || ch.nameZh || ch.chapterId, zh: ch.nameZh || ch.nameEn || ch.chapterId },
+            desc: { en: ch.descEn || ch.descZh || '', zh: ch.descZh || ch.descEn || '' },
+            icon: ch.icon || '✨',
+            color: ch.color || 'violet',
           }));
 
-          setAllSticks(mappedSticks);
+        // Add random chapter if not present
+        if (!mappedChapters.some((ch) => ch.id === 'random')) {
+          mappedChapters.push(RANDOM_CHAPTER);
         }
+
+        // Process glow sticks
+        const parseForTypes = (val?: string) =>
+          val ? val.split(',').map((s) => s.trim()).filter(Boolean) : [];
+        const defaultChapter = mappedChapters[0]?.id || 'random';
+
+        const mappedSticks: GlowStick[] = (data.glowSticks || []).map((stick) => ({
+          id: stick.id,
+          title: {
+            en: stick.titleEn || stick.titleZh || '',
+            zh: stick.titleZh || stick.titleEn || '',
+          },
+          message: {
+            en: stick.messageEn || stick.messageZh || '',
+            zh: stick.messageZh || stick.messageEn || '',
+          },
+          color: stick.color || 'from-violet-400 to-indigo-500',
+          planet: stick.chapterId || defaultChapter,
+          forTypes: parseForTypes(stick.forTypes),
+        }));
+
+        if (mappedSticks.length === 0) {
+          throw new Error('No glow sticks found');
+        }
+
+        setChapters(mappedChapters);
+        setAllSticks(mappedSticks);
+        setPhase('cover');
       } catch (err) {
-        console.warn('Failed to load Glowpedia content from API, using defaults', err);
+        console.error('Failed to load Glowpedia content from API', err);
+        setFetchError(err instanceof Error ? err.message : 'Unknown error');
+        setPhase('error');
       }
     };
 
     fetchGlowpedia();
-  }, [randomChapter]);
+  }, []);
 
   // Pre-compute random particle data to avoid impure render
   const particleData = useMemo(() =>
@@ -166,6 +197,48 @@ export const LearnView = ({ onBack, lang, userType = null }: LearnViewProps) => 
   };
 
   const currentChapter = chapters.find(c => c.id === selectedChapter);
+
+  // Loading state
+  if (phase === 'loading') {
+    return (
+      <div className="min-h-screen relative z-10 flex flex-col items-center justify-center px-4 md:px-6 py-24 md:py-20">
+        <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-slate-900 via-purple-950 to-slate-900" />
+        <div className="relative z-10 text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-amber-400 mx-auto mb-4" />
+          <p className="text-amber-200/80">{lang === 'zh' ? '正在加载光芒百科...' : 'Loading Glowpedia...'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (phase === 'error') {
+    return (
+      <div className="min-h-screen relative z-10 flex flex-col items-center justify-center px-4 md:px-6 py-24 md:py-20">
+        <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-slate-900 via-purple-950 to-slate-900" />
+        <div className="relative z-10 text-center p-6 bg-red-900/30 border border-red-500/30 rounded-2xl max-w-sm">
+          <p className="text-red-300 font-medium mb-2">
+            {lang === 'zh' ? '无法加载光芒百科' : 'Failed to load Glowpedia'}
+          </p>
+          <p className="text-red-400/70 text-sm mb-4">{fetchError}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition border border-red-500/30"
+            >
+              {lang === 'zh' ? '重试' : 'Retry'}
+            </button>
+            <button
+              onClick={onBack}
+              className="px-4 py-2 bg-white/10 text-white/70 rounded-lg hover:bg-white/20 transition border border-white/20"
+            >
+              {lang === 'zh' ? '返回' : 'Back'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative z-10 flex flex-col items-center justify-center px-4 md:px-6 py-24 md:py-20">

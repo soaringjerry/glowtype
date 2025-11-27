@@ -168,31 +168,8 @@ const TRANSLATIONS = {
   }
 };
 
+// Safety-critical hotlines (intentionally hardcoded for reliability)
 const APP_CONFIG = {
-  quizQuestions: [
-    { id: 1, question: { en: "When you've had a really long, draining day, what feels like the best medicine?", zh: "当经历了漫长而疲惫的一天，什么对你来说是最好的良药？" }, options: [{ text: { en: "Curling up in a blanket fort alone.", zh: "躲在被窝里，谁也不见。" }, value: "introvert" }, { text: { en: "Venting to a friend over bubble tea.", zh: "喝着奶茶跟朋友吐槽发泄。" }, value: "extrovert" }, { text: { en: "Doing something with my hands (drawing, gaming).", zh: "做点手头的事（画画、打游戏）。" }, value: "creative" }, { text: { en: "Just staring at the ceiling and breathing.", zh: "看着天花板发呆，放空自己。" }, value: "observer" }] },
-    { id: 2, question: { en: "Imagine your emotions are weather. What's the forecast lately?", zh: "如果把你的情绪比作天气，最近的天气预报是？" }, options: [{ text: { en: "Foggy. I can't really see where I'm going.", zh: "大雾。看不清前方的路。" }, value: "anxious" }, { text: { en: "Stormy. Lots of thunder and sudden rain.", zh: "暴风雨。雷声隆隆，情绪起伏大。" }, value: "volatile" }, { text: { en: "Overcast. Just flat and grey.", zh: "阴天。灰蒙蒙的，没什么感觉。" }, value: "depressed" }, { text: { en: "Sunny with a chance of sudden clouds.", zh: "晴转多云。偶尔会有乌云飘过。" }, value: "mixed" }] },
-    { id: 3, question: { en: "If you could send a message to your future self, what would you say?", zh: "如果能给未来的自己发条信息，你会说？" }, options: [{ text: { en: "Please tell me it gets easier.", zh: "请告诉我，一切都会变好的。" }, value: "hopeful" }, { text: { en: "Did we finally figure out what we want?", zh: "我们终于知道自己想要什么了吗？" }, value: "lost" }, { text: { en: "I hope you're being kind to yourself.", zh: "希望你对自己好一点。" }, value: "caring" }, { text: { en: "Keep fighting, you got this.", zh: "继续战斗，你可以的。" }, value: "resilient" }] }
-  ],
-  glowtypes: {
-    "Quiet Comet": {
-      title: { en: "Quiet Comet", zh: "静谧彗星" },
-      tagline: { en: "Deep Orbit • Observer", zh: "深空轨道 • 观测者" },
-      description: { en: "You carry a universe inside you, often orbiting alone. Your silence isn't empty; it's full of answers you haven't shared yet.", zh: "你内心藏着一个宇宙，但常独自运行。你的沉默并非空洞，而是充满了未曾言说的答案。" },
-      auraGradient: "radial-gradient(circle at center, #a5b4fc, #818cf8, #4f46e5, transparent 70%)",
-      cardAccent: "from-indigo-50 to-blue-50",
-      textColor: "text-indigo-900"
-    },
-    "Radiant Nebula": {
-      title: { en: "Radiant Nebula", zh: "璀璨星云" },
-      tagline: { en: "Star Nursery • Creator", zh: "恒星温床 • 创造者" },
-      description: { en: "Your emotions are vast, colorful, and sometimes chaotic—like a nebula creating new stars. You light up the dark sector.", zh: "你的情绪广阔、多彩，有时甚至有些混沌——就像正在孕育新恒星的星云。你照亮了这片黑暗扇区。" },
-      auraGradient: "radial-gradient(circle at center, #fbcfe8, #f472b6, #db2777, transparent 70%)",
-      cardAccent: "from-rose-50 to-orange-50",
-      textColor: "text-rose-900"
-    }
-  },
-  // Structured hotlines for SafetyView (critical safety info - keep hardcoded)
   hotlines: [
     {
       category: "call",
@@ -403,44 +380,56 @@ interface QuizViewProps {
   lang: 'en' | 'zh';
 }
 
+interface QuizQuestion {
+  id: string | number;
+  question: { en: string; zh: string };
+  options: Array<{ text: { en: string; zh: string }; value: string }>;
+}
+
 const QuizView = ({ onComplete, lang }: QuizViewProps) => {
   const [currentQ, setCurrentQ] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [questions, setQuestions] = useState(APP_CONFIG.quizQuestions);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [quizId, setQuizId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const t = TRANSLATIONS[lang].quiz;
 
-  // Fetch questions from API, fallback to hardcoded if empty
+  // Fetch questions from API (single source of truth)
   useEffect(() => {
     const fetchQuestions = async () => {
+      setLoading(true);
+      setFetchError(null);
       try {
         const apiLang = lang === 'zh' ? 'zh-CN' : 'en';
         const res = await fetch(`${window.location.origin}/api/v1/quiz?lang=${apiLang}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.questions && data.questions.length > 0) {
-            // Transform API response to match APP_CONFIG format
-            interface ApiQuestion {
-              id: string;
-              question: string;
-              options: Array<{ id: string; text: string }>;
-            }
-            const apiQuestions = data.questions.map((q: ApiQuestion) => ({
-              id: q.id,
-              question: { en: q.question, zh: q.question },
-              options: q.options.map((opt) => ({
-                text: { en: opt.text, zh: opt.text },
-                value: opt.id
-              }))
-            }));
-            setQuestions(apiQuestions);
-            setQuizId(data.quizId);
+        if (!res.ok) {
+          throw new Error('Failed to fetch quiz');
+        }
+        const data = await res.json();
+        if (data.questions && data.questions.length > 0) {
+          interface ApiQuestion {
+            id: string;
+            question: string;
+            options: Array<{ id: string; text: string }>;
           }
+          const apiQuestions = data.questions.map((q: ApiQuestion) => ({
+            id: q.id,
+            question: { en: q.question, zh: q.question },
+            options: q.options.map((opt) => ({
+              text: { en: opt.text, zh: opt.text },
+              value: opt.id
+            }))
+          }));
+          setQuestions(apiQuestions);
+          setQuizId(data.quizId);
+        } else {
+          throw new Error('No questions returned');
         }
       } catch (e) {
-        console.warn('Failed to fetch questions from API, using fallback', e);
+        console.error('Failed to fetch questions from API', e);
+        setFetchError(e instanceof Error ? e.message : 'Unknown error');
       } finally {
         setLoading(false);
       }
@@ -457,34 +446,32 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
       setDirection(1);
       setCurrentQ(prev => prev + 1);
     } else {
-      // Submit to API if we have a quizId (from API questions)
-      if (quizId) {
-        try {
-          const payload = {
-            quizId,
-            language: lang === 'zh' ? 'zh-CN' : 'en',
-            answers: Object.entries(newAnswers).map(([questionId, optionId]) => ({
-              questionId,
-              optionId
-            }))
-          };
-          const res = await fetch(`${window.location.origin}/api/v1/quiz/score`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          if (res.ok) {
-            const data = await res.json();
-            onComplete(data.glowtypeId);
-            return;
-          }
-        } catch (e) {
-          console.warn('Failed to submit quiz, using fallback result', e);
+      // Submit to API for scoring
+      try {
+        const payload = {
+          quizId,
+          language: lang === 'zh' ? 'zh-CN' : 'en',
+          answers: Object.entries(newAnswers).map(([questionId, optionId]) => ({
+            questionId,
+            optionId
+          }))
+        };
+        const res = await fetch(`${window.location.origin}/api/v1/quiz/score`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          onComplete(data.glowtypeId);
+          return;
         }
+        throw new Error('Failed to score quiz');
+      } catch (e) {
+        console.error('Failed to submit quiz', e);
+        // Show error - in production this would be a proper error state
+        alert(lang === 'zh' ? '提交测试失败，请重试' : 'Failed to submit quiz, please try again');
       }
-      // Fallback to random result
-      const types = Object.keys(APP_CONFIG.glowtypes);
-      onComplete(types[Math.floor(Math.random() * types.length)]);
     }
   };
 
@@ -495,12 +482,32 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
     }
   };
 
-  const progress = ((currentQ + 1) / questions.length) * 100;
+  const progress = questions.length > 0 ? ((currentQ + 1) / questions.length) * 100 : 0;
 
   if (loading) {
     return (
       <div className="max-w-xl mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col justify-center items-center relative z-10">
         <Loader2 className="animate-spin text-gray-400" size={32} />
+        <p className="mt-4 text-gray-500">{lang === 'zh' ? '加载测试题目...' : 'Loading quiz...'}</p>
+      </div>
+    );
+  }
+
+  if (fetchError || questions.length === 0) {
+    return (
+      <div className="max-w-xl mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col justify-center items-center relative z-10">
+        <div className="text-center p-6 bg-red-50 border border-red-200 rounded-2xl">
+          <p className="text-red-700 font-medium mb-2">
+            {lang === 'zh' ? '无法加载测试题目' : 'Failed to load quiz'}
+          </p>
+          <p className="text-red-600 text-sm mb-4">{fetchError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+          >
+            {lang === 'zh' ? '重试' : 'Retry'}
+          </button>
+        </div>
       </div>
     );
   }
@@ -560,33 +567,21 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
   );
 };
 
-// Helper to find glowtype data from APP_CONFIG by code or name
-type GlowtypeKey = keyof typeof APP_CONFIG.glowtypes;
-const glowtypeKeys = Object.keys(APP_CONFIG.glowtypes) as GlowtypeKey[];
+// Glowtype data fetched from API
+interface GlowtypeData {
+  title: { en: string; zh: string };
+  tagline: { en: string; zh: string };
+  description: { en: string; zh: string };
+  auraGradient: string;
+  cardAccent: string;
+  textColor: string;
+}
 
-const findGlowtypeConfig = (typeId: string | null) => {
-  // Direct match by key (display name)
-  if (typeId && glowtypeKeys.includes(typeId as GlowtypeKey)) {
-    return APP_CONFIG.glowtypes[typeId as GlowtypeKey];
-  }
-  // Match by code (e.g., "quiet-comet" -> "Quiet Comet")
-  const codeToName: Record<string, GlowtypeKey> = {
-    'quiet-comet': 'Quiet Comet',
-    'radiant-nebula': 'Radiant Nebula',
-  };
-  const lowerTypeId = typeId?.toLowerCase() ?? '';
-  const mappedName = codeToName[lowerTypeId];
-  if (mappedName && glowtypeKeys.includes(mappedName)) {
-    return APP_CONFIG.glowtypes[mappedName];
-  }
-  // Default fallback: show a generic card but keep the code in the title
-  return {
-    ...APP_CONFIG.glowtypes["Quiet Comet"],
-    title: {
-      en: typeId ? typeId : APP_CONFIG.glowtypes["Quiet Comet"].title.en,
-      zh: typeId ? typeId : APP_CONFIG.glowtypes["Quiet Comet"].title.zh,
-    },
-  };
+// Default styling for loading/error states (no hardcoded content)
+const DEFAULT_STYLING = {
+  auraGradient: "radial-gradient(circle at center, #e5e7eb, #9ca3af, #6b7280, transparent 70%)",
+  cardAccent: "from-gray-50 to-slate-50",
+  textColor: "text-gray-900"
 };
 
 interface ResultViewProps {
@@ -598,15 +593,10 @@ interface ResultViewProps {
 }
 
 const ResultView = ({ onChat, onHelp, lang, resultType, apiPrompts = {} }: ResultViewProps) => {
-  // Use useMemo to compute fallback data from resultType
-  const fallbackData = useMemo(() => findGlowtypeConfig(resultType), [resultType]);
-  // State for API-fetched styling
-  const [apiStyling, setApiStyling] = useState<{
-    auraGradient?: string;
-    cardAccent?: string;
-    textColor?: string;
-  }>({});
   const t = TRANSLATIONS[lang].result;
+  const [glowtypeData, setGlowtypeData] = useState<GlowtypeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [insight, setInsight] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -614,38 +604,57 @@ const ResultView = ({ onChat, onHelp, lang, resultType, apiPrompts = {} }: Resul
   const prevResultType = useRef(resultType);
   const prevLang = useRef(lang);
 
-  // Fetch glowtype styling from API
+  // Fetch complete glowtype data from API (single source of truth)
   useEffect(() => {
-    if (!resultType) return;
-    const fetchStyling = async () => {
+    if (!resultType) {
+      setLoading(false);
+      setError('No result type');
+      return;
+    }
+
+    const fetchGlowtypeData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch(`${getApiBaseUrl()}/api/glowtypes/${resultType}?lang=${lang}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.auraGradient || json.cardAccent || json.textColor) {
-            setApiStyling({
-              auraGradient: json.auraGradient,
-              cardAccent: json.cardAccent,
-              textColor: json.textColor,
-            });
-          }
+        const res = await fetch(`${getApiBaseUrl()}/glowtypes/${resultType}?lang=${lang}`);
+        if (!res.ok) {
+          throw new Error(`Glowtype not found: ${resultType}`);
         }
-      } catch {
-        // Silently fall back to hardcoded styling
+        const json = await res.json();
+
+        // Build GlowtypeData from API response
+        // API returns: { id, language, name, tagline, description (array), selfCareTips, disclaimer, auraGradient, cardAccent, textColor }
+        const descriptionText = Array.isArray(json.description)
+          ? json.description.join(' ')
+          : (json.description || '');
+
+        setGlowtypeData({
+          title: { en: json.name || resultType, zh: json.name || resultType },
+          tagline: { en: json.tagline || '', zh: json.tagline || '' },
+          description: { en: descriptionText, zh: descriptionText },
+          auraGradient: json.auraGradient || DEFAULT_STYLING.auraGradient,
+          cardAccent: json.cardAccent || DEFAULT_STYLING.cardAccent,
+          textColor: json.textColor || DEFAULT_STYLING.textColor,
+        });
+      } catch (e) {
+        console.error('Failed to fetch glowtype data:', e);
+        setError(e instanceof Error ? e.message : 'Unknown error');
+        // Create minimal data with typeCode as title (no hardcoded fallback)
+        setGlowtypeData({
+          title: { en: resultType, zh: resultType },
+          tagline: { en: '', zh: '' },
+          description: { en: '', zh: '' },
+          ...DEFAULT_STYLING,
+        });
+      } finally {
+        setLoading(false);
       }
     };
-    fetchStyling();
+
+    fetchGlowtypeData();
   }, [resultType, lang]);
 
-  // Merge API styling with fallback data
-  const data = useMemo(() => ({
-    ...fallbackData,
-    auraGradient: apiStyling.auraGradient || fallbackData.auraGradient,
-    cardAccent: apiStyling.cardAccent || fallbackData.cardAccent,
-    textColor: apiStyling.textColor || fallbackData.textColor,
-  }), [fallbackData, apiStyling]);
-
-  // Reset insight when resultType or lang changes (using ref comparison)
+  // Reset insight when resultType or lang changes
   if (prevResultType.current !== resultType || prevLang.current !== lang) {
     prevResultType.current = resultType;
     prevLang.current = lang;
@@ -655,11 +664,12 @@ const ResultView = ({ onChat, onHelp, lang, resultType, apiPrompts = {} }: Resul
   }
 
   const handleGenerateInsight = async () => {
+    if (!glowtypeData) return;
     setIsGenerating(true);
-    trackEvent('ai_insight_use', resultType); // Track insight generation
+    trackEvent('ai_insight_use', resultType);
     const systemPrompt = getPrompt('insight', lang, apiPrompts);
-    const title = data.title[lang];
-    const description = data.description[lang];
+    const title = glowtypeData.title[lang];
+    const description = glowtypeData.description[lang];
     const userPrompt = lang === 'zh'
       ? `我的情绪原型是「${title}」：${description}。请给我一句简短的宇宙洞察。`
       : `My emotional archetype is "${title}": ${description}. Give me a brief cosmic insight.`;
@@ -668,8 +678,32 @@ const ResultView = ({ onChat, onHelp, lang, resultType, apiPrompts = {} }: Resul
     setIsGenerating(false);
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col items-center justify-center relative z-10">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mx-auto mb-4" />
+          <p className="text-gray-500">{lang === 'zh' ? '正在加载你的光芒类型...' : 'Loading your glowtype...'}</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Use data (could be from API or minimal error fallback)
+  const data = glowtypeData!;
+
   return (
     <div className="max-w-md mx-auto px-6 pt-28 pb-32 min-h-screen flex flex-col relative z-10">
+      {error && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm text-center">
+          {lang === 'zh' ? '无法加载完整数据，显示基本信息' : 'Could not load full data, showing basic info'}
+        </div>
+      )}
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="flex-grow flex flex-col items-center">
         <div className="text-center mb-8">
           <p className="text-sm font-medium text-gray-500 uppercase tracking-widest mb-2">{t.label}</p>
@@ -1173,7 +1207,8 @@ const MainApp = () => {
         setLang(urlLang);
       }
       const urlType = params.get('type');
-      if (urlType && glowtypeKeys.includes(urlType as GlowtypeKey)) {
+      // Accept any type from URL - API will validate if it's a valid glowtype
+      if (urlType) {
         setResultType(urlType);
         setView('result');
       }
@@ -1187,7 +1222,7 @@ const MainApp = () => {
     try {
       const params = new URLSearchParams(window.location.search);
       params.set('lang', lang);
-      if (resultType && glowtypeKeys.includes(resultType as GlowtypeKey)) {
+      if (resultType) {
         params.set('type', resultType);
       } else {
         params.delete('type');
