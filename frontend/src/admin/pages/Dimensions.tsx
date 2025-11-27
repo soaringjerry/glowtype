@@ -64,7 +64,7 @@ export default function Dimensions() {
       description: '',
       strongThreshold: 3,
       mildThreshold: 1,
-      displayOrder: dimensions.length,
+      displayOrder: dimensions.length > 0 ? Math.max(...dimensions.map(d => d.displayOrder)) + 1 : 1,
     });
   };
 

@@ -9,6 +9,7 @@
     "debugger": "规则调试",
     "results": "结果记录",
     "prompts": "AI 提示词",
+    "glowpedia": "光签管理",
     "logout": "退出登录"
   },
   "login": {
@@ -259,6 +260,9 @@
     "createTitle": "新建提示词",
     "editTitle": "编辑提示词",
     "empty": "暂无提示词，点击「添加提示词」创建。",
+    "defaultsTitle": "推荐默认提示词",
+    "defaultsDesc": "数据库中暂无提示词。以下是推荐的默认配置，点击「使用此模板」快速创建：",
+    "useThis": "使用此模板",
     "inactive": "未启用",
     "infoTitle": "提示词占位符",
     "placeholderHelp": {
@@ -290,6 +294,37 @@
         "description": "初始问候模板。使用 {glowtype} 和 {language} 占位符。"
       }
     }
+  },
+  "glowpedia": {
+    "title": "光签管理",
+    "subtitle": "管理魔法书章节和光签内容",
+    "chapters": "章节",
+    "glowSticks": "光签",
+    "addChapter": "添加章节",
+    "addStick": "添加光签",
+    "createChapter": "创建章节",
+    "editChapter": "编辑章节",
+    "createStick": "创建光签",
+    "editStick": "编辑光签",
+    "chapterId": "章节ID",
+    "icon": "图标",
+    "nameZh": "名称（中文）",
+    "nameEn": "名称（英文）",
+    "descZh": "描述（中文）",
+    "descEn": "描述（英文）",
+    "color": "颜色主题",
+    "order": "排序",
+    "titleZh": "标题（中文）",
+    "titleEn": "标题（英文）",
+    "messageZh": "内容（中文）",
+    "messageEn": "内容（英文）",
+    "chapter": "所属章节",
+    "colorGradient": "渐变色",
+    "forTypes": "适用类型",
+    "forTypesHint": "逗号分隔的类型名，留空表示全部适用",
+    "noChapters": "暂无章节，点击「添加章节」创建。",
+    "noSticks": "暂无光签，点击「添加光签」创建。",
+    "confirmDelete": "确定要删除吗？此操作不可撤销。"
   },
   "common": {
     "loading": "加载中...",

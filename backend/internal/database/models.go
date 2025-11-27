@@ -249,6 +249,52 @@ func (AIPromptDB) TableName() string {
 	return "ai_prompts"
 }
 
+// ============ Glowpedia (光签) ============
+
+// BookChapterDB represents a chapter/category in Glowpedia
+type BookChapterDB struct {
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	TenantID *uint  `gorm:"index" json:"tenantId"`
+	ChapterID string `gorm:"uniqueIndex:idx_tenant_chapter;not null" json:"chapterId"` // e.g., "calm", "anxiety"
+	NameZH   string `json:"nameZh"`
+	NameEN   string `json:"nameEn"`
+	DescZH   string `json:"descZh"`
+	DescEN   string `json:"descEn"`
+	Icon     string `json:"icon"` // Emoji icon
+	Color    string `json:"color"` // Color theme
+	Order    int    `gorm:"default:0" json:"order"`
+	IsActive bool   `gorm:"default:true" json:"isActive"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (BookChapterDB) TableName() string {
+	return "book_chapters"
+}
+
+// GlowStickDB represents a glow stick (光签) message
+type GlowStickDB struct {
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	TenantID *uint  `gorm:"index" json:"tenantId"`
+	TitleZH  string `json:"titleZh"`
+	TitleEN  string `json:"titleEn"`
+	MessageZH string `gorm:"type:text" json:"messageZh"`
+	MessageEN string `gorm:"type:text" json:"messageEn"`
+	Color    string `json:"color"` // Tailwind gradient classes
+	ChapterID string `gorm:"index" json:"chapterId"` // Foreign key to chapter
+	ForTypes string `json:"forTypes"` // Comma-separated glowtype codes (for personalization)
+	Order    int    `gorm:"default:0" json:"order"`
+	IsActive bool   `gorm:"default:true" json:"isActive"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (GlowStickDB) TableName() string {
+	return "glow_sticks"
+}
+
 // ============ Statistics ============
 
 // UsageStats stores anonymous usage statistics (no PII)

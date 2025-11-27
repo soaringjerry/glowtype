@@ -181,5 +181,14 @@ export const useAdminApi = () => {
     getGlowtypeDistribution,
     // Results
     listQuizResults,
+    // Glowpedia
+    listChapters: () => apiCall<any[]>('/admin/chapters'),
+    createChapter: (data: any) => apiCall('/admin/chapters', { method: 'POST', body: JSON.stringify(data) }),
+    updateChapter: (id: number, data: any) => apiCall(`/admin/chapters/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteChapter: (id: number) => apiCall(`/admin/chapters/${id}`, { method: 'DELETE' }),
+    listGlowSticks: () => apiCall<any[]>('/admin/glowsticks'),
+    createGlowStick: (data: any) => apiCall('/admin/glowsticks', { method: 'POST', body: JSON.stringify(data) }),
+    updateGlowStick: (id: number, data: any) => apiCall(`/admin/glowsticks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteGlowStick: (id: number) => apiCall(`/admin/glowsticks/${id}`, { method: 'DELETE' }),
   };
 };

@@ -113,10 +113,31 @@ func (s *QuizService) ScoreQuiz(req models.QuizScoreRequest) models.QuizScoreRes
 		}
 	}
 
+	// Save quiz result to database (async, don't block response)
+	go s.saveQuizResult(answers, result, req.Language)
+
 	return models.QuizScoreResponse{
 		GlowtypeID:   result.ResultTypeCode,
 		ScoreDetails: map[string]interface{}{"scores": result.DimensionScores},
 	}
+}
+
+// saveQuizResult saves the quiz result to the database for analytics
+func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *ScoringResult, language string) {
+	answersJSON, _ := json.Marshal(answers)
+	scoresJSON, _ := json.Marshal(result.DimensionScores)
+
+	quizResult := database.QuizResultDB{
+		SessionID:       uuid.New().String(),
+		Answers:         answersJSON,
+		DimensionScores: scoresJSON,
+		ResultTypeCode:  result.ResultTypeCode,
+		Language:        language,
+		Source:          "web",
+	}
+
+	// Silently save - don't affect user experience if this fails
+	s.db.Create(&quizResult)
 }
 
 // normalizeLangInternal is defined in glowtype_service.go

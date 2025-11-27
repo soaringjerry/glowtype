@@ -9,6 +9,7 @@
     "debugger": "Rule Debugger",
     "results": "Quiz Results",
     "prompts": "AI Prompts",
+    "glowpedia": "Glowpedia",
     "logout": "Logout"
   },
   "login": {
@@ -259,6 +260,9 @@
     "createTitle": "Create New Prompt",
     "editTitle": "Edit Prompt",
     "empty": "No prompts yet. Click \"Add Prompt\" to create one.",
+    "defaultsTitle": "Recommended Default Prompts",
+    "defaultsDesc": "No prompts in the database yet. Here are the recommended defaults - click \"Use This\" to create:",
+    "useThis": "Use This",
     "inactive": "Inactive",
     "infoTitle": "Prompt Placeholders",
     "placeholderHelp": {
@@ -290,6 +294,37 @@
         "description": "Initial greeting message template. Use {glowtype} and {language} placeholders."
       }
     }
+  },
+  "glowpedia": {
+    "title": "Glowpedia",
+    "subtitle": "Manage book chapters and glow stick content",
+    "chapters": "Chapters",
+    "glowSticks": "Glow Sticks",
+    "addChapter": "Add Chapter",
+    "addStick": "Add Glow Stick",
+    "createChapter": "Create Chapter",
+    "editChapter": "Edit Chapter",
+    "createStick": "Create Glow Stick",
+    "editStick": "Edit Glow Stick",
+    "chapterId": "Chapter ID",
+    "icon": "Icon",
+    "nameZh": "Name (Chinese)",
+    "nameEn": "Name (English)",
+    "descZh": "Description (Chinese)",
+    "descEn": "Description (English)",
+    "color": "Color Theme",
+    "order": "Order",
+    "titleZh": "Title (Chinese)",
+    "titleEn": "Title (English)",
+    "messageZh": "Message (Chinese)",
+    "messageEn": "Message (English)",
+    "chapter": "Chapter",
+    "colorGradient": "Gradient",
+    "forTypes": "For Types",
+    "forTypesHint": "Comma-separated type names, leave empty for all",
+    "noChapters": "No chapters yet. Click \"Add Chapter\" to create one.",
+    "noSticks": "No glow sticks yet. Click \"Add Glow Stick\" to create one.",
+    "confirmDelete": "Are you sure you want to delete? This cannot be undone."
   },
   "common": {
     "loading": "Loading...",

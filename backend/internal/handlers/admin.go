@@ -659,3 +659,133 @@ func ListQuizResults(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, results)
 }
+
+// ============ Glowpedia (光签) ============
+
+// ListChapters returns all book chapters
+func ListChapters(c *gin.Context) {
+	var chapters []database.BookChapterDB
+	if err := database.GetDB().Order("\"order\" asc").Find(&chapters).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, chapters)
+}
+
+// CreateChapter creates a new chapter
+func CreateChapter(c *gin.Context) {
+	var input database.BookChapterDB
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	input.IsActive = true
+	if err := database.GetDB().Create(&input).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, input)
+}
+
+// UpdateChapter updates a chapter
+func UpdateChapter(c *gin.Context) {
+	id := c.Param("id")
+	var chapter database.BookChapterDB
+	if err := database.GetDB().First(&chapter, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Chapter not found"})
+		return
+	}
+	var input database.BookChapterDB
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	chapter.ChapterID = input.ChapterID
+	chapter.NameZH = input.NameZH
+	chapter.NameEN = input.NameEN
+	chapter.DescZH = input.DescZH
+	chapter.DescEN = input.DescEN
+	chapter.Icon = input.Icon
+	chapter.Color = input.Color
+	chapter.Order = input.Order
+	chapter.IsActive = input.IsActive
+	if err := database.GetDB().Save(&chapter).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, chapter)
+}
+
+// DeleteChapter deletes a chapter
+func DeleteChapter(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.GetDB().Delete(&database.BookChapterDB{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// ListGlowSticks returns all glow sticks
+func ListGlowSticks(c *gin.Context) {
+	var sticks []database.GlowStickDB
+	if err := database.GetDB().Order("\"order\" asc").Find(&sticks).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, sticks)
+}
+
+// CreateGlowStick creates a new glow stick
+func CreateGlowStick(c *gin.Context) {
+	var input database.GlowStickDB
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	input.IsActive = true
+	if err := database.GetDB().Create(&input).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, input)
+}
+
+// UpdateGlowStick updates a glow stick
+func UpdateGlowStick(c *gin.Context) {
+	id := c.Param("id")
+	var stick database.GlowStickDB
+	if err := database.GetDB().First(&stick, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Glow stick not found"})
+		return
+	}
+	var input database.GlowStickDB
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	stick.TitleZH = input.TitleZH
+	stick.TitleEN = input.TitleEN
+	stick.MessageZH = input.MessageZH
+	stick.MessageEN = input.MessageEN
+	stick.Color = input.Color
+	stick.ChapterID = input.ChapterID
+	stick.ForTypes = input.ForTypes
+	stick.Order = input.Order
+	stick.IsActive = input.IsActive
+	if err := database.GetDB().Save(&stick).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, stick)
+}
+
+// DeleteGlowStick deletes a glow stick
+func DeleteGlowStick(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.GetDB().Delete(&database.GlowStickDB{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

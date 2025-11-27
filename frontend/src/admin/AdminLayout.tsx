@@ -26,6 +26,7 @@ import Rules from './pages/Rules';
 import RuleDebugger from './pages/RuleDebugger';
 import Prompts from './pages/Prompts';
 import Results from './pages/Results';
+import Glowpedia from './pages/Glowpedia';
 
 const navItems = [
   { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard },
@@ -36,6 +37,7 @@ const navItems = [
   { path: '/admin/debugger', labelKey: 'nav.debugger', icon: Bug },
   { path: '/admin/results', labelKey: 'nav.results', icon: BarChart3 },
   { path: '/admin/prompts', labelKey: 'nav.prompts', icon: MessageSquare },
+  { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles },
 ];
 
 export default function AdminLayout() {
@@ -148,6 +150,7 @@ export default function AdminLayout() {
             <Route path="/admin/debugger" element={<RuleDebugger />} />
             <Route path="/admin/results" element={<Results />} />
             <Route path="/admin/prompts" element={<Prompts />} />
+            <Route path="/admin/glowpedia" element={<Glowpedia />} />
           </Routes>
         </div>
       </main>

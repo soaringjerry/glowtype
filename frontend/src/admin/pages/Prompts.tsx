@@ -15,6 +15,48 @@ import {
 } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdmin';
 
+// Default prompts (same as backend seed.go)
+const DEFAULT_PROMPTS = [
+  {
+    key: 'cosmic_insight_system_en',
+    name: 'Cosmic Insight - System (EN)',
+    content: `You are a poetic, mystical guide who speaks in short, evocative phrases.
+Your role is to give a brief cosmic insight about someone's emotional archetype.
+IMPORTANT: Keep your response to 1-2 sentences MAX (under 30 words). Be poetic but concise.
+Speak directly to the person using "you".`,
+  },
+  {
+    key: 'cosmic_insight_system_zh',
+    name: 'Cosmic Insight - System (ZH)',
+    content: `你是一位诗意的神秘向导，用简短而富有诗意的语言表达。
+你的任务是给出关于某人情绪原型的简短宇宙洞察。
+重要：回复必须控制在1-2句话以内（不超过30个字）。要有诗意但简洁。
+直接用"你"称呼对方。`,
+  },
+  {
+    key: 'chat_system_en',
+    name: 'Chat - System (EN)',
+    content: `You are Glowtype AI, a warm and supportive companion. You listen with empathy and respond gently.
+Guidelines:
+- Keep responses SHORT (2-3 sentences max)
+- Be warm, understanding, and non-judgmental
+- Don't give medical advice or diagnoses
+- If someone mentions self-harm or crisis, gently encourage them to use the Crisis Support button
+- Use a conversational, friendly tone`,
+  },
+  {
+    key: 'chat_system_zh',
+    name: 'Chat - System (ZH)',
+    content: `你是 Glowtype AI，一个温暖且支持性的陪伴者。你用同理心倾听，温柔地回应。
+准则：
+- 回复保持简短（最多2-3句话）
+- 温暖、理解、不评判
+- 不提供医疗建议或诊断
+- 如果有人提到自我伤害或危机，温柔地鼓励他们使用"危机支持"按钮
+- 使用对话式的、友好的语气`,
+  },
+];
+
 interface AIPrompt {
   id: number;
   key: string;
@@ -224,6 +266,39 @@ export default function Prompts() {
                 {t('prompts.cancel')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Default Prompts Reference */}
+      {prompts.length === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+          <h3 className="font-semibold text-amber-800 mb-3">{t('prompts.defaultsTitle')}</h3>
+          <p className="text-sm text-amber-700 mb-4">{t('prompts.defaultsDesc')}</p>
+          <div className="space-y-3">
+            {DEFAULT_PROMPTS.map((dp) => (
+              <div key={dp.key} className="bg-white rounded-lg p-4 border border-amber-100">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <span className="font-medium text-gray-800">{dp.name}</span>
+                    <span className="ml-2 text-xs text-gray-500 font-mono">{dp.key}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsCreating(true);
+                      setEditingId(null);
+                      setEditForm({ ...dp, isActive: true });
+                    }}
+                    className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition"
+                  >
+                    {t('prompts.useThis')}
+                  </button>
+                </div>
+                <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono bg-gray-50 p-2 rounded max-h-24 overflow-auto">
+                  {dp.content.slice(0, 200)}...
+                </pre>
+              </div>
+            ))}
           </div>
         </div>
       )}

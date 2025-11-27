@@ -56,6 +56,9 @@ func New(cfg config.Config) *gin.Engine {
 		// Public stats endpoint (anonymous event tracking)
 		api.POST("/stats/event", handlers.RecordEventHandler)
 
+		// Quiz result submission (anonymous, for detailed tracking)
+		api.POST("/quiz/result", handlers.SubmitQuizResultHandler)
+
 		// Public prompts endpoint (for AI features)
 		api.GET("/prompts", handlers.GetPublicPrompts)
 	}
@@ -110,6 +113,16 @@ func New(cfg config.Config) *gin.Engine {
 
 		// Quiz Results
 		admin.GET("/results", handlers.ListQuizResults)
+
+		// Glowpedia (光签)
+		admin.GET("/chapters", handlers.ListChapters)
+		admin.POST("/chapters", handlers.CreateChapter)
+		admin.PUT("/chapters/:id", handlers.UpdateChapter)
+		admin.DELETE("/chapters/:id", handlers.DeleteChapter)
+		admin.GET("/glowsticks", handlers.ListGlowSticks)
+		admin.POST("/glowsticks", handlers.CreateGlowStick)
+		admin.PUT("/glowsticks/:id", handlers.UpdateGlowStick)
+		admin.DELETE("/glowsticks/:id", handlers.DeleteGlowStick)
 	}
 
 	return r
