@@ -39,7 +39,7 @@ func New(cfg config.Config) *gin.Engine {
 	scoringService := services.NewScoringService(db)
 	quizService := services.NewQuizService(db, scoringService)
 	glowtypeService := services.NewGlowtypeService(db, glowtypesCfg)
-	chatService := services.NewChatService()
+	chatService := services.NewChatService(cfg)
 	helpService := services.NewHelpService()
 
 	quizHandler := handlers.NewQuizHandler(quizService)
@@ -55,6 +55,7 @@ func New(cfg config.Config) *gin.Engine {
 		api.GET("/glowtypes/:id", glowtypeHandler.GetGlowtype)
 		api.POST("/chat/session", chatHandler.CreateSession)
 		api.POST("/chat/message", chatHandler.SendMessage)
+		api.POST("/chat/insight", chatHandler.GenerateInsight)
 		api.POST("/chat/analytics", chatHandler.TrackChatAnalytics)
 		api.GET("/help", helpHandler.GetHelp)
 		api.GET("/glowpedia", handlers.GetGlowpediaContent)

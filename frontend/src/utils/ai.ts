@@ -1,84 +1,40 @@
-// AI API utilities (OpenAI-compatible)
+// AI API utilities proxied through backend to avoid exposing API keys
 import { getApiBaseUrl } from '../api/baseUrl';
 
-// Runtime config from window.ENV (Docker) or build-time VITE_ vars
-export const getEnvConfig = () => {
-  const windowEnv = (window as any).ENV || {};
-  return {
-    apiKey: windowEnv.AI_API_KEY || import.meta.env.VITE_AI_API_KEY || '',
-    baseUrl: windowEnv.AI_API_URL || import.meta.env.VITE_AI_API_URL || 'https://api.openai.com/v1',
-    model: windowEnv.AI_MODEL || import.meta.env.VITE_AI_MODEL || 'gpt-4o-mini',
-  };
-};
-
-// Simple call for single prompt (e.g., insight generation)
-export const callAI = async (prompt: string, systemInstruction: string): Promise<string> => {
-  const { apiKey, baseUrl, model } = getEnvConfig();
-
-  if (!apiKey) {
-    console.warn("Missing AI_API_KEY - set via environment variable or window.ENV");
-    return "Configuration Error: AI service is not properly configured.";
-  }
-
+export const callAI = async (prompt: string, systemInstruction: string, lang: string): Promise<string> => {
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetch(`${getApiBaseUrl()}/chat/insight`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: "system", content: systemInstruction },
-          { role: "user", content: prompt }
-        ],
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, systemPrompt: systemInstruction, language: lang }),
     });
 
     if (!response.ok) throw new Error(`API Error: ${response.status}`);
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || "Connection interrupted.";
+    return data.reply || "Connection interrupted.";
   } catch (error) {
     console.error("AI API Error:", error);
     return "I'm having a little trouble connecting. Please try again later.";
   }
 };
 
-// Chat call with message history for context
 export const callAIChat = async (
-  messages: Array<{ role: string; content: string }>,
-  systemInstruction: string
+  sessionId: string,
+  message: string,
+  lang: string,
 ): Promise<string> => {
-  const { apiKey, baseUrl, model } = getEnvConfig();
-
-  if (!apiKey) {
-    console.warn("Missing AI_API_KEY");
-    return "Configuration Error: AI service is not properly configured.";
-  }
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetch(`${getApiBaseUrl()}/chat/message`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: "system", content: systemInstruction },
-          ...messages
-        ],
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message, language: lang }),
     });
-
     if (!response.ok) throw new Error(`API Error: ${response.status}`);
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || "Connection interrupted.";
+    return data.reply || "Connection interrupted.";
   } catch (error) {
     console.error("AI API Error:", error);
-    return "I'm having a little trouble connecting. Please try again later.";
+    return lang === 'zh' ? '抱歉，稍后再试。' : "Sorry, please try again later.";
   }
 };
 

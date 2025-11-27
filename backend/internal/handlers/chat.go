@@ -11,6 +11,7 @@ import (
 	"github.com/soaringjerry/glowtype/internal/services"
 	"github.com/soaringjerry/glowtype/internal/utils"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type ChatHandler struct {
@@ -42,6 +43,27 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 
 	resp := h.service.Reply(req)
 	c.JSON(http.StatusOK, resp)
+}
+
+// GenerateInsight handles single-turn insight generation via provider-backed AI.
+func (h *ChatHandler) GenerateInsight(c *gin.Context) {
+	var req struct {
+		SystemPrompt string `json:"systemPrompt"`
+		Prompt       string `json:"prompt"`
+		Language     string `json:"language"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	if strings.TrimSpace(req.SystemPrompt) == "" || strings.TrimSpace(req.Prompt) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing prompt"})
+		return
+	}
+
+	text := h.service.GenerateInsight(req.SystemPrompt, req.Prompt, req.Language)
+	c.JSON(http.StatusOK, gin.H{"reply": text})
 }
 
 // ChatAnalyticsRequest is the request body for tracking chat sessions
@@ -98,4 +120,3 @@ func (h *ChatHandler) TrackChatAnalytics(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
-

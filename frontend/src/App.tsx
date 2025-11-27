@@ -26,95 +26,50 @@ import { BrowserRouter } from 'react-router-dom';
 import AdminLayout from './admin/AdminLayout';
 import { getApiBaseUrl } from './api/baseUrl';
 
-// --- AI API UTILITIES (OpenAI-compatible) ---
-
-// Extend Window interface for runtime config (augment the declaration from api/baseUrl.ts)
-declare global {
-  interface Window {
-    ENV?: {
-      AI_API_KEY?: string;
-      AI_API_URL?: string;
-      AI_MODEL?: string;
-      API_BASE_URL?: string;
-    };
-  }
-}
-
-// Runtime config from window.ENV (Docker) or build-time VITE_ vars
-const getEnvConfig = () => {
-  const windowEnv = window.ENV || {};
-  return {
-    apiKey: windowEnv.AI_API_KEY || import.meta.env.VITE_AI_API_KEY || '',
-    baseUrl: windowEnv.AI_API_URL || import.meta.env.VITE_AI_API_URL || 'https://api.openai.com/v1',
-    model: windowEnv.AI_MODEL || import.meta.env.VITE_AI_MODEL || 'gpt-4o-mini',
-  };
-};
-
-// Simple call for single prompt (e.g., insight generation)
-const callAI = async (prompt: string, systemInstruction: string) => {
-  const { apiKey, baseUrl, model } = getEnvConfig();
-
-  if (!apiKey) {
-    console.warn("Missing AI_API_KEY - set via environment variable or window.ENV");
-    return "Configuration Error: AI service is not properly configured.";
-  }
-
+const callBackendInsight = async (prompt: string, systemInstruction: string, lang: string) => {
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetch(`${getApiBaseUrl()}/chat/insight`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: "system", content: systemInstruction },
-          { role: "user", content: prompt }
-        ],
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, systemPrompt: systemInstruction, language: lang }),
     });
-
     if (!response.ok) throw new Error(`API Error: ${response.status}`);
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || "Connection interrupted.";
+    return data.reply || "Connection interrupted.";
   } catch (error) {
     console.error("AI API Error:", error);
     return "I'm having a little trouble connecting. Please try again later.";
   }
 };
 
-// Chat call with message history for context
-const callAIChat = async (messages: Array<{role: string, content: string}>, systemInstruction: string) => {
-  const { apiKey, baseUrl, model } = getEnvConfig();
-
-  if (!apiKey) {
-    console.warn("Missing AI_API_KEY");
-    return "Configuration Error: AI service is not properly configured.";
-  }
-
+const startChatSession = async (lang: string) => {
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const res = await fetch(`${getApiBaseUrl()}/chat/session`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: "system", content: systemInstruction },
-          ...messages
-        ],
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: lang }),
     });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.sessionId as string;
+  } catch {
+    return null;
+  }
+};
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || "Connection interrupted.";
+const sendChatMessage = async (sessionId: string, message: string, lang: string) => {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/chat/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message, language: lang }),
+    });
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+    const data = await res.json();
+    return data.reply as string;
   } catch (error) {
-    console.error("AI API Error:", error);
-    return "I'm having a little trouble connecting. Please try again later.";
+    console.error("Chat API Error:", error);
+    return lang === 'zh' ? '抱歉，稍后再试。' : "Sorry, please try again later.";
   }
 };
 
@@ -875,7 +830,7 @@ const ResultView = ({ onChat, onHelp, lang, resultType, apiPrompts = {} }: Resul
     const userPrompt = lang === 'zh'
       ? `我的情绪原型是「${title}」：${description}。请给我一句简短的宇宙洞察。`
       : `My emotional archetype is "${title}": ${description}. Give me a brief cosmic insight.`;
-    const text = await callAI(userPrompt, systemPrompt);
+    const text = await callBackendInsight(userPrompt, systemPrompt, lang);
     setInsight(text);
     setIsGenerating(false);
   };
@@ -973,9 +928,16 @@ const ChatView = ({ onEnd, lang, onCrisis, apiPrompts = {} }: ChatViewProps) => 
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const endOfMsgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endOfMsgRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
+
+  useEffect(() => {
+    startChatSession(lang).then((id) => {
+      if (id) setSessionId(id);
+    });
+  }, [lang]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -988,14 +950,18 @@ const ChatView = ({ onEnd, lang, onCrisis, apiPrompts = {} }: ChatViewProps) => 
     setIsTyping(true);
 
     // Build conversation history for context (last 10 messages)
-    const recentMessages = [...messages.slice(-10), newMsg];
-    const chatHistory = recentMessages.map(m => ({
-      role: m.sender === 'user' ? 'user' : 'assistant',
-      content: m.text
-    }));
+    if (!sessionId) {
+      const newSession = await startChatSession(lang);
+      if (newSession) {
+        setSessionId(newSession);
+      } else {
+        setIsTyping(false);
+        setMessages(prev => [...prev, { id: Date.now() + 1, text: lang === 'zh' ? '暂时无法连接，请稍后再试。' : 'Unable to connect right now, please try again later.', sender: 'bot' }]);
+        return;
+      }
+    }
 
-    const systemPrompt = getPrompt('chat', lang, apiPrompts);
-    const botResponseText = await callAIChat(chatHistory, systemPrompt);
+    const botResponseText = await sendChatMessage(sessionId || '', userMessage, lang);
 
     setIsTyping(false);
     setMessages(prev => [...prev, { id: Date.now() + 1, text: botResponseText, sender: 'bot' }]);

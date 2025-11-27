@@ -10,6 +10,9 @@ type Config struct {
 	AllowedOrigin string
 	LogLevel      string
 	ChatProvider  string
+	OpenAIAPIKey  string
+	OpenAIBaseURL string
+	OpenAIModel   string
 }
 
 func Load() Config {
@@ -20,6 +23,9 @@ func Load() Config {
 		AllowedOrigin: getEnv("ALLOWED_ORIGINS", ""),
 		LogLevel:      getEnv("LOG_LEVEL", "info"),
 		ChatProvider:  getEnv("CHAT_PROVIDER", "mock"),
+		OpenAIAPIKey:  getEnv("OPENAI_API_KEY", ""),
+		OpenAIBaseURL: getEnv("OPENAI_API_BASE", "https://api.openai.com/v1"),
+		OpenAIModel:   getEnv("OPENAI_MODEL", "gpt-4o-mini"),
 	}
 
 	return cfg
