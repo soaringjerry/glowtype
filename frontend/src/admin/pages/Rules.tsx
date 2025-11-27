@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
@@ -58,7 +58,7 @@ export default function Rules() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const api = useAdminApi();
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     const [rulesData, dimsData, typesData, validationData] = await Promise.all([
       api.listRules(),
@@ -71,11 +71,11 @@ export default function Rules() {
     if (typesData) setGlowtypes(typesData);
     if (validationData) setWarnings(validationData.warnings || []);
     setLoading(false);
-  };
+  }, [api]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleEdit = (rule: ScoringRule) => {
     setEditingId(rule.id);

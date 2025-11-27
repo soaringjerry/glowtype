@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Shield, PlusCircle, Loader2, AlertCircle, Users } from 'lucide-react';
-import { AdminRole, AdminUser, useAdminApi, useAdminAuth } from '../hooks/useAdmin';
+import type { AdminRole, AdminUser } from '../hooks/useAdmin';
+import { useAdminApi, useAdminAuth } from '../hooks/useAdmin';
 
 interface NewAdminForm {
   username: string;

@@ -23,7 +23,8 @@ The script will:
 - clone (or update) this repository to `~/glowtype` by default;
 - ensure `.env` and `backend/.env` exist;
 - pull/build and start the Dockerized backend + frontend via `docker-compose`;
-- start a small Watchtower container that automatically pulls new backend/frontend images from GHCR and restarts them.
+- start a small Watchtower container that automatically pulls new backend/frontend images from GHCR and restarts them;
+- auto-generate admin secrets into `backend/.env` (`ADMIN_JWT_SECRET`, `ADMIN_SUPER_PASSWORD`, default username `ADMIN_SUPER_USERNAME=superadmin`). Check that file after首次启动获取超管口令，然后尽快更换并创建独立管理员。
 
 You can override defaults with environment variables:
 

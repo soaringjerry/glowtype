@@ -2,6 +2,7 @@
   "title": "Glowtype Admin",
   "nav": {
     "dashboard": "Dashboard",
+    "adminUsers": "Admin Accounts",
     "dimensions": "Dimensions",
     "questions": "Quiz Questions",
     "glowtypes": "Glowtypes",
@@ -10,13 +11,55 @@
     "results": "Quiz Results",
     "prompts": "AI Prompts",
     "glowpedia": "Glowpedia",
+    "audit": "Audit Log",
     "logout": "Logout"
+  },
+  "roles": {
+    "superadmin": "Super Admin",
+    "admin": "Admin"
   },
   "login": {
     "title": "Admin Login",
+    "username": "Username",
     "password": "Password",
     "submit": "Login",
-    "error": "Invalid password"
+    "error": "Invalid username or password",
+    "locked": "Too many attempts. Try again at {{time}}."
+  },
+  "adminUsers": {
+    "title": "Admin Accounts",
+    "subtitle": "Create separate logins to track who does what",
+    "superBadge": "Super admin only",
+    "addTitle": "Add admin",
+    "addHint": "New admins will use username/password login",
+    "username": "Username",
+    "password": "Password",
+    "passwordPlaceholder": "Strong password recommended",
+    "role": "Role",
+    "create": "Create admin",
+    "listTitle": "Existing admins",
+    "lastLogin": "Last login",
+    "lastIp": "Last IP",
+    "empty": "No admins yet.",
+    "created": "Created admin {{user}}",
+    "never": "Never",
+    "superOnlyTitle": "Super admin required",
+    "superOnlyDesc": "Only the super admin can manage administrator accounts."
+  },
+  "audit": {
+    "title": "Audit Log",
+    "subtitle": "See which admin performed which action",
+    "latest": "Latest 200 actions",
+    "superOnlyTitle": "Super admin required",
+    "superOnlyDesc": "Only the super admin can view the audit log.",
+    "empty": "No admin actions recorded yet.",
+    "time": "Time",
+    "user": "Admin",
+    "action": "Action",
+    "path": "Path",
+    "status": "Status",
+    "ip": "IP",
+    "meta": "Duration"
   },
   "dashboard": {
     "title": "Dashboard",

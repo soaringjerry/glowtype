@@ -93,7 +93,7 @@ export const useAdminAuth = () => {
     setCurrentUser(null);
   }, []);
 
-  const getAuthHeader = useCallback(() => {
+  const getAuthHeader = useCallback((): Record<string, string> => {
     const activeToken = localStorage.getItem(ADMIN_TOKEN_KEY);
     return activeToken ? { Authorization: `Bearer ${activeToken}` } : {};
   }, []);
@@ -175,7 +175,7 @@ export const useAdminApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getAuthHeader = useCallback(() => {
+  const getAuthHeader = useCallback((): Record<string, string> => {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
@@ -189,11 +189,16 @@ export const useAdminApi = () => {
     try {
       const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader(),
-          ...(options.headers as Record<string, string> || {}),
-        } as HeadersInit,
+        headers: (() => {
+          const baseHeaders: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...getAuthHeader(),
+          };
+          if (options.headers) {
+            Object.assign(baseHeaders, options.headers as Record<string, string>);
+          }
+          return baseHeaders as HeadersInit;
+        })(),
       });
       if (res.status === 401) {
         localStorage.removeItem(ADMIN_TOKEN_KEY);
@@ -269,11 +274,14 @@ export const useAdminApi = () => {
   };
 
   // Admin accounts & audit
-  const getCurrentAdmin = () => apiCall<AdminUser>('/admin/me');
-  const listAdmins = () => apiCall<AdminUser[]>('/admin/users');
-  const createAdmin = (data: { username: string; password: string; role?: AdminRole }) =>
-    apiCall<AdminUser>('/admin/users', { method: 'POST', body: JSON.stringify(data) });
-  const listAuditLogs = (limit = 200) => apiCall<AdminAuditLog[]>(`/admin/audit?limit=${limit}`);
+  const getCurrentAdmin = useCallback(() => apiCall<AdminUser>('/admin/me'), [apiCall]);
+  const listAdmins = useCallback(() => apiCall<AdminUser[]>('/admin/users'), [apiCall]);
+  const createAdmin = useCallback(
+    (data: { username: string; password: string; role?: AdminRole }) =>
+      apiCall<AdminUser>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+    [apiCall],
+  );
+  const listAuditLogs = useCallback((limit = 200) => apiCall<AdminAuditLog[]>(`/admin/audit?limit=${limit}`), [apiCall]);
 
   return {
     loading,

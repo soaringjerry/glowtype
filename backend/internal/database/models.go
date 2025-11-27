@@ -15,14 +15,14 @@ import (
 
 // TraitDimensionDB defines bipolar scoring dimensions (like MBTI's E-I, S-N, T-F, J-P)
 type TraitDimensionDB struct {
-	ID           uint    `gorm:"primaryKey" json:"id"`
-	TenantID     *uint   `gorm:"index" json:"tenantId"` // nil = global
-	Key          string  `gorm:"uniqueIndex:idx_tenant_key;not null" json:"key"` // e.g., "energy"
-	NameZH       string  `json:"nameZh"`
-	NameEN       string  `json:"nameEn"`
-	PositivePole string  `json:"positivePole"` // e.g., "extrovert" (score > 0)
-	NegativePole string  `json:"negativePole"` // e.g., "introvert" (score < 0)
-	Description  string  `gorm:"type:text" json:"description"`
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	TenantID     *uint  `gorm:"index" json:"tenantId"`                          // nil = global
+	Key          string `gorm:"uniqueIndex:idx_tenant_key;not null" json:"key"` // e.g., "energy"
+	NameZH       string `json:"nameZh"`
+	NameEN       string `json:"nameEn"`
+	PositivePole string `json:"positivePole"` // e.g., "extrovert" (score > 0)
+	NegativePole string `json:"negativePole"` // e.g., "introvert" (score < 0)
+	Description  string `gorm:"type:text" json:"description"`
 
 	// Thresholds for intensity labels (display only, not for rule matching)
 	// Used for showing "Strong/Mild/Neutral" in results
@@ -210,15 +210,15 @@ type QuizResultDB struct {
 	Source    string `json:"source"` // "web", "app", "embed"
 
 	// Anonymized analytics fields (derived from request, original data discarded)
-	Region      string `gorm:"index" json:"region"`      // Country/region code (derived from IP, IP not stored)
-	DeviceType  string `json:"deviceType"`               // "mobile", "tablet", "desktop" (parsed from UA)
-	BrowserLang string `json:"browserLang"`              // Browser language preference (from Accept-Language)
-	HourOfDay   int    `json:"hourOfDay"`                // 0-23, local hour when quiz was taken
+	Region      string `gorm:"index" json:"region"` // Country/region code (derived from IP, IP not stored)
+	DeviceType  string `json:"deviceType"`          // "mobile", "tablet", "desktop" (parsed from UA)
+	BrowserLang string `json:"browserLang"`         // Browser language preference (from Accept-Language)
+	HourOfDay   int    `json:"hourOfDay"`           // 0-23, local hour when quiz was taken
 
 	// Traffic attribution (for marketing analysis)
-	Channel    string `gorm:"index" json:"channel"`    // Distribution channel: "wechat", "linkedin", "organic", etc.
-	EntryPoint string `json:"entryPoint"`              // Specific campaign/source: "homepage", "blog_post_1", "ad_campaign_q1"
-	Referrer   string `json:"referrer"`                // HTTP referer (if available)
+	Channel    string `gorm:"index" json:"channel"` // Distribution channel: "wechat", "linkedin", "organic", etc.
+	EntryPoint string `json:"entryPoint"`           // Specific campaign/source: "homepage", "blog_post_1", "ad_campaign_q1"
+	Referrer   string `json:"referrer"`             // HTTP referer (if available)
 
 	CreatedAt time.Time `json:"createdAt"`
 }
@@ -233,19 +233,19 @@ type ChatSessionDB struct {
 	SessionID string `gorm:"index;not null" json:"sessionId"` // Anonymous session identifier
 
 	// Chat metrics
-	MessageCount  int `json:"messageCount"`  // Total messages in session
-	UserMessages  int `json:"userMessages"`  // Messages from user
-	AIMessages    int `json:"aiMessages"`    // Messages from AI
-	DurationSecs  int `json:"durationSecs"`  // Session duration in seconds
+	MessageCount int `json:"messageCount"` // Total messages in session
+	UserMessages int `json:"userMessages"` // Messages from user
+	AIMessages   int `json:"aiMessages"`   // Messages from AI
+	DurationSecs int `json:"durationSecs"` // Session duration in seconds
 
 	// Context
 	GlowtypeCode string `gorm:"index" json:"glowtypeCode"` // User's glowtype (if known)
 	Language     string `json:"language"`
 
 	// Anonymized analytics
-	Region      string `gorm:"index" json:"region"` // Country/region (derived from IP)
-	DeviceType  string `json:"deviceType"`
-	HourOfDay   int    `json:"hourOfDay"`
+	Region     string `gorm:"index" json:"region"` // Country/region (derived from IP)
+	DeviceType string `json:"deviceType"`
+	HourOfDay  int    `json:"hourOfDay"`
 
 	// Flags for research
 	HasCrisisKeywords bool `json:"hasCrisisKeywords"` // Whether crisis keywords were detected
@@ -294,17 +294,17 @@ func (AIPromptDB) TableName() string {
 
 // BookChapterDB represents a chapter/category in Glowpedia
 type BookChapterDB struct {
-	ID       uint   `gorm:"primaryKey" json:"id"`
-	TenantID *uint  `gorm:"index" json:"tenantId"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	TenantID  *uint  `gorm:"index" json:"tenantId"`
 	ChapterID string `gorm:"uniqueIndex:idx_tenant_chapter;not null" json:"chapterId"` // e.g., "calm", "anxiety"
-	NameZH   string `json:"nameZh"`
-	NameEN   string `json:"nameEn"`
-	DescZH   string `json:"descZh"`
-	DescEN   string `json:"descEn"`
-	Icon     string `json:"icon"` // Emoji icon
-	Color    string `json:"color"` // Color theme
-	Order    int    `gorm:"default:0" json:"order"`
-	IsActive bool   `gorm:"default:true" json:"isActive"`
+	NameZH    string `json:"nameZh"`
+	NameEN    string `json:"nameEn"`
+	DescZH    string `json:"descZh"`
+	DescEN    string `json:"descEn"`
+	Icon      string `json:"icon"`  // Emoji icon
+	Color     string `json:"color"` // Color theme
+	Order     int    `gorm:"default:0" json:"order"`
+	IsActive  bool   `gorm:"default:true" json:"isActive"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -316,17 +316,17 @@ func (BookChapterDB) TableName() string {
 
 // GlowStickDB represents a glow stick (光签) message
 type GlowStickDB struct {
-	ID       uint   `gorm:"primaryKey" json:"id"`
-	TenantID *uint  `gorm:"index" json:"tenantId"`
-	TitleZH  string `json:"titleZh"`
-	TitleEN  string `json:"titleEn"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	TenantID  *uint  `gorm:"index" json:"tenantId"`
+	TitleZH   string `json:"titleZh"`
+	TitleEN   string `json:"titleEn"`
 	MessageZH string `gorm:"type:text" json:"messageZh"`
 	MessageEN string `gorm:"type:text" json:"messageEn"`
-	Color    string `json:"color"` // Tailwind gradient classes
+	Color     string `json:"color"`                  // Tailwind gradient classes
 	ChapterID string `gorm:"index" json:"chapterId"` // Foreign key to chapter
-	ForTypes string `json:"forTypes"` // Comma-separated glowtype codes (for personalization)
-	Order    int    `gorm:"default:0" json:"order"`
-	IsActive bool   `gorm:"default:true" json:"isActive"`
+	ForTypes  string `json:"forTypes"`               // Comma-separated glowtype codes (for personalization)
+	Order     int    `gorm:"default:0" json:"order"`
+	IsActive  bool   `gorm:"default:true" json:"isActive"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -340,13 +340,13 @@ func (GlowStickDB) TableName() string {
 
 // UsageStats stores anonymous usage statistics (no PII)
 type UsageStats struct {
-	ID             uint   `gorm:"primaryKey" json:"id"`
-	TenantID       *uint  `gorm:"index" json:"tenantId"`
-	Date           string `gorm:"index;not null" json:"date"`
-	QuizCompleted  int    `json:"quizCompleted"`
-	ShareGenerated int    `json:"shareGenerated"`
-	AIChatsStarted int    `json:"aiChatsStarted"`
-	AIInsightUsed  int    `json:"aiInsightUsed"`
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	TenantID       *uint     `gorm:"index" json:"tenantId"`
+	Date           string    `gorm:"index;not null" json:"date"`
+	QuizCompleted  int       `json:"quizCompleted"`
+	ShareGenerated int       `json:"shareGenerated"`
+	AIChatsStarted int       `json:"aiChatsStarted"`
+	AIInsightUsed  int       `json:"aiInsightUsed"`
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`
 }
@@ -357,11 +357,11 @@ func (UsageStats) TableName() string {
 
 // GlowtypeStats tracks glowtype distribution (anonymous)
 type GlowtypeStats struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	TenantID  *uint  `gorm:"index" json:"tenantId"`
-	Date      string `gorm:"index;not null" json:"date"`
-	TypeCode  string `gorm:"index;not null" json:"typeCode"`
-	Count     int    `json:"count"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	TenantID  *uint     `gorm:"index" json:"tenantId"`
+	Date      string    `gorm:"index;not null" json:"date"`
+	TypeCode  string    `gorm:"index;not null" json:"typeCode"`
+	Count     int       `json:"count"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

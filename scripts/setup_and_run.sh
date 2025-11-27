@@ -105,6 +105,31 @@ EOF
   fi
 fi
 
+# Generate persistent admin secrets if missing
+gen_secret() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 32
+  else
+    head -c 32 /dev/urandom | hexdump -v -e '/1 "%02x"'
+  fi
+}
+
+if [ -f "${ROOT_DIR}/backend/.env" ]; then
+  if ! grep -q "^ADMIN_JWT_SECRET=" "${ROOT_DIR}/backend/.env"; then
+    echo "ADMIN_JWT_SECRET=$(gen_secret)" >> "${ROOT_DIR}/backend/.env"
+    echo "[INFO] Generated ADMIN_JWT_SECRET in backend/.env"
+  fi
+
+  if ! grep -q "^ADMIN_SUPER_PASSWORD=" "${ROOT_DIR}/backend/.env"; then
+    echo "ADMIN_SUPER_PASSWORD=$(gen_secret | head -c 24)" >> "${ROOT_DIR}/backend/.env"
+    echo "[INFO] Generated ADMIN_SUPER_PASSWORD in backend/.env (rotate as needed)"
+  fi
+
+  if ! grep -q "^ADMIN_SUPER_USERNAME=" "${ROOT_DIR}/backend/.env"; then
+    echo "ADMIN_SUPER_USERNAME=superadmin" >> "${ROOT_DIR}/backend/.env"
+  fi
+fi
+
 # Load root .env for local variable substitution
 set -a
 if [ -f "${ROOT_DIR}/.env" ]; then

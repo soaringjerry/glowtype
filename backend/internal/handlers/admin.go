@@ -453,22 +453,22 @@ func DeleteQuestion(c *gin.Context) {
 
 // GlowtypeMerged combines GlowtypeDB with I18N data for frontend convenience
 type GlowtypeMerged struct {
-	ID              uint   `json:"id"`
-	TypeCode        string `json:"typeCode"`
-	PrimaryColor    string `json:"primaryColor"`
-	Gradient        string `json:"gradient"`
-	CardAccent      string `json:"cardAccent"`
-	TextColor       string `json:"textColor"`
-	NameZh          string `json:"nameZh"`
-	NameEn          string `json:"nameEn"`
-	TaglineZh       string `json:"taglineZh"`
-	TaglineEn       string `json:"taglineEn"`
-	DescriptionZh   string `json:"descriptionZh"`
-	DescriptionEn   string `json:"descriptionEn"`
-	SelfCareTipsZh  string `json:"selfCareTipsZh"`
-	SelfCareTipsEn  string `json:"selfCareTipsEn"`
-	DisclaimerZh    string `json:"disclaimerZh"`
-	DisclaimerEn    string `json:"disclaimerEn"`
+	ID             uint   `json:"id"`
+	TypeCode       string `json:"typeCode"`
+	PrimaryColor   string `json:"primaryColor"`
+	Gradient       string `json:"gradient"`
+	CardAccent     string `json:"cardAccent"`
+	TextColor      string `json:"textColor"`
+	NameZh         string `json:"nameZh"`
+	NameEn         string `json:"nameEn"`
+	TaglineZh      string `json:"taglineZh"`
+	TaglineEn      string `json:"taglineEn"`
+	DescriptionZh  string `json:"descriptionZh"`
+	DescriptionEn  string `json:"descriptionEn"`
+	SelfCareTipsZh string `json:"selfCareTipsZh"`
+	SelfCareTipsEn string `json:"selfCareTipsEn"`
+	DisclaimerZh   string `json:"disclaimerZh"`
+	DisclaimerEn   string `json:"disclaimerEn"`
 }
 
 func ListGlowtypes(c *gin.Context) {
