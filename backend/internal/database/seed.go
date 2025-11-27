@@ -213,10 +213,10 @@ func seedGlowtypes(db *gorm.DB) {
 		},
 		{
 			TypeCode:     "hidden-aurora",
-			AuraGradient: "radial-gradient(circle at center, #a8edea, #86d3ce, #5eead4, transparent 70%)",
-			CardAccent:   "from-teal-50 to-cyan-50",
+			AuraGradient: "radial-gradient(circle at center, #99f6e4, #5eead4, #14b8a6, transparent 70%)",
+			CardAccent:   "from-teal-50 to-emerald-50",
 			TextColor:    "text-teal-900",
-			PrimaryColor: "#5eead4",
+			PrimaryColor: "#14b8a6",
 			IconName:     "sparkles",
 			I18N: []struct {
 				Lang         string
@@ -232,8 +232,8 @@ func seedGlowtypes(db *gorm.DB) {
 		},
 		{
 			TypeCode:     "warm-ember",
-			AuraGradient: "radial-gradient(circle at center, #fcd34d, #f59e0b, #d97706, transparent 70%)",
-			CardAccent:   "from-amber-50 to-yellow-50",
+			AuraGradient: "radial-gradient(circle at center, #fde68a, #fbbf24, #d97706, transparent 70%)",
+			CardAccent:   "from-amber-50 to-orange-50",
 			TextColor:    "text-amber-900",
 			PrimaryColor: "#d97706",
 			IconName:     "flame",
