@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { TRANSLATIONS, type Lang } from '../config/translations';
@@ -20,6 +20,17 @@ export const LearnView = ({ onBack, lang, userType = null }: LearnViewProps) => 
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [currentStick, setCurrentStick] = useState<GlowStick | null>(null);
   const [drawnIds, setDrawnIds] = useState<number[]>([]);
+
+  // Pre-compute random particle data to avoid impure render
+  const particleData = useMemo(() =>
+    [...Array(20)].map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      duration: 3 + Math.random() * 2,
+      delay: Math.random() * 3,
+    })), []
+  );
 
   // Get sticks pool based on selected chapter
   const getStickPool = () => {
@@ -78,13 +89,13 @@ export const LearnView = ({ onBack, lang, userType = null }: LearnViewProps) => 
       {/* Magical background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden bg-gradient-to-b from-slate-900 via-purple-950 to-slate-900">
         {/* Floating particles */}
-        {[...Array(20)].map((_, i) => (
+        {particleData.map((p) => (
           <motion.div
-            key={i}
+            key={p.id}
             className="absolute w-1 h-1 bg-white rounded-full"
-            style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+            style={{ left: p.left, top: p.top }}
             animate={{ opacity: [0, 1, 0], y: [0, -30, -60] }}
-            transition={{ duration: 3 + Math.random() * 2, repeat: Infinity, delay: Math.random() * 3 }}
+            transition={{ duration: p.duration, repeat: Infinity, delay: p.delay }}
           />
         ))}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-purple-500/10 rounded-full blur-[120px]" />

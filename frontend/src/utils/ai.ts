@@ -123,7 +123,7 @@ export const fetchPrompts = async (): Promise<Record<string, string>> => {
       cachedPrompts = await res.json();
       return cachedPrompts!;
     }
-  } catch (e) {
+  } catch {
     console.warn('Failed to fetch prompts from API, using defaults');
   }
   return {};

@@ -14,7 +14,7 @@ const getOriginBase = () => {
  * - Otherwise default to the current origin to avoid hard-coded hosts
  */
 export const getApiBaseUrl = () => {
-  const windowEnv = (typeof window !== 'undefined' && (window as any).ENV) || {};
+  const windowEnv = (typeof window !== 'undefined' && window.ENV) || {};
 
   if (windowEnv.API_BASE_URL) {
     return sanitizeBase(windowEnv.API_BASE_URL);

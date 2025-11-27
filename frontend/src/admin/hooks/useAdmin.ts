@@ -26,7 +26,7 @@ export const useAdminAuth = () => {
         setError(data.error || 'Login failed');
         return false;
       }
-    } catch (err) {
+    } catch {
       setError('Connection error');
       return false;
     } finally {

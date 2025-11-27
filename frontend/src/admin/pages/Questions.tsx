@@ -191,7 +191,7 @@ export default function Questions() {
           await loadData();
           alert(t('questions.importSuccess'));
         }
-      } catch (err) {
+      } catch {
         alert(t('questions.importFailed'));
       }
     };

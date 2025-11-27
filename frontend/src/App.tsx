@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -29,9 +28,21 @@ import { getApiBaseUrl } from './api/baseUrl';
 
 // --- AI API UTILITIES (OpenAI-compatible) ---
 
+// Extend Window interface for runtime config (augment the declaration from api/baseUrl.ts)
+declare global {
+  interface Window {
+    ENV?: {
+      AI_API_KEY?: string;
+      AI_API_URL?: string;
+      AI_MODEL?: string;
+      API_BASE_URL?: string;
+    };
+  }
+}
+
 // Runtime config from window.ENV (Docker) or build-time VITE_ vars
 const getEnvConfig = () => {
-  const windowEnv = (window as any).ENV || {};
+  const windowEnv = window.ENV || {};
   return {
     apiKey: windowEnv.AI_API_KEY || import.meta.env.VITE_AI_API_KEY || '',
     baseUrl: windowEnv.AI_API_URL || import.meta.env.VITE_AI_API_URL || 'https://api.openai.com/v1',
@@ -147,7 +158,7 @@ const fetchPrompts = async (): Promise<Record<string, string>> => {
       cachedPrompts = await res.json();
       return cachedPrompts!;
     }
-  } catch (e) {
+  } catch {
     console.warn('Failed to fetch prompts from API, using defaults');
   }
   return {};
@@ -163,12 +174,12 @@ const getPrompt = (type: 'insight' | 'chat', lang: 'en' | 'zh', apiPrompts: Reco
 
 // --- ANONYMOUS STATS TRACKING ---
 // Tracks anonymous events for dashboard statistics (no PII)
-const trackEvent = async (event: 'quiz_complete' | 'share_generate' | 'ai_chat_start' | 'ai_insight_use', typeCode?: string) => {
+const trackEvent = async (event: 'quiz_complete' | 'share_generate' | 'ai_chat_start' | 'ai_insight_use', typeCode?: string | null) => {
   try {
     await fetch(`${getApiBaseUrl()}/stats/event`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event, typeCode }),
+      body: JSON.stringify({ event, typeCode: typeCode ?? undefined }),
     });
   } catch (e) {
     // Silently fail - stats are not critical
@@ -454,10 +465,22 @@ const GlobalBackground = memo(() => (
   </div>
 ));
 
-const Button = ({ children, onClick, variant = 'primary', className = '', icon: Icon, disabled = false, isLoading = false }) => {
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'magic' | 'danger';
+
+interface ButtonProps {
+  children: React.ReactNode;
+  onClick: () => void;
+  variant?: ButtonVariant;
+  className?: string;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  disabled?: boolean;
+  isLoading?: boolean;
+}
+
+const Button = ({ children, onClick, variant = 'primary', className = '', icon: Icon, disabled = false, isLoading = false }: ButtonProps) => {
   const baseStyle = "relative overflow-hidden rounded-2xl font-medium transition-all duration-300 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group";
 
-  const variants = {
+  const variants: Record<ButtonVariant, string> = {
     primary: "bg-gray-900 text-white shadow-xl hover:bg-gray-800 py-4 px-8 text-lg hover:shadow-2xl hover:shadow-gray-900/20",
     secondary: "bg-white/50 backdrop-blur-md text-gray-700 border border-white/60 shadow-sm hover:bg-white/80 hover:text-gray-900 hover:border-indigo-200 hover:shadow-md py-4 px-6 transition-all duration-300",
     ghost: "text-gray-600 hover:bg-gray-100/50 py-2 px-4 rounded-full",
@@ -482,7 +505,13 @@ const Button = ({ children, onClick, variant = 'primary', className = '', icon: 
   );
 };
 
-const GlassCard = ({ children, className = '', delay = 0 }) => (
+interface GlassCardProps {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}
+
+const GlassCard = ({ children, className = '', delay = 0 }: GlassCardProps) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -495,11 +524,18 @@ const GlassCard = ({ children, className = '', delay = 0 }) => (
 );
 
 // Meteor Component for Crisis View
-const Meteor = memo(({ delay, duration, style }) => (
+interface MeteorProps {
+  delay: number;
+  duration: number;
+  repeatDelay: number;
+  style?: React.CSSProperties;
+}
+
+const Meteor = memo(({ delay, duration, repeatDelay, style }: MeteorProps) => (
   <motion.div
     initial={{ top: -100, left: '120%', opacity: 0 }}
     animate={{ top: '120%', left: '-20%', opacity: [0, 1, 0] }}
-    transition={{ duration: duration, delay: delay, repeat: Infinity, repeatDelay: Math.random() * 3 + 2, ease: "linear" }}
+    transition={{ duration: duration, delay: delay, repeat: Infinity, repeatDelay: repeatDelay, ease: "linear" }}
     className="absolute w-[2px] h-[120px] bg-gradient-to-b from-transparent via-white to-transparent rotate-45 z-0 shadow-[0_0_8px_rgba(255,255,255,0.8)] will-change-transform"
     style={style}
   >
@@ -510,7 +546,13 @@ const Meteor = memo(({ delay, duration, style }) => (
 
 // --- VIEWS ---
 
-const HeroView = ({ onStart, onViewSafety, lang }) => {
+interface HeroViewProps {
+  onStart: () => void;
+  onViewSafety: () => void;
+  lang: 'en' | 'zh';
+}
+
+const HeroView = ({ onStart, onViewSafety, lang }: HeroViewProps) => {
   const t = TRANSLATIONS[lang].hero;
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-6 pt-32 relative z-10">
@@ -572,7 +614,12 @@ const HeroView = ({ onStart, onViewSafety, lang }) => {
 };
 
 // ... QuizView, ResultView, ChatView, SafetyView, LearnView ...
-const QuizView = ({ onComplete, lang }) => {
+interface QuizViewProps {
+  onComplete: (type: string) => void;
+  lang: 'en' | 'zh';
+}
+
+const QuizView = ({ onComplete, lang }: QuizViewProps) => {
   const [currentQ, setCurrentQ] = useState(0);
   const [direction, setDirection] = useState(1);
   const [questions, setQuestions] = useState(APP_CONFIG.quizQuestions);
@@ -591,10 +638,15 @@ const QuizView = ({ onComplete, lang }) => {
           const data = await res.json();
           if (data.questions && data.questions.length > 0) {
             // Transform API response to match APP_CONFIG format
-            const apiQuestions = data.questions.map((q: any) => ({
+            interface ApiQuestion {
+              id: string;
+              question: string;
+              options: Array<{ id: string; text: string }>;
+            }
+            const apiQuestions = data.questions.map((q: ApiQuestion) => ({
               id: q.id,
               question: { en: q.question, zh: q.question },
-              options: q.options.map((opt: any) => ({
+              options: q.options.map((opt) => ({
                 text: { en: opt.text, zh: opt.text },
                 value: opt.id
               }))
@@ -612,7 +664,7 @@ const QuizView = ({ onComplete, lang }) => {
     fetchQuestions();
   }, [lang]);
 
-  const handleAnswer = async (value) => {
+  const handleAnswer = async (value: string) => {
     const currentQuestion = questions[currentQ];
     const newAnswers = { ...answers, [currentQuestion.id]: value };
     setAnswers(newAnswers);
@@ -725,43 +777,57 @@ const QuizView = ({ onComplete, lang }) => {
 };
 
 // Helper to find glowtype data from APP_CONFIG by code or name
-const findGlowtypeConfig = (typeId: string) => {
+type GlowtypeKey = keyof typeof APP_CONFIG.glowtypes;
+const glowtypeKeys = Object.keys(APP_CONFIG.glowtypes) as GlowtypeKey[];
+
+const findGlowtypeConfig = (typeId: string | null) => {
   // Direct match by key (display name)
-  if (APP_CONFIG.glowtypes[typeId]) {
-    return APP_CONFIG.glowtypes[typeId];
+  if (typeId && glowtypeKeys.includes(typeId as GlowtypeKey)) {
+    return APP_CONFIG.glowtypes[typeId as GlowtypeKey];
   }
   // Match by code (e.g., "quiet-comet" -> "Quiet Comet")
-  const codeToName: Record<string, string> = {
+  const codeToName: Record<string, GlowtypeKey> = {
     'quiet-comet': 'Quiet Comet',
     'radiant-nebula': 'Radiant Nebula',
     'hidden-aurora': 'Quiet Comet', // fallback
     'warm-ember': 'Radiant Nebula', // fallback
   };
-  const mappedName = codeToName[typeId?.toLowerCase()];
-  if (mappedName && APP_CONFIG.glowtypes[mappedName]) {
+  const lowerTypeId = typeId?.toLowerCase() ?? '';
+  const mappedName = codeToName[lowerTypeId];
+  if (mappedName && glowtypeKeys.includes(mappedName)) {
     return APP_CONFIG.glowtypes[mappedName];
   }
   // Default fallback
   return APP_CONFIG.glowtypes["Quiet Comet"];
 };
 
-const ResultView = ({ onChat, onTips, onHelp, lang, resultType, apiPrompts = {} }) => {
-  // Always use APP_CONFIG styling as the base
-  const configData = findGlowtypeConfig(resultType);
-  const [data, setData] = useState(configData);
+interface ResultViewProps {
+  onChat: () => void;
+  onHelp: () => void;
+  lang: 'en' | 'zh';
+  resultType: string | null;
+  apiPrompts?: Record<string, string>;
+}
+
+const ResultView = ({ onChat, onHelp, lang, resultType, apiPrompts = {} }: ResultViewProps) => {
+  // Use useMemo to compute data from resultType (no setState needed)
+  const data = useMemo(() => findGlowtypeConfig(resultType), [resultType]);
   const t = TRANSLATIONS[lang].result;
-  const [insight, setInsight] = useState(null);
+  const [insight, setInsight] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  // Track previous resultType and lang to reset insight
+  const prevResultType = useRef(resultType);
+  const prevLang = useRef(lang);
 
-  // Update data if resultType changes, using APP_CONFIG styling
-  useEffect(() => {
-    const newConfigData = findGlowtypeConfig(resultType);
-    setData(newConfigData);
-    setInsight(null);
-  }, [resultType]);
-
-  useEffect(() => { setInsight(null); }, [lang]);
+  // Reset insight when resultType or lang changes (using ref comparison)
+  if (prevResultType.current !== resultType || prevLang.current !== lang) {
+    prevResultType.current = resultType;
+    prevLang.current = lang;
+    if (insight !== null) {
+      setInsight(null);
+    }
+  }
 
   const handleGenerateInsight = async () => {
     setIsGenerating(true);
@@ -856,18 +922,25 @@ const BrandLogo = () => (
   </div>
 );
 
-const ChatView = ({ onEnd, lang, onCrisis, apiPrompts = {} }) => {
+interface ChatViewProps {
+  onEnd: () => void;
+  lang: 'en' | 'zh';
+  onCrisis: () => void;
+  apiPrompts?: Record<string, string>;
+}
+
+const ChatView = ({ onEnd, lang, onCrisis, apiPrompts = {} }: ChatViewProps) => {
   const t = TRANSLATIONS[lang].chat;
   const [messages, setMessages] = useState<Array<{id: number, text: string, sender: string}>>([
     { id: 1, text: t.intro, sender: 'bot' }
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const endOfMsgRef = useRef(null);
+  const endOfMsgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endOfMsgRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
 
-  const handleSend = async (e) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
@@ -987,7 +1060,12 @@ const ChatView = ({ onEnd, lang, onCrisis, apiPrompts = {} }) => {
 
 
 
-const SafetyView = ({ onBack, lang }) => {
+interface SafetyViewProps {
+  onBack: () => void;
+  lang: 'en' | 'zh';
+}
+
+const SafetyView = ({ onBack, lang }: SafetyViewProps) => {
   const t = TRANSLATIONS[lang].safety;
   return (
     <div className="max-w-2xl mx-auto px-6 pt-28 pb-12 min-h-screen relative z-10">
@@ -1019,7 +1097,13 @@ const SafetyView = ({ onBack, lang }) => {
   );
 };
 
-const LearnView = ({ onBack, lang, userType = null }) => {
+interface LearnViewProps {
+  onBack: () => void;
+  lang: 'en' | 'zh';
+  userType?: string | null;
+}
+
+const LearnView = ({ onBack, lang, userType = null }: LearnViewProps) => {
   const t = TRANSLATIONS[lang].learn;
   const chapters = APP_CONFIG.bookChapters;
   const allSticks = APP_CONFIG.glowSticks;
@@ -1028,15 +1112,18 @@ const LearnView = ({ onBack, lang, userType = null }) => {
   const [currentStick, setCurrentStick] = useState<typeof allSticks[0] | null>(null);
   const [drawnIds, setDrawnIds] = useState<number[]>([]);
 
-  const colorMap: Record<string, string> = {
-    indigo: 'from-indigo-500 to-purple-600',
-    emerald: 'from-emerald-500 to-teal-600',
-    rose: 'from-rose-500 to-pink-600',
-    amber: 'from-amber-500 to-orange-600',
-    violet: 'from-violet-500 to-fuchsia-600'
-  };
+  // Pre-compute random particle data to avoid impure render
+  const particleData = useMemo(() =>
+    [...Array(20)].map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      duration: 3 + Math.random() * 2,
+      delay: Math.random() * 3,
+    })), []
+  );
 
-  // Get sticks pool based on selected chapter
+  // Get sticks pool based on selected chapter (only called in event handlers, not during render)
   const getStickPool = () => {
     let pool = allSticks;
     if (selectedChapter && selectedChapter !== 'random') {
@@ -1083,13 +1170,13 @@ const LearnView = ({ onBack, lang, userType = null }) => {
       {/* Magical background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden bg-gradient-to-b from-slate-900 via-purple-950 to-slate-900">
         {/* Floating particles */}
-        {[...Array(20)].map((_, i) => (
+        {particleData.map((p) => (
           <motion.div
-            key={i}
+            key={p.id}
             className="absolute w-1 h-1 bg-white rounded-full"
-            style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+            style={{ left: p.left, top: p.top }}
             animate={{ opacity: [0, 1, 0], y: [0, -30, -60] }}
-            transition={{ duration: 3 + Math.random() * 2, repeat: Infinity, delay: Math.random() * 3 }}
+            transition={{ duration: p.duration, repeat: Infinity, delay: p.delay }}
           />
         ))}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-purple-500/10 rounded-full blur-[120px]" />
@@ -1323,7 +1410,12 @@ const LearnView = ({ onBack, lang, userType = null }) => {
 };
 
 // --- TERMS VIEW ---
-const TermsView = ({ onBack, lang }) => {
+interface TermsViewProps {
+  onBack: () => void;
+  lang: 'en' | 'zh';
+}
+
+const TermsView = ({ onBack, lang }: TermsViewProps) => {
   const isZh = lang === 'zh';
   return (
     <div className="max-w-3xl mx-auto px-6 pt-28 pb-32 min-h-screen relative z-10">
@@ -1341,7 +1433,12 @@ const TermsView = ({ onBack, lang }) => {
 };
 
 // --- PRIVACY VIEW ---
-const PrivacyView = ({ onBack, lang }) => {
+interface PrivacyViewProps {
+  onBack: () => void;
+  lang: 'en' | 'zh';
+}
+
+const PrivacyView = ({ onBack, lang }: PrivacyViewProps) => {
   const isZh = lang === 'zh';
   return (
     <div className="max-w-3xl mx-auto px-6 pt-28 pb-32 min-h-screen relative z-10">
@@ -1359,9 +1456,25 @@ const PrivacyView = ({ onBack, lang }) => {
 };
 
 // --- UPDATED CRISIS VIEW: CLEAR & ORGANIZED ---
-const CrisisView = ({ onBack, lang }) => {
+interface CrisisViewProps {
+  onBack: () => void;
+  lang: 'en' | 'zh';
+}
+
+const CrisisView = ({ onBack, lang }: CrisisViewProps) => {
   const t = TRANSLATIONS[lang].crisis;
   const hotlines = APP_CONFIG.hotlines;
+
+  // Pre-compute random meteor data to avoid impure render
+  const meteorData = useMemo(() =>
+    [...Array(3)].map((_, i) => ({
+      id: i,
+      delay: Math.random() * 2,
+      duration: 2 + Math.random() * 3,
+      repeatDelay: Math.random() * 3 + 2,
+      left: `${10 + Math.random() * 80}%`,
+    })), []
+  );
 
   // Group by category
   const callLines = hotlines.filter(h => h.category === 'call');
@@ -1374,12 +1487,13 @@ const CrisisView = ({ onBack, lang }) => {
         className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl"
         onClick={onBack}
       >
-        {[...Array(3)].map((_, i) => (
+        {meteorData.map((m) => (
           <Meteor
-            key={i}
-            delay={Math.random() * 2}
-            duration={2 + Math.random() * 3}
-            style={{ left: `${10 + Math.random() * 80}%`, top: '-20%' }}
+            key={m.id}
+            delay={m.delay}
+            duration={m.duration}
+            repeatDelay={m.repeatDelay}
+            style={{ left: m.left, top: '-20%' }}
           />
         ))}
       </motion.div>
@@ -1455,7 +1569,14 @@ const CrisisView = ({ onBack, lang }) => {
 };
 
 // 3. Layout Shell
-const Navbar = memo(({ view, setView, lang, toggleLang, tNav }) => {
+interface NavbarProps {
+  view: string;
+  setView: (view: string) => void;
+  toggleLang: () => void;
+  tNav: { safety: string; learn: string; lang: string };
+}
+
+const Navbar = memo(({ view, setView, toggleLang, tNav }: NavbarProps) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -1476,39 +1597,31 @@ const Navbar = memo(({ view, setView, lang, toggleLang, tNav }) => {
   );
 });
 
-const AppShell = () => {
-  // Admin panel route
-  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
-    return (
-      <BrowserRouter>
-        <AdminLayout />
-      </BrowserRouter>
-    );
+// Check for special routes on initial load
+const getInitialView = (): string => {
+  if (typeof window !== 'undefined') {
+    if (window.location.pathname === '/terms') return 'terms';
+    if (window.location.pathname === '/privacy') return 'privacy';
+    if (window.location.pathname === '/learn') return 'learn';
+    if (window.location.pathname === '/quiz') return 'quiz';
+    if (window.location.pathname === '/safety') return 'safety';
   }
+  return 'landing';
+};
 
-  // Share render route (for Playwright screenshot)
-  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/share-render')) {
-    return <ShareRenderPage />;
+// Check route type (called only once at module level)
+const getRouteType = (): 'admin' | 'share-render' | 'main' => {
+  if (typeof window !== 'undefined') {
+    if (window.location.pathname.startsWith('/admin')) return 'admin';
+    if (window.location.pathname.startsWith('/share-render')) return 'share-render';
   }
+  return 'main';
+};
 
-  // Check for special routes on initial load
-  const getInitialView = () => {
-    if (typeof window !== 'undefined') {
-      if (window.location.pathname === '/terms') return 'terms';
-      if (window.location.pathname === '/privacy') return 'privacy';
-      if (window.location.pathname === '/learn') return 'learn';
-      if (window.location.pathname === '/quiz') return 'quiz';
-      if (window.location.pathname === '/safety') return 'safety';
-    }
-    return 'landing';
-  };
-
-  // Assume view, setView, lang, toggleLang, handleQuizComplete, resultType are defined here
-  // For the purpose of this fix, we're just wrapping the existing JSX.
-  // In a real app, these would come from useState, etc.
+const MainApp = () => {
   const [view, setView] = useState(getInitialView); // Initialize from URL
-  const [lang, setLang] = useState('en'); // Example state
-  const [resultType, setResultType] = useState(null); // Example state
+  const [lang, setLang] = useState<'en' | 'zh'>('en');
+  const [resultType, setResultType] = useState<string | null>(null);
   const [apiPrompts, setApiPrompts] = useState<Record<string, string>>({});
 
   // Fetch AI prompts from API on mount
@@ -1517,7 +1630,7 @@ const AppShell = () => {
   }, []);
 
   const toggleLang = () => setLang(prev => (prev === 'en' ? 'zh' : 'en'));
-  const handleQuizComplete = (type) => {
+  const handleQuizComplete = (type: string) => {
     setResultType(type);
     setView('result');
     trackEvent('quiz_complete', type); // Track quiz completion
@@ -1535,7 +1648,7 @@ const AppShell = () => {
         setLang(urlLang);
       }
       const urlType = params.get('type');
-      if (urlType && APP_CONFIG.glowtypes[urlType]) {
+      if (urlType && glowtypeKeys.includes(urlType as GlowtypeKey)) {
         setResultType(urlType);
         setView('result');
       }
@@ -1549,7 +1662,7 @@ const AppShell = () => {
     try {
       const params = new URLSearchParams(window.location.search);
       params.set('lang', lang);
-      if (resultType && APP_CONFIG.glowtypes[resultType]) {
+      if (resultType && glowtypeKeys.includes(resultType as GlowtypeKey)) {
         params.set('type', resultType);
       } else {
         params.delete('type');
@@ -1600,13 +1713,13 @@ const AppShell = () => {
     <div className="min-h-screen bg-[#FDFCFE] text-gray-900 font-sans overflow-x-hidden relative selection:bg-purple-200">
       <GlobalBackground />
       {showChrome && (
-        <Navbar view={view} setView={setView} lang={lang} toggleLang={toggleLang} tNav={tNav} />
+        <Navbar view={view} setView={setView} toggleLang={toggleLang} tNav={tNav} />
       )}
       <main className={`relative ${showChrome ? 'z-10' : 'z-[70]'}`}>
         <AnimatePresence mode="wait">
           {view === 'landing' && (<motion.div key="landing" exit={{ opacity: 0, y: -20 }} className="absolute w-full top-0"><HeroView onStart={() => setView('quiz')} onViewSafety={() => setView('safety')} lang={lang} /></motion.div>)}
           {view === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><QuizView onComplete={handleQuizComplete} lang={lang} /></motion.div>)}
-          {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => { trackEvent('ai_chat_start'); setView('chat'); }} onTips={() => alert("Hydrate & Rest!")} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} apiPrompts={apiPrompts} /></motion.div>)}
+          {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => { trackEvent('ai_chat_start'); setView('chat'); }} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} apiPrompts={apiPrompts} /></motion.div>)}
           {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} apiPrompts={apiPrompts} /></motion.div>)}
           {view === 'safety' && (<motion.div key="safety" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute w-full top-0 z-30"><SafetyView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
           {view === 'learn' && (<motion.div key="learn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><LearnView onBack={() => setView('landing')} lang={lang} userType={resultType} /></motion.div>)}
@@ -1649,6 +1762,25 @@ const AppShell = () => {
       )}
     </div>
   );
+};
+
+// Route wrapper - no hooks before conditional returns
+const AppShell = () => {
+  const routeType = getRouteType();
+
+  if (routeType === 'admin') {
+    return (
+      <BrowserRouter>
+        <AdminLayout />
+      </BrowserRouter>
+    );
+  }
+
+  if (routeType === 'share-render') {
+    return <ShareRenderPage />;
+  }
+
+  return <MainApp />;
 };
 
 export default AppShell;

@@ -142,7 +142,7 @@ export default function Glowtypes() {
           await loadGlowtypes();
           alert(t('glowtypes.importSuccess'));
         }
-      } catch (err) {
+      } catch {
         alert(t('glowtypes.importFailed'));
       }
     };
