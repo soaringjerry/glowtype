@@ -1,4 +1,4 @@
-import { forwardRef, memo } from 'react';
+import { forwardRef, memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 
@@ -21,6 +21,18 @@ type GlowtypeCardProps = {
   exportMode?: boolean;
 };
 
+// Helper: check if value is a hex color
+const isHexColor = (value: string) => /^#[0-9A-Fa-f]{3,8}$/.test(value);
+
+// Helper: lighten a hex color for gradient
+const lightenHex = (hex: string, amount: number): string => {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, ((num >> 16) & 0xFF) + amount);
+  const g = Math.min(255, ((num >> 8) & 0xFF) + amount);
+  const b = Math.min(255, (num & 0xFF) + amount);
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
 export const GlowtypeCard = memo(
   forwardRef<HTMLDivElement, GlowtypeCardProps>(function GlowtypeCard(
     { data, insight, lang, className = '', animated = true, variant = 'display', exportMode = false },
@@ -28,6 +40,30 @@ export const GlowtypeCard = memo(
   ) {
     const { title, tagline, description, auraGradient, cardAccent, textColor } =
       data;
+
+    // Process cardAccent: support both Tailwind classes and hex colors
+    const cardAccentStyle = useMemo(() => {
+      if (isHexColor(cardAccent)) {
+        // Generate a subtle gradient from very light to light version of the color
+        const lightColor = lightenHex(cardAccent, 180);
+        const midColor = lightenHex(cardAccent, 140);
+        return {
+          className: '',
+          style: { background: `linear-gradient(to bottom right, ${lightColor}, ${midColor})` }
+        };
+      }
+      // Tailwind class (e.g., "from-indigo-50 to-purple-50")
+      return { className: cardAccent, style: {} };
+    }, [cardAccent]);
+
+    // Process textColor: support both Tailwind classes and hex colors
+    const textColorStyle = useMemo(() => {
+      if (isHexColor(textColor)) {
+        return { className: '', style: { color: textColor } };
+      }
+      // Tailwind class (e.g., "text-gray-900")
+      return { className: textColor, style: {} };
+    }, [textColor]);
 
     const isShare = variant === 'share';
     const titleClasses = isShare
@@ -59,7 +95,8 @@ export const GlowtypeCard = memo(
           animated ? { rotateY: 0, opacity: 1 } : undefined
         }
         transition={animated ? { duration: 1, type: 'spring' } : undefined}
-        className={`relative h-full w-full ${radius} overflow-hidden bg-gradient-to-br ${cardAccent} shadow-2xl ${borderWidth} border-white/60 ${className}`}
+        className={`relative h-full w-full ${radius} overflow-hidden bg-gradient-to-br ${cardAccentStyle.className} shadow-2xl ${borderWidth} border-white/60 ${className}`}
+        style={cardAccentStyle.style}
       >
         {!exportMode && (
           <div className="absolute inset-0 opacity-[0.6] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
@@ -131,7 +168,10 @@ export const GlowtypeCard = memo(
           <div className={`absolute inset-0 bg-gradient-to-t ${exportMode ? 'from-white via-white/85' : 'from-white/95 via-white/70'} to-transparent ${exportMode ? '' : 'backdrop-blur-[2px]'}`} />
           <div className={`relative z-20 ${paddingClasses} h-full flex flex-col justify-end`}>
             <div className="pt-6">
-              <h3 className={`${titleClasses} font-serif ${textColor} mb-2`}>
+              <h3
+                className={`${titleClasses} font-serif ${textColorStyle.className} mb-2`}
+                style={textColorStyle.style}
+              >
                 {title}
               </h3>
               <p className={`${taglineClasses} text-gray-500 font-bold mb-4`}>
