@@ -918,10 +918,9 @@ interface ChatViewProps {
   onEnd: () => void;
   lang: 'en' | 'zh';
   onCrisis: () => void;
-  apiPrompts?: Record<string, string>;
 }
 
-const ChatView = ({ onEnd, lang, onCrisis, apiPrompts = {} }: ChatViewProps) => {
+const ChatView = ({ onEnd, lang, onCrisis }: ChatViewProps) => {
   const t = TRANSLATIONS[lang].chat;
   const [messages, setMessages] = useState<Array<{id: number, text: string, sender: string}>>([
     { id: 1, text: t.intro, sender: 'bot' }
@@ -1613,7 +1612,7 @@ const getInitialView = (): string => {
 };
 
 // Check route type (called only once at module level)
-const getRouteType = (): 'admin' | 'share-render' | 'main' => {
+  const getRouteType = (): 'admin' | 'share-render' | 'main' => {
   if (typeof window !== 'undefined') {
     if (window.location.pathname.startsWith('/admin')) return 'admin';
     if (window.location.pathname.startsWith('/share-render')) return 'share-render';
@@ -1723,7 +1722,7 @@ const MainApp = () => {
           {view === 'landing' && (<motion.div key="landing" exit={{ opacity: 0, y: -20 }} className="absolute w-full top-0"><HeroView onStart={() => setView('quiz')} onViewSafety={() => setView('safety')} lang={lang} /></motion.div>)}
           {view === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><QuizView onComplete={handleQuizComplete} lang={lang} /></motion.div>)}
           {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => { trackEvent('ai_chat_start'); setView('chat'); }} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} apiPrompts={apiPrompts} /></motion.div>)}
-          {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} apiPrompts={apiPrompts} /></motion.div>)}
+          {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} /></motion.div>)}
           {view === 'safety' && (<motion.div key="safety" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute w-full top-0 z-30"><SafetyView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
           {view === 'learn' && (<motion.div key="learn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><LearnView onBack={() => setView('landing')} lang={lang} userType={resultType} /></motion.div>)}
           {view === 'terms' && (<motion.div key="terms" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><TermsView onBack={() => { setView('landing'); window.history.pushState({}, '', '/'); }} lang={lang} /></motion.div>)}
