@@ -40,14 +40,22 @@ func (s *GlowtypeService) GetGlowtype(id, lang string) (*models.GlowtypeResponse
 			s.db.Where("glowtype_id = ? AND lang = ?", glowtype.ID, "en").First(&i18n)
 		}
 
-		// Parse JSON arrays from text fields
+		// Parse description and selfCareTips - support both JSON array and plain string
 		var description []string
 		var selfCareTips []string
 		if i18n.Description != "" {
-			json.Unmarshal([]byte(i18n.Description), &description)
+			// Try JSON array first, fallback to plain string
+			if err := json.Unmarshal([]byte(i18n.Description), &description); err != nil {
+				// Not JSON array, treat as plain string
+				description = []string{i18n.Description}
+			}
 		}
 		if i18n.SelfCareTips != "" {
-			json.Unmarshal([]byte(i18n.SelfCareTips), &selfCareTips)
+			// Try JSON array first, fallback to plain string
+			if err := json.Unmarshal([]byte(i18n.SelfCareTips), &selfCareTips); err != nil {
+				// Not JSON array, treat as plain string
+				selfCareTips = []string{i18n.SelfCareTips}
+			}
 		}
 
 		return &models.GlowtypeResponse{
