@@ -7,7 +7,9 @@ import {
   MessageSquare,
   Sparkles,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Activity,
+  Clock3
 } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdmin';
 
@@ -22,27 +24,80 @@ interface GlowtypeDistribution {
   count: number;
 }
 
+type TrendKey = keyof Pick<DailyStat, 'quizCompleted' | 'shareGenerated' | 'aiChatsStarted' | 'aiInsightUsed'>;
+
+interface DailyStat {
+  date: string;
+  quizCompleted: number;
+  shareGenerated: number;
+  aiChatsStarted: number;
+  aiInsightUsed: number;
+}
+
+interface QuizResult {
+  id: number;
+  resultTypeCode: string;
+  language: string;
+  channel?: string;
+  entryPoint?: string;
+  source?: string;
+  dimensionScores?: Record<string, number> | string | null;
+  createdAt: string;
+}
+
 export default function Dashboard() {
   const { t } = useTranslation('admin');
   const [stats, setStats] = useState<StatsOverview | null>(null);
   const [distribution, setDistribution] = useState<GlowtypeDistribution[]>([]);
+  const [dailyStats, setDailyStats] = useState<DailyStat[]>([]);
+  const [recentResults, setRecentResults] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
   const api = useAdminApi();
 
   const loadData = async () => {
     setLoading(true);
-    const [statsData, distData] = await Promise.all([
+    const [statsData, distData, dailyData, resultsData] = await Promise.all([
       api.getStatsOverview(),
       api.getGlowtypeDistribution(),
+      api.getDailyStats(14),
+      api.listQuizResults({ limit: 8 }),
     ]);
     if (statsData) setStats(statsData);
     if (distData) setDistribution(distData);
+    if (dailyData) setDailyStats(dailyData);
+    if (resultsData) setRecentResults(resultsData);
     setLoading(false);
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const parseScores = (scores: QuizResult['dimensionScores']): Record<string, number> => {
+    if (!scores) return {};
+    if (typeof scores === 'string') {
+      try {
+        return JSON.parse(scores);
+      } catch (e) {
+        console.warn('Failed to parse dimension scores', e);
+        return {};
+      }
+    }
+    return scores;
+  };
+
+  const getTopScores = (scores: Record<string, number>) =>
+    Object.entries(scores)
+      .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+      .slice(0, 3);
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
   const StatCard = ({
     title,
@@ -82,6 +137,13 @@ export default function Dashboard() {
       </div>
     </div>
   );
+
+  const trendMetrics: { key: TrendKey; label: string; gradient: string }[] = [
+    { key: 'quizCompleted', label: t('dashboard.quizCompleted'), gradient: 'from-purple-500 to-purple-300' },
+    { key: 'shareGenerated', label: t('dashboard.sharesGenerated'), gradient: 'from-pink-500 to-orange-300' },
+    { key: 'aiChatsStarted', label: t('dashboard.aiChatsStarted'), gradient: 'from-blue-500 to-cyan-300' },
+    { key: 'aiInsightUsed', label: t('dashboard.aiInsightsUsed'), gradient: 'from-amber-500 to-yellow-300' },
+  ];
 
   if (loading) {
     return (
@@ -142,6 +204,125 @@ export default function Dashboard() {
           icon={Sparkles}
           color="bg-amber-500"
         />
+      </div>
+
+      {/* Daily Trend */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+            <Activity className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-800">{t('dashboard.dailyTrend')}</h3>
+            <p className="text-sm text-gray-500">{t('dashboard.dailyTrendSubtitle')}</p>
+          </div>
+        </div>
+
+        {dailyStats.length === 0 ? (
+          <div className="text-center py-10 text-gray-400">
+            {t('dashboard.noDailyData')}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {trendMetrics.map((metric) => {
+              const maxVal = Math.max(...dailyStats.map((d) => d[metric.key] || 0), 1);
+              return (
+                <div key={metric.key}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">{metric.label}</span>
+                    <span className="text-xs text-gray-400">
+                      {t('dashboard.lastNDays', { days: dailyStats.length })}
+                    </span>
+                  </div>
+                  <div className="flex items-end gap-1">
+                    {dailyStats.map((day) => {
+                      const height = maxVal ? (day[metric.key] / maxVal) * 100 : 0;
+                      return (
+                        <div key={`${metric.key}-${day.date}`} className="flex-1 min-w-[10px]">
+                          <div className="relative h-24 bg-gray-100 rounded-lg overflow-hidden">
+                            <div
+                              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${metric.gradient}`}
+                              style={{ height: `${height}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-center text-gray-400 mt-1">
+                            {day.date.slice(5)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Results */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+            <Clock3 className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-800">{t('dashboard.recentResults')}</h3>
+            <p className="text-sm text-gray-500">{t('dashboard.recentResultsSubtitle')}</p>
+          </div>
+        </div>
+
+        {recentResults.length === 0 ? (
+          <div className="text-center py-10 text-gray-400">{t('dashboard.noRecentResults')}</div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {recentResults.map((res) => {
+              const scores = parseScores(res.dimensionScores);
+              const topScores = getTopScores(scores);
+              return (
+                <div key={res.id} className="py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded font-semibold">
+                        {res.resultTypeCode || t('dashboard.unmapped')}
+                      </span>
+                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                        {res.language?.toUpperCase() || '-'}
+                      </span>
+                      <span className="text-xs text-gray-400">{formatDate(res.createdAt)}</span>
+                    </div>
+                    {topScores.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {topScores.map(([dim, score]) => (
+                          <span
+                            key={dim}
+                            className={`px-2 py-1 text-xs rounded ${
+                              score > 0
+                                ? 'bg-green-100 text-green-700'
+                                : score < 0
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {dim}: {score > 0 ? '+' : ''}
+                            {score}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {topScores.length === 0 && (
+                      <p className="text-xs text-gray-400 mt-1">{t('dashboard.noScores')}</p>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500 space-y-1 text-left md:text-right">
+                    <p>{t('dashboard.channelLabel', { channel: res.channel || t('dashboard.unknown') })}</p>
+                    <p>{t('dashboard.entryLabel', { entry: res.entryPoint || '-' })}</p>
+                    <p>{t('dashboard.sourceLabel', { source: res.source || '-' })}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Glowtype Distribution */}

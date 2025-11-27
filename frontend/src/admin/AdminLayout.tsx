@@ -13,7 +13,8 @@ import {
   Compass,
   Settings2,
   Bug,
-  Globe
+  Globe,
+  BarChart3
 } from 'lucide-react';
 import { useAdminAuth } from './hooks/useAdmin';
 import AdminLogin from './AdminLogin';
@@ -24,6 +25,7 @@ import Glowtypes from './pages/Glowtypes';
 import Rules from './pages/Rules';
 import RuleDebugger from './pages/RuleDebugger';
 import Prompts from './pages/Prompts';
+import Results from './pages/Results';
 
 const navItems = [
   { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard },
@@ -32,6 +34,7 @@ const navItems = [
   { path: '/admin/glowtypes', labelKey: 'nav.glowtypes', icon: Sparkles },
   { path: '/admin/rules', labelKey: 'nav.rules', icon: Settings2 },
   { path: '/admin/debugger', labelKey: 'nav.debugger', icon: Bug },
+  { path: '/admin/results', labelKey: 'nav.results', icon: BarChart3 },
   { path: '/admin/prompts', labelKey: 'nav.prompts', icon: MessageSquare },
 ];
 
@@ -143,6 +146,7 @@ export default function AdminLayout() {
             <Route path="/admin/glowtypes" element={<Glowtypes />} />
             <Route path="/admin/rules" element={<Rules />} />
             <Route path="/admin/debugger" element={<RuleDebugger />} />
+            <Route path="/admin/results" element={<Results />} />
             <Route path="/admin/prompts" element={<Prompts />} />
           </Routes>
         </div>

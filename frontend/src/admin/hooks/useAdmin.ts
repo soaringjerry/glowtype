@@ -134,12 +134,12 @@ export const useAdminApi = () => {
   const getGlowtypeDistribution = () => apiCall<any[]>('/admin/stats/glowtypes');
 
   // Quiz Results
-  const listQuizResults = (params?: { page?: number, limit?: number, typeCode?: string }) => {
+  const listQuizResults = (params?: { limit?: number; typeCode?: string }) => {
     const query = new URLSearchParams();
-    if (params?.page) query.set('page', params.page.toString());
     if (params?.limit) query.set('limit', params.limit.toString());
     if (params?.typeCode) query.set('type', params.typeCode);
-    return apiCall<any>(`/admin/results?${query.toString()}`);
+    const qs = query.toString();
+    return apiCall<any[]>(`/admin/results${qs ? `?${qs}` : ''}`);
   };
 
   return {
