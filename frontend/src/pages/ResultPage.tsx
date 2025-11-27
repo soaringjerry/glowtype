@@ -1,3 +1,10 @@
+/**
+ * @deprecated 此页面已废弃，未被使用
+ * 应用使用 App.tsx 中的 ResultView 组件
+ * This page is deprecated and not in use.
+ * The app uses ResultView in App.tsx instead.
+ */
+
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

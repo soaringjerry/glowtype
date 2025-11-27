@@ -1,3 +1,10 @@
+/**
+ * @deprecated 此页面已废弃，未被使用
+ * 应用使用 App.tsx 中的 ChatView 组件
+ * This page is deprecated and not in use.
+ * The app uses ChatView in App.tsx instead.
+ */
+
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

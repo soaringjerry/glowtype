@@ -1,6 +1,14 @@
+/**
+ * @deprecated 此页面已废弃，未被使用
+ * 应用使用 App.tsx 中的 HeroView 组件
+ * This page is deprecated and not in use.
+ * The app uses HeroView in App.tsx instead.
+ */
+
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
+/** @deprecated */
 export function HomePage() {
   const { t } = useTranslation('home');
 

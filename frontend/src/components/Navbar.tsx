@@ -1,9 +1,17 @@
+/**
+ * @deprecated 此组件已废弃，未被使用
+ * 应用实际使用的是 App.tsx 中内部定义的 Navbar 组件
+ * This component is deprecated and not in use.
+ * The app uses the internal Navbar defined in App.tsx instead.
+ */
+
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { Link, NavLink } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
+/** @deprecated */
 export function Navbar() {
   const { t } = useTranslation('common');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
