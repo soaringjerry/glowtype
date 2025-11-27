@@ -26,19 +26,61 @@ type InlineShareCardProps = {
   glowDataUrl?: string;
 };
 
+// 从 CSS 渐变字符串中提取颜色
+const parseGradientColors = (gradient: string): { light: string; mid: string; dark: string } => {
+  // 默认紫色（Quiet Comet 风格）
+  const defaultColors = { light: '#a5b4fc', mid: '#818cf8', dark: '#4f46e5' };
+
+  if (!gradient) return defaultColors;
+
+  // 匹配 hex 颜色
+  const hexMatches = gradient.match(/#[0-9a-fA-F]{6}/g);
+  if (hexMatches && hexMatches.length >= 3) {
+    return { light: hexMatches[0], mid: hexMatches[1], dark: hexMatches[2] };
+  }
+  if (hexMatches && hexMatches.length >= 2) {
+    return { light: hexMatches[0], mid: hexMatches[1], dark: hexMatches[1] };
+  }
+  if (hexMatches && hexMatches.length >= 1) {
+    return { light: hexMatches[0], mid: hexMatches[0], dark: hexMatches[0] };
+  }
+
+  return defaultColors;
+};
+
+// 将 hex 颜色转换为 rgba
+const hexToRgba = (hex: string, alpha: number): string => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+// 使亮色更亮
+const lightenColor = (hex: string, amount: number): string => {
+  const r = Math.min(255, parseInt(hex.slice(1, 3), 16) + amount);
+  const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + amount);
+  const b = Math.min(255, parseInt(hex.slice(5, 7), 16) + amount);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
+
 // 使用 Canvas API 绘制模糊光效
-const renderGlowToCanvas = (width: number, height: number): string => {
+const renderGlowToCanvas = (width: number, height: number, auraGradient?: string): string => {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  // 背景渐变
+  // 从 auraGradient 提取颜色
+  const colors = parseGradientColors(auraGradient || '');
+  const lightestColor = lightenColor(colors.light, 60);
+
+  // 背景渐变 - 使用提取的颜色
   const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-  bgGrad.addColorStop(0, '#fef3ff');
+  bgGrad.addColorStop(0, lightenColor(colors.light, 200)); // 非常淡的色调
   bgGrad.addColorStop(0.5, '#ffffff');
-  bgGrad.addColorStop(1, '#f0e6ff');
+  bgGrad.addColorStop(1, lightenColor(colors.mid, 180));
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
@@ -51,21 +93,21 @@ const renderGlowToCanvas = (width: number, height: number): string => {
     const radius = 450 - i * 12;
     const alpha = 0.015 + i * 0.006;
     const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-    grad.addColorStop(0, `rgba(167, 139, 250, ${alpha})`);
-    grad.addColorStop(0.4, `rgba(139, 92, 246, ${alpha * 0.5})`);
-    grad.addColorStop(1, 'rgba(139, 92, 246, 0)');
+    grad.addColorStop(0, hexToRgba(colors.light, alpha));
+    grad.addColorStop(0.4, hexToRgba(colors.mid, alpha * 0.5));
+    grad.addColorStop(1, hexToRgba(colors.mid, 0));
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
   }
 
-  // 中层 - 紫色光晕过渡
+  // 中层 - 光晕过渡
   for (let i = 0; i < 20; i++) {
     const radius = 280 - i * 8;
     const alpha = 0.02 + i * 0.01;
     const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-    grad.addColorStop(0, `rgba(196, 181, 253, ${alpha})`);
-    grad.addColorStop(0.5, `rgba(167, 139, 250, ${alpha * 0.6})`);
-    grad.addColorStop(1, 'rgba(167, 139, 250, 0)');
+    grad.addColorStop(0, hexToRgba(lightestColor, alpha));
+    grad.addColorStop(0.5, hexToRgba(colors.light, alpha * 0.6));
+    grad.addColorStop(1, hexToRgba(colors.light, 0));
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
   }
@@ -76,9 +118,9 @@ const renderGlowToCanvas = (width: number, height: number): string => {
     const alpha = 0.03 + i * 0.015;
     const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
     grad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
-    grad.addColorStop(0.4, `rgba(237, 233, 254, ${alpha * 0.7})`);
-    grad.addColorStop(0.8, `rgba(221, 214, 254, ${alpha * 0.3})`);
-    grad.addColorStop(1, 'rgba(221, 214, 254, 0)');
+    grad.addColorStop(0.4, hexToRgba(lightestColor, alpha * 0.7));
+    grad.addColorStop(0.8, hexToRgba(colors.light, alpha * 0.3));
+    grad.addColorStop(1, hexToRgba(colors.light, 0));
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
   }
@@ -223,13 +265,13 @@ export const ShareModal: FC<ShareModalProps> = ({
     textColor: data.textColor,
   };
 
-  // 预渲染光效
+  // 预渲染光效 - 根据 auraGradient 动态生成
   useEffect(() => {
-    if (isOpen && !glowDataUrl) {
-      const dataUrl = renderGlowToCanvas(1080, 1080);
+    if (isOpen) {
+      const dataUrl = renderGlowToCanvas(1080, 1080, data.auraGradient);
       setGlowDataUrl(dataUrl);
     }
-  }, [isOpen, glowDataUrl]);
+  }, [isOpen, data.auraGradient]);
 
   const handleDownload = async () => {
     if (!exportRef.current) return;
