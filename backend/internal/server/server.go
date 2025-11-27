@@ -96,6 +96,8 @@ func New(cfg config.Config) *gin.Engine {
 		admin.POST("/dimensions", handlers.CreateDimension)
 		admin.PUT("/dimensions/:id", handlers.UpdateDimension)
 		admin.DELETE("/dimensions/:id", handlers.DeleteDimension)
+		admin.POST("/dimensions/import", handlers.ImportDimensions)
+		admin.GET("/dimensions/export", handlers.ExportDimensions)
 
 		// Quiz Questions CRUD
 		admin.GET("/questions", handlers.ListQuestions)

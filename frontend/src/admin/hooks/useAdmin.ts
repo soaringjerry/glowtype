@@ -121,6 +121,18 @@ export interface RuleImportItem {
   isFallback: boolean;
 }
 
+export interface DimensionImportItem {
+  key: string;
+  nameZh: string;
+  nameEn: string;
+  positivePole: string;
+  negativePole: string;
+  description?: string;
+  strongThreshold: number;
+  mildThreshold: number;
+  displayOrder: number;
+}
+
 const ADMIN_TOKEN_KEY = 'admin_token';
 const ADMIN_USER_KEY = 'admin_user';
 
@@ -295,6 +307,9 @@ export const useAdminApi = () => {
   const createDimension = (data: any) => apiCall('/admin/dimensions', { method: 'POST', body: JSON.stringify(data) });
   const updateDimension = (id: number, data: any) => apiCall(`/admin/dimensions/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   const deleteDimension = (id: number) => apiCall(`/admin/dimensions/${id}`, { method: 'DELETE' });
+  const importDimensions = (items: DimensionImportItem[], mode: ImportMode = 'merge') =>
+    apiCall<ImportResult>('/admin/dimensions/import', { method: 'POST', body: JSON.stringify({ items, mode }) });
+  const exportDimensions = () => apiCall<{ items: DimensionImportItem[]; count: number }>('/admin/dimensions/export');
 
   // Questions
   const listQuestions = () => apiCall<any[]>('/admin/questions');
@@ -369,6 +384,8 @@ export const useAdminApi = () => {
     createDimension,
     updateDimension,
     deleteDimension,
+    importDimensions,
+    exportDimensions,
     // Questions
     listQuestions,
     createQuestion,

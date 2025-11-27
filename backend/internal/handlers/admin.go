@@ -1765,6 +1765,315 @@ func ExportRules(c *gin.Context) {
 }
 
 // ============================================================
+// DIMENSION IMPORT/EXPORT HANDLERS
+// ============================================================
+
+// DimensionImportItem represents a trait dimension in import format
+type DimensionImportItem struct {
+	Key             string  `json:"key"`
+	NameZH          string  `json:"nameZh"`
+	NameEN          string  `json:"nameEn"`
+	PositivePole    string  `json:"positivePole"`
+	NegativePole    string  `json:"negativePole"`
+	Description     string  `json:"description,omitempty"`
+	StrongThreshold float64 `json:"strongThreshold"`
+	MildThreshold   float64 `json:"mildThreshold"`
+	DisplayOrder    int     `json:"displayOrder"`
+}
+
+// ImportDimensions handles bulk dimension import with validation
+func ImportDimensions(c *gin.Context) {
+	var req struct {
+		Mode  ImportMode            `json:"mode"`
+		Items []DimensionImportItem `json:"items"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON: " + err.Error()})
+		return
+	}
+
+	// Default to merge mode
+	if req.Mode == "" {
+		req.Mode = ImportModeMerge
+	}
+
+	// Validate mode
+	if req.Mode != ImportModeMerge && req.Mode != ImportModeReplace {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mode. Use 'merge' or 'replace'"})
+		return
+	}
+
+	// Validate items array
+	if len(req.Items) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No items to import"})
+		return
+	}
+
+	// Limit import size to prevent abuse
+	if len(req.Items) > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Too many items. Maximum 100 dimensions per import"})
+		return
+	}
+
+	// Validate all items first
+	result := ImportResult{
+		Mode:  req.Mode,
+		Total: len(req.Items),
+	}
+
+	seenKeys := make(map[string]int) // Track duplicate keys within import
+	for i, item := range req.Items {
+		errors := validateDimensionItem(item, i)
+
+		// Check for duplicate key within import
+		if prev, exists := seenKeys[item.Key]; exists {
+			errors = append(errors, ImportError{
+				Index:   i,
+				ID:      item.Key,
+				Message: fmt.Sprintf("Duplicate key '%s' (first seen at index %d)", item.Key, prev),
+			})
+		}
+		seenKeys[item.Key] = i
+
+		result.Errors = append(result.Errors, errors...)
+	}
+
+	// If there are validation errors, return without importing
+	if len(result.Errors) > 0 {
+		result.Success = false
+		c.JSON(http.StatusBadRequest, result)
+		return
+	}
+
+	db := database.GetDB()
+
+	// For replace mode, use transaction to clear and import
+	if req.Mode == ImportModeReplace {
+		tx := db.Begin()
+
+		// Hard delete all existing dimensions
+		if err := tx.Unscoped().Where("1=1").Delete(&database.TraitDimensionDB{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete existing dimensions: " + err.Error()})
+			return
+		}
+
+		// Import all items
+		for _, item := range req.Items {
+			dim := database.TraitDimensionDB{
+				Key:             item.Key,
+				NameZH:          item.NameZH,
+				NameEN:          item.NameEN,
+				PositivePole:    item.PositivePole,
+				NegativePole:    item.NegativePole,
+				Description:     item.Description,
+				StrongThreshold: item.StrongThreshold,
+				MildThreshold:   item.MildThreshold,
+				DisplayOrder:    item.DisplayOrder,
+			}
+			if err := tx.Create(&dim).Error; err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create dimension '%s': %s", item.Key, err.Error())})
+				return
+			}
+			result.Created++
+		}
+
+		tx.Commit()
+	} else {
+		// Merge mode: upsert each item
+		for _, item := range req.Items {
+			var existing database.TraitDimensionDB
+			err := db.Where("key = ?", item.Key).First(&existing).Error
+
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Create new
+				dim := database.TraitDimensionDB{
+					Key:             item.Key,
+					NameZH:          item.NameZH,
+					NameEN:          item.NameEN,
+					PositivePole:    item.PositivePole,
+					NegativePole:    item.NegativePole,
+					Description:     item.Description,
+					StrongThreshold: item.StrongThreshold,
+					MildThreshold:   item.MildThreshold,
+					DisplayOrder:    item.DisplayOrder,
+				}
+				if err := db.Create(&dim).Error; err != nil {
+					result.Errors = append(result.Errors, ImportError{
+						ID:      item.Key,
+						Message: "Failed to create: " + err.Error(),
+					})
+					result.Skipped++
+					continue
+				}
+				result.Created++
+			} else if err != nil {
+				result.Errors = append(result.Errors, ImportError{
+					ID:      item.Key,
+					Message: "Database error: " + err.Error(),
+				})
+				result.Skipped++
+			} else {
+				// Update existing
+				existing.NameZH = item.NameZH
+				existing.NameEN = item.NameEN
+				existing.PositivePole = item.PositivePole
+				existing.NegativePole = item.NegativePole
+				existing.Description = item.Description
+				existing.StrongThreshold = item.StrongThreshold
+				existing.MildThreshold = item.MildThreshold
+				existing.DisplayOrder = item.DisplayOrder
+				if err := db.Save(&existing).Error; err != nil {
+					result.Errors = append(result.Errors, ImportError{
+						ID:      item.Key,
+						Message: "Failed to update: " + err.Error(),
+					})
+					result.Skipped++
+					continue
+				}
+				result.Updated++
+			}
+		}
+	}
+
+	result.Success = len(result.Errors) == 0
+
+	c.Set("auditMetadata", map[string]any{
+		"importMode": req.Mode,
+		"total":      result.Total,
+		"created":    result.Created,
+		"updated":    result.Updated,
+	})
+
+	c.JSON(http.StatusOK, result)
+}
+
+// validateDimensionItem validates a single dimension import item
+func validateDimensionItem(item DimensionImportItem, index int) []ImportError {
+	var errors []ImportError
+
+	// Required: key
+	if strings.TrimSpace(item.Key) == "" {
+		errors = append(errors, ImportError{
+			Index:   index,
+			Message: "key is required",
+		})
+	} else if len(item.Key) > 50 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "key too long (max 50 characters)",
+		})
+	} else if !isValidDimensionKey(item.Key) {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "key must contain only lowercase letters, numbers, and underscores",
+		})
+	}
+
+	// Required: at least one name
+	if strings.TrimSpace(item.NameZH) == "" && strings.TrimSpace(item.NameEN) == "" {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "At least one of nameZh or nameEn is required",
+		})
+	}
+
+	// Required: positivePole and negativePole
+	if strings.TrimSpace(item.PositivePole) == "" {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "positivePole is required",
+		})
+	}
+	if strings.TrimSpace(item.NegativePole) == "" {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "negativePole is required",
+		})
+	}
+
+	// Validate thresholds
+	if item.StrongThreshold < 0 || item.StrongThreshold > 100 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "strongThreshold must be between 0 and 100",
+		})
+	}
+	if item.MildThreshold < 0 || item.MildThreshold > 100 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "mildThreshold must be between 0 and 100",
+		})
+	}
+	if item.MildThreshold > item.StrongThreshold {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "mildThreshold cannot be greater than strongThreshold",
+		})
+	}
+
+	// Validate displayOrder
+	if item.DisplayOrder < 0 || item.DisplayOrder > 1000 {
+		errors = append(errors, ImportError{
+			Index:   index,
+			ID:      item.Key,
+			Message: "displayOrder must be between 0 and 1000",
+		})
+	}
+
+	return errors
+}
+
+// isValidDimensionKey checks if a dimension key follows naming conventions
+func isValidDimensionKey(key string) bool {
+	for _, r := range key {
+		if !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_') {
+			return false
+		}
+	}
+	return true
+}
+
+// ExportDimensions exports all trait dimensions in import-compatible format
+func ExportDimensions(c *gin.Context) {
+	var dimensions []database.TraitDimensionDB
+	if err := database.GetDB().Order("display_order asc").Find(&dimensions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert to export format
+	items := make([]DimensionImportItem, 0, len(dimensions))
+	for _, d := range dimensions {
+		items = append(items, DimensionImportItem{
+			Key:             d.Key,
+			NameZH:          d.NameZH,
+			NameEN:          d.NameEN,
+			PositivePole:    d.PositivePole,
+			NegativePole:    d.NegativePole,
+			Description:     d.Description,
+			StrongThreshold: d.StrongThreshold,
+			MildThreshold:   d.MildThreshold,
+			DisplayOrder:    d.DisplayOrder,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items": items,
+		"count": len(items),
+	})
+}
+
+// ============================================================
 // RESET TO DEFAULTS HANDLERS
 // ============================================================
 
