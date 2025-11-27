@@ -184,7 +184,45 @@ frontend/src/
     └── pages/              # 各管理页面
 ```
 
-### 3.3 AI 集成
+### 3.3 Tailwind CSS 动态类名问题
+
+⚠️ **重要：Glowtype 样式配置的坑**
+
+Tailwind CSS 会在构建时 purge 掉未在源代码中静态出现的 class。这意味着如果你在数据库中配置了动态的 Tailwind class（如 `from-purple-50`），但代码里没有静态引用这个 class，它会被删除，导致样式不生效。
+
+**症状**：
+- 某些 Glowtype 卡片样式正常，其他的样式异常（背景色、文字颜色不对）
+- 新建的 Glowtype 样式不生效
+
+**解决方案**：
+在 `frontend/tailwind.config.js` 中配置了 safelist，预先保留所有可能用到的动态 class：
+
+```javascript
+safelist: [
+  // cardAccent: from-{color}-{50,100,200}, to-{color}-{50,100,200}
+  { pattern: /^from-(slate|gray|...|rose)-(50|100|200)$/ },
+  { pattern: /^to-(slate|gray|...|rose)-(50|100|200)$/ },
+  // textColor: text-{color}-{700,800,900,950}
+  { pattern: /^text-(slate|gray|...|rose)-(700|800|900|950)$/ },
+]
+```
+
+**新建 Glowtype 时可用的样式值**：
+
+| 字段 | 格式 | 示例 |
+|------|------|------|
+| cardAccent | `from-{颜色}-{深度} to-{颜色}-{深度}` | `from-purple-50 to-violet-100` |
+| textColor | `text-{颜色}-{深度}` | `text-purple-900` |
+
+- 颜色：slate, gray, zinc, neutral, stone, red, orange, amber, yellow, lime, green, emerald, teal, cyan, sky, blue, indigo, violet, purple, fuchsia, pink, rose
+- cardAccent 深度：50, 100, 200
+- textColor 深度：700, 800, 900, 950
+
+**如需使用其他深度**，需在 `tailwind.config.js` 的 pattern 中添加。
+
+---
+
+### 3.4 AI 集成
 
 前端直接调用 OpenAI-compatible API：
 
@@ -203,7 +241,7 @@ const config = {
 
 提示词可通过管理后台配置，存储在数据库中。
 
-### 3.4 管理后台
+### 3.5 管理后台
 
 路径：`/admin`
 
