@@ -1,0 +1,23 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Export data (contains potentially sensitive anonymized data)
+exports/
+*.export.json
+*.export.csv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
