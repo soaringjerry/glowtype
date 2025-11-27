@@ -422,21 +422,17 @@ func seedPrompts(db *gorm.DB) {
 	EnsureDefaultPrompts(db)
 }
 
-// EnsureDefaultPrompts ensures all required prompt slots exist in the database.
-// This should be called on every startup to support upgrades.
-// It will NOT overwrite existing prompts, only create missing ones.
+// EnsureDefaultPrompts seeds default prompts ONLY if table is empty.
+// This allows users to delete prompts without them being recreated on restart.
 func EnsureDefaultPrompts(db *gorm.DB) {
+	var count int64
+	db.Model(&AIPromptDB{}).Count(&count)
+	if count > 0 {
+		return // Table has data, don't seed
+	}
+
+	log.Println("Seeding default AI prompts...")
 	for _, p := range DefaultPrompts {
-		var existing AIPromptDB
-		if db.Where("key = ?", p.Key).First(&existing).Error == nil {
-			// Prompt exists - update description if empty (for upgrades)
-			if existing.Description == "" {
-				db.Model(&existing).Update("description", p.Description)
-				log.Printf("  Updated description for prompt '%s'", p.Key)
-			}
-			continue
-		}
-		// Create new prompt
 		if err := db.Create(&p).Error; err != nil {
 			log.Printf("  Failed to create prompt '%s': %v", p.Key, err)
 		} else {
