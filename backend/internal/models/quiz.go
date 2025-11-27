@@ -52,3 +52,15 @@ type QuizScoreResponse struct {
 	ScoreDetails map[string]interface{} `json:"scoreDetails,omitempty"`
 }
 
+// RequestMeta contains anonymized metadata from HTTP request
+// Used for analytics without storing PII
+type RequestMeta struct {
+	Region      string // Country code (e.g., "SG", "CN", "US")
+	DeviceType  string // "mobile", "tablet", "desktop"
+	BrowserLang string // Browser language preference
+	HourOfDay   int    // 0-23 UTC
+	Channel     string // Traffic source channel
+	EntryPoint  string // Specific campaign/source
+	UserAgent   string // Raw UA for backup parsing
+}
+

@@ -369,3 +369,61 @@ type GlowtypeStats struct {
 func (GlowtypeStats) TableName() string {
 	return "glowtype_stats"
 }
+
+// ============ Admin Users & Security ============
+
+const (
+	AdminRoleSuper    = "superadmin"
+	AdminRoleStandard = "admin"
+)
+
+// AdminUser represents an authenticated admin account
+type AdminUser struct {
+	ID           uint       `gorm:"primaryKey" json:"id"`
+	Username     string     `gorm:"uniqueIndex;not null" json:"username"`
+	PasswordHash string     `json:"-"`
+	Role         string     `gorm:"default:admin" json:"role"`
+	IsActive     bool       `gorm:"default:true" json:"isActive"`
+	LastLoginAt  *time.Time `json:"lastLoginAt"`
+	LastLoginIP  string     `json:"lastLoginIp"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
+}
+
+func (AdminUser) TableName() string {
+	return "admin_users"
+}
+
+// AdminLoginAttempt tracks login failures for brute-force protection
+type AdminLoginAttempt struct {
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	Username    string     `gorm:"index" json:"username"`
+	IP          string     `gorm:"index" json:"ip"`
+	Attempts    int        `json:"attempts"`
+	LastAttempt *time.Time `json:"lastAttempt"`
+	LockedUntil *time.Time `json:"lockedUntil"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+}
+
+func (AdminLoginAttempt) TableName() string {
+	return "admin_login_attempts"
+}
+
+// AdminAuditLog records admin actions for accountability
+type AdminAuditLog struct {
+	ID         uint           `gorm:"primaryKey" json:"id"`
+	AdminID    uint           `gorm:"index" json:"adminId"`
+	Username   string         `gorm:"index" json:"username"`
+	Action     string         `json:"action"`
+	Method     string         `json:"method"`
+	Path       string         `gorm:"index" json:"path"`
+	IP         string         `json:"ip"`
+	StatusCode int            `json:"statusCode"`
+	Metadata   datatypes.JSON `gorm:"type:json" json:"metadata"`
+	CreatedAt  time.Time      `json:"createdAt"`
+}
+
+func (AdminAuditLog) TableName() string {
+	return "admin_audit_logs"
+}

@@ -1,31 +1,152 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getApiBaseUrl } from '../../api/baseUrl';
 
+export type AdminRole = 'superadmin' | 'admin';
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  role: AdminRole;
+  lastLoginAt?: string;
+  lastLoginIp?: string;
+  createdAt?: string;
+}
+
+export interface AdminAuditLog {
+  id: number;
+  adminId: number;
+  username: string;
+  action: string;
+  method: string;
+  path: string;
+  ip: string;
+  statusCode: number;
+  metadata?: any;
+  createdAt: string;
+}
+
+// Enhanced stats types
+export interface RegionStat {
+  region: string;
+  count: number;
+}
+
+export interface DeviceStat {
+  deviceType: string;
+  count: number;
+}
+
+export interface HourStat {
+  hour: number;
+  count: number;
+}
+
+export interface LangStat {
+  language: string;
+  count: number;
+}
+
+export interface ChatStats {
+  totalSessions: number;
+  totalMessages: number;
+  avgMessages: number;
+  avgDurationSecs: number;
+  crisisSessions: number;
+}
+
+export interface EnhancedStats {
+  quizByRegion: RegionStat[];
+  quizByDevice: DeviceStat[];
+  quizByHour: HourStat[];
+  quizByLang: LangStat[];
+  chatStats: ChatStats;
+  chatByRegion: RegionStat[];
+  chatByDevice: DeviceStat[];
+  chatByHour: HourStat[];
+}
+
+const ADMIN_TOKEN_KEY = 'admin_token';
+const ADMIN_USER_KEY = 'admin_user';
+
 export const useAdminAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!localStorage.getItem('admin_token');
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem(ADMIN_TOKEN_KEY));
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => {
+    const raw = localStorage.getItem(ADMIN_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
   });
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(!!token);
   const [error, setError] = useState<string | null>(null);
+  const [lockUntil, setLockUntil] = useState<string | null>(null);
 
-  const login = async (password: string) => {
+  const persistSession = (user: AdminUser, newToken: string) => {
+    localStorage.setItem(ADMIN_TOKEN_KEY, newToken);
+    localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
+    setToken(newToken);
+    setCurrentUser(user);
+  };
+
+  const logout = useCallback(() => {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_USER_KEY);
+    setToken(null);
+    setCurrentUser(null);
+  }, []);
+
+  const getAuthHeader = useCallback(() => {
+    const activeToken = localStorage.getItem(ADMIN_TOKEN_KEY);
+    return activeToken ? { Authorization: `Bearer ${activeToken}` } : {};
+  }, []);
+
+  const fetchProfile = useCallback(async () => {
+    if (!token) return null;
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/admin/me`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
+      });
+      if (!res.ok) {
+        logout();
+        return null;
+      }
+      const data = (await res.json()) as AdminUser;
+      persistSession(data, token);
+      return data;
+    } catch {
+      return null;
+    }
+  }, [getAuthHeader, logout, token]);
+
+  useEffect(() => {
+    if (!token) {
+      setInitializing(false);
+      return;
+    }
+    fetchProfile().finally(() => setInitializing(false));
+  }, [token, fetchProfile]);
+
+  const login = async (username: string, password: string) => {
     setLoading(true);
     setError(null);
+    setLockUntil(null);
     try {
       const res = await fetch(`${getApiBaseUrl()}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        localStorage.setItem('admin_token', data.token);
-        setIsAuthenticated(true);
+      if (res.ok && data.success && data.token) {
+        persistSession(data.user, data.token);
         return true;
-      } else {
-        setError(data.error || 'Login failed');
-        return false;
       }
+      if (res.status === 429 && data.unlockAt) {
+        setLockUntil(data.unlockAt);
+      }
+      setError(data.error || 'Login failed');
+      return false;
     } catch {
       setError('Connection error');
       return false;
@@ -34,27 +155,30 @@ export const useAdminAuth = () => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('admin_token');
-    setIsAuthenticated(false);
-  };
+  const isAuthenticated = !!token && !!currentUser;
 
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('admin_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  return {
+    isAuthenticated,
+    loading,
+    initializing,
+    error,
+    lockUntil,
+    login,
+    logout,
+    getAuthHeader,
+    currentUser,
+    refreshProfile: fetchProfile,
   };
-
-  return { isAuthenticated, loading, error, login, logout, getAuthHeader };
 };
 
 export const useAdminApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('admin_token');
+  const getAuthHeader = useCallback(() => {
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     return token ? { Authorization: `Bearer ${token}` } : {};
-  };
+  }, []);
 
   const apiCall = useCallback(async <T>(
     endpoint: string,
@@ -72,7 +196,8 @@ export const useAdminApi = () => {
         } as HeadersInit,
       });
       if (res.status === 401) {
-        localStorage.removeItem('admin_token');
+        localStorage.removeItem(ADMIN_TOKEN_KEY);
+        localStorage.removeItem(ADMIN_USER_KEY);
         window.location.reload();
         return null;
       }
@@ -87,7 +212,7 @@ export const useAdminApi = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAuthHeader]);
 
   // Dimensions (Trait Dimensions)
   const listDimensions = () => apiCall<any[]>('/admin/dimensions');
@@ -132,6 +257,7 @@ export const useAdminApi = () => {
   const getStatsOverview = () => apiCall<any>('/admin/stats/overview');
   const getDailyStats = (days?: number) => apiCall<any[]>(`/admin/stats/daily${days ? `?days=${days}` : ''}`);
   const getGlowtypeDistribution = () => apiCall<any[]>('/admin/stats/glowtypes');
+  const getEnhancedStats = (days?: number) => apiCall<EnhancedStats>(`/admin/stats/enhanced${days ? `?days=${days}` : ''}`);
 
   // Quiz Results
   const listQuizResults = (params?: { limit?: number; typeCode?: string }) => {
@@ -141,6 +267,13 @@ export const useAdminApi = () => {
     const qs = query.toString();
     return apiCall<any[]>(`/admin/results${qs ? `?${qs}` : ''}`);
   };
+
+  // Admin accounts & audit
+  const getCurrentAdmin = () => apiCall<AdminUser>('/admin/me');
+  const listAdmins = () => apiCall<AdminUser[]>('/admin/users');
+  const createAdmin = (data: { username: string; password: string; role?: AdminRole }) =>
+    apiCall<AdminUser>('/admin/users', { method: 'POST', body: JSON.stringify(data) });
+  const listAuditLogs = (limit = 200) => apiCall<AdminAuditLog[]>(`/admin/audit?limit=${limit}`);
 
   return {
     loading,
@@ -179,6 +312,7 @@ export const useAdminApi = () => {
     getStatsOverview,
     getDailyStats,
     getGlowtypeDistribution,
+    getEnhancedStats,
     // Results
     listQuizResults,
     // Glowpedia
@@ -190,5 +324,10 @@ export const useAdminApi = () => {
     createGlowStick: (data: any) => apiCall('/admin/glowsticks', { method: 'POST', body: JSON.stringify(data) }),
     updateGlowStick: (id: number, data: any) => apiCall(`/admin/glowsticks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteGlowStick: (id: number) => apiCall(`/admin/glowsticks/${id}`, { method: 'DELETE' }),
+    // Admin
+    getCurrentAdmin,
+    listAdmins,
+    createAdmin,
+    listAuditLogs,
   };
 };

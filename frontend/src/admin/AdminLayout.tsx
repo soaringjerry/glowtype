@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, Routes, Route } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,7 +14,10 @@ import {
   Settings2,
   Bug,
   Globe,
-  BarChart3
+  BarChart3,
+  Shield,
+  ScrollText,
+  Loader2
 } from 'lucide-react';
 import { useAdminAuth } from './hooks/useAdmin';
 import AdminLogin from './AdminLogin';
@@ -27,22 +30,12 @@ import RuleDebugger from './pages/RuleDebugger';
 import Prompts from './pages/Prompts';
 import Results from './pages/Results';
 import Glowpedia from './pages/Glowpedia';
-
-const navItems = [
-  { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard },
-  { path: '/admin/dimensions', labelKey: 'nav.dimensions', icon: Compass },
-  { path: '/admin/questions', labelKey: 'nav.questions', icon: HelpCircle },
-  { path: '/admin/glowtypes', labelKey: 'nav.glowtypes', icon: Sparkles },
-  { path: '/admin/rules', labelKey: 'nav.rules', icon: Settings2 },
-  { path: '/admin/debugger', labelKey: 'nav.debugger', icon: Bug },
-  { path: '/admin/results', labelKey: 'nav.results', icon: BarChart3 },
-  { path: '/admin/prompts', labelKey: 'nav.prompts', icon: MessageSquare },
-  { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles },
-];
+import AdminUsers from './pages/AdminUsers';
+import AuditLogs from './pages/AuditLogs';
 
 export default function AdminLayout() {
   const { t, i18n } = useTranslation('admin');
-  const { isAuthenticated, logout } = useAdminAuth();
+  const { isAuthenticated, initializing, currentUser, logout } = useAdminAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,6 +49,36 @@ export default function AdminLayout() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  const navItems = useMemo(() => {
+    const base = [
+      { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+      { path: '/admin/dimensions', labelKey: 'nav.dimensions', icon: Compass },
+      { path: '/admin/questions', labelKey: 'nav.questions', icon: HelpCircle },
+      { path: '/admin/glowtypes', labelKey: 'nav.glowtypes', icon: Sparkles },
+      { path: '/admin/rules', labelKey: 'nav.rules', icon: Settings2 },
+      { path: '/admin/debugger', labelKey: 'nav.debugger', icon: Bug },
+      { path: '/admin/results', labelKey: 'nav.results', icon: BarChart3 },
+      { path: '/admin/prompts', labelKey: 'nav.prompts', icon: MessageSquare },
+      { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles },
+    ];
+    if (currentUser?.role === 'superadmin') {
+      base.splice(1, 0, { path: '/admin/users', labelKey: 'nav.adminUsers', icon: Shield });
+      base.splice(base.length, 0, { path: '/admin/audit', labelKey: 'nav.audit', icon: ScrollText });
+    }
+    return base;
+  }, [currentUser]);
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex items-center gap-3 text-gray-500">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          {t('common.loading')}
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <AdminLogin onLogin={() => window.location.reload()} />;
@@ -105,6 +128,12 @@ export default function AdminLayout() {
             <Globe className="w-5 h-5" />
           </button>
         </div>
+        {currentUser && (
+          <div className="px-6 pt-3 pb-2 text-xs text-gray-500">
+            <div className="font-medium text-gray-800">{currentUser.username}</div>
+            <div>{currentUser.role === 'superadmin' ? t('roles.superadmin') : t('roles.admin')}</div>
+          </div>
+        )}
 
         <nav className="p-4 space-y-1">
           {navItems.map((item) => {
@@ -143,6 +172,7 @@ export default function AdminLayout() {
         <div className="p-6">
           <Routes>
             <Route path="/admin" element={<Dashboard />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/dimensions" element={<Dimensions />} />
             <Route path="/admin/questions" element={<Questions />} />
             <Route path="/admin/glowtypes" element={<Glowtypes />} />
@@ -151,6 +181,7 @@ export default function AdminLayout() {
             <Route path="/admin/results" element={<Results />} />
             <Route path="/admin/prompts" element={<Prompts />} />
             <Route path="/admin/glowpedia" element={<Glowpedia />} />
+            <Route path="/admin/audit" element={<AuditLogs />} />
           </Routes>
         </div>
       </main>

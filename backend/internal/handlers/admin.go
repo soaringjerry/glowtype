@@ -1,38 +1,116 @@
 package handlers
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/services"
+	"gorm.io/gorm"
 )
 
-// AdminAuthMiddleware checks for admin password
+// AdminAuthMiddleware validates admin tokens and loads the user into context.
 func AdminAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		adminPassword := os.Getenv("ADMIN_PASSWORD")
-		if adminPassword == "" {
-			adminPassword = "admin123" // Default for development
+		header := c.GetHeader("Authorization")
+		if header == "" || !strings.HasPrefix(header, "Bearer ") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
 		}
 
-		token := c.GetHeader("Authorization")
-		expected := "Bearer " + adminPassword
-
-		if token != expected {
+		token := strings.TrimPrefix(header, "Bearer ")
+		claims, err := services.ValidateAdminToken(token)
+		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		var user database.AdminUser
+		if err := database.GetDB().Where("id = ? AND is_active = ?", claims.AdminID, true).First(&user).Error; err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		// Ensure role is present even if legacy data is missing it
+		if user.Role == "" {
+			user.Role = database.AdminRoleStandard
+		}
+
+		c.Set("adminUser", user)
+		c.Next()
+	}
+}
+
+// AdminAuditMiddleware records admin actions for accountability.
+func AdminAuditMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+
+		admin, ok := getAdminFromContext(c)
+		if !ok {
+			return
+		}
+
+		path := c.FullPath()
+		if path == "" {
+			path = c.Request.URL.Path
+		}
+
+		payload := map[string]any{
+			"durationMs": time.Since(start).Milliseconds(),
+			"status":     c.Writer.Status(),
+		}
+		if extra, ok := c.Get("auditMetadata"); ok {
+			if meta, ok := extra.(map[string]any); ok {
+				for k, v := range meta {
+					payload[k] = v
+				}
+			}
+		}
+
+		metadata, _ := json.Marshal(payload)
+
+		entry := database.AdminAuditLog{
+			AdminID:    admin.ID,
+			Username:   admin.Username,
+			Action:     fmt.Sprintf("%s %s", c.Request.Method, path),
+			Method:     c.Request.Method,
+			Path:       path,
+			IP:         c.ClientIP(),
+			StatusCode: c.Writer.Status(),
+			Metadata:   metadata,
+		}
+
+		if err := database.GetDB().Create(&entry).Error; err != nil {
+			log.Printf("failed to write admin audit log: %v", err)
+		}
+	}
+}
+
+// RequireSuperAdmin blocks non-super-admin accounts from performing the action.
+func RequireSuperAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		admin, ok := getAdminFromContext(c)
+		if !ok || admin.Role != database.AdminRoleSuper {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 			return
 		}
 		c.Next()
 	}
 }
 
-// AdminLoginHandler handles admin login
+// AdminLoginHandler handles admin login with username/password and rate limiting.
 func AdminLoginHandler(c *gin.Context) {
 	var req struct {
+		Username string `json:"username"`
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -40,20 +118,226 @@ func AdminLoginHandler(c *gin.Context) {
 		return
 	}
 
-	adminPassword := os.Getenv("ADMIN_PASSWORD")
-	if adminPassword == "" {
-		adminPassword = "admin123"
+	if req.Username == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password are required"})
+		return
 	}
 
-	if req.Password != adminPassword {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
+	clientIP := c.ClientIP()
+	locked, unlockAt, err := services.IsLoginLocked(database.GetDB(), req.Username, clientIP)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Login check failed"})
+		return
+	}
+	if locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":    "Too many attempts. Please try again later.",
+			"unlockAt": unlockAt,
+		})
+		return
+	}
+
+	var user database.AdminUser
+	if err := database.GetDB().Where("username = ?", req.Username).First(&user).Error; err != nil {
+		_ = services.RegisterLoginFailure(database.GetDB(), req.Username, clientIP)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	if !user.IsActive {
+		_ = services.RegisterLoginFailure(database.GetDB(), req.Username, clientIP)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	if !services.CheckPassword(user.PasswordHash, req.Password) {
+		_ = services.RegisterLoginFailure(database.GetDB(), req.Username, clientIP)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	token, exp, err := services.GenerateAdminToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	now := time.Now()
+	user.LastLoginAt = &now
+	user.LastLoginIP = clientIP
+	if err := database.GetDB().Model(&user).Updates(map[string]any{
+		"last_login_at": now,
+		"last_login_ip": clientIP,
+	}).Error; err != nil {
+		log.Printf("failed to update admin login metadata: %v", err)
+	}
+
+	_ = services.RegisterLoginSuccess(database.GetDB(), req.Username, clientIP)
+
+	createAuditLog(user, "login", c, http.StatusOK, map[string]any{
+		"userAgent": c.Request.UserAgent(),
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   true,
+		"token":     token,
+		"expiresAt": exp.Unix(),
+		"user": gin.H{
+			"id":          user.ID,
+			"username":    user.Username,
+			"role":        user.Role,
+			"lastLoginAt": user.LastLoginAt,
+			"lastLoginIp": user.LastLoginIP,
+		},
+	})
+}
+
+// GetAdminProfile returns the current admin's profile.
+func GetAdminProfile(c *gin.Context) {
+	admin, ok := getAdminFromContext(c)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"token":   adminPassword,
+		"id":          admin.ID,
+		"username":    admin.Username,
+		"role":        admin.Role,
+		"lastLoginAt": admin.LastLoginAt,
+		"lastLoginIp": admin.LastLoginIP,
+		"createdAt":   admin.CreatedAt,
 	})
+}
+
+// ListAdminUsers lists all admin accounts (super admin only).
+func ListAdminUsers(c *gin.Context) {
+	var admins []database.AdminUser
+	if err := database.GetDB().Order("created_at desc").Find(&admins).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Remove password hashes from response
+	for i := range admins {
+		admins[i].PasswordHash = ""
+	}
+
+	c.JSON(http.StatusOK, admins)
+}
+
+// CreateAdminUser creates a new admin account (super admin only).
+func CreateAdminUser(c *gin.Context) {
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	role := req.Role
+	if role == "" {
+		role = database.AdminRoleStandard
+	}
+	if role != database.AdminRoleStandard && role != database.AdminRoleSuper {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+		return
+	}
+
+	if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.Password) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password are required"})
+		return
+	}
+
+	hash, err := services.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
+	admin := database.AdminUser{
+		Username:     strings.TrimSpace(req.Username),
+		PasswordHash: hash,
+		Role:         role,
+		IsActive:     true,
+	}
+
+	if err := database.GetDB().Create(&admin).Error; err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") || errors.Is(err, gorm.ErrDuplicatedKey) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Username already exists"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Set("auditMetadata", map[string]any{
+		"createdUser": admin.Username,
+		"role":        admin.Role,
+	})
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":        admin.ID,
+		"username":  admin.Username,
+		"role":      admin.Role,
+		"createdAt": admin.CreatedAt,
+	})
+}
+
+// ListAuditLogs returns recent admin audit logs (super admin only).
+func ListAuditLogs(c *gin.Context) {
+	limit := 200
+	if l, err := strconv.Atoi(c.DefaultQuery("limit", "200")); err == nil && l > 0 && l <= 1000 {
+		limit = l
+	}
+
+	query := database.GetDB().Order("created_at desc").Limit(limit)
+	if user := strings.TrimSpace(c.Query("username")); user != "" {
+		query = query.Where("username = ?", user)
+	}
+
+	var logs []database.AdminAuditLog
+	if err := query.Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, logs)
+}
+
+func getAdminFromContext(c *gin.Context) (database.AdminUser, bool) {
+	adminVal, ok := c.Get("adminUser")
+	if !ok {
+		return database.AdminUser{}, false
+	}
+	admin, ok := adminVal.(database.AdminUser)
+	return admin, ok
+}
+
+func createAuditLog(admin database.AdminUser, action string, c *gin.Context, status int, metadata map[string]any) {
+	meta, _ := json.Marshal(metadata)
+	path := c.FullPath()
+	if path == "" {
+		path = c.Request.URL.Path
+	}
+
+	entry := database.AdminAuditLog{
+		AdminID:    admin.ID,
+		Username:   admin.Username,
+		Action:     action,
+		Method:     c.Request.Method,
+		Path:       path,
+		IP:         c.ClientIP(),
+		StatusCode: status,
+		Metadata:   meta,
+	}
+
+	if err := database.GetDB().Create(&entry).Error; err != nil {
+		log.Printf("failed to write audit log: %v", err)
+	}
 }
 
 // ============ Trait Dimensions CRUD ============

@@ -40,7 +40,7 @@ func New(cfg config.Config) *gin.Engine {
 
 	quizHandler := handlers.NewQuizHandler(quizService)
 	glowtypeHandler := handlers.NewGlowtypeHandler(glowtypeService)
-	chatHandler := handlers.NewChatHandler(chatService)
+	chatHandler := handlers.NewChatHandler(chatService, db)
 	helpHandler := handlers.NewHelpHandler(helpService)
 
 	api := r.Group("/api/v1")
@@ -51,6 +51,7 @@ func New(cfg config.Config) *gin.Engine {
 		api.GET("/glowtypes/:id", glowtypeHandler.GetGlowtype)
 		api.POST("/chat/session", chatHandler.CreateSession)
 		api.POST("/chat/message", chatHandler.SendMessage)
+		api.POST("/chat/analytics", chatHandler.TrackChatAnalytics)
 		api.GET("/help", helpHandler.GetHelp)
 
 		// Public stats endpoint (anonymous event tracking)
@@ -66,8 +67,19 @@ func New(cfg config.Config) *gin.Engine {
 	// Admin routes
 	admin := r.Group("/api/v1/admin")
 	admin.POST("/login", handlers.AdminLoginHandler)
-	admin.Use(handlers.AdminAuthMiddleware())
+	admin.Use(handlers.AdminAuthMiddleware(), handlers.AdminAuditMiddleware())
 	{
+		admin.GET("/me", handlers.GetAdminProfile)
+
+		// Admin user management & audit (super admin only)
+		super := admin.Group("/")
+		super.Use(handlers.RequireSuperAdmin())
+		{
+			super.GET("/users", handlers.ListAdminUsers)
+			super.POST("/users", handlers.CreateAdminUser)
+			super.GET("/audit", handlers.ListAuditLogs)
+		}
+
 		// Trait Dimensions CRUD
 		admin.GET("/dimensions", handlers.ListDimensions)
 		admin.POST("/dimensions", handlers.CreateDimension)
@@ -110,6 +122,7 @@ func New(cfg config.Config) *gin.Engine {
 		admin.GET("/stats/overview", handlers.GetStatsOverview)
 		admin.GET("/stats/daily", handlers.GetDailyStats)
 		admin.GET("/stats/glowtypes", handlers.GetGlowtypeDistribution)
+		admin.GET("/stats/enhanced", handlers.GetEnhancedStatsHandler)
 
 		// Quiz Results
 		admin.GET("/results", handlers.ListQuizResults)
@@ -127,4 +140,3 @@ func New(cfg config.Config) *gin.Engine {
 
 	return r
 }
-

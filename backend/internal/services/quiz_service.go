@@ -87,7 +87,13 @@ func (s *QuizService) GetQuiz(lang string) models.QuizResponse {
 }
 
 // ScoreQuiz processes quiz answers and returns the matching Glowtype
+// Deprecated: use ScoreQuizWithMeta for better analytics
 func (s *QuizService) ScoreQuiz(req models.QuizScoreRequest) models.QuizScoreResponse {
+	return s.ScoreQuizWithMeta(req, models.RequestMeta{})
+}
+
+// ScoreQuizWithMeta processes quiz answers with request metadata for analytics
+func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models.RequestMeta) models.QuizScoreResponse {
 	// Convert frontend answers to database format
 	answers := make([]database.AnswerRecord, 0, len(req.Answers))
 	for _, ans := range req.Answers {
@@ -114,7 +120,7 @@ func (s *QuizService) ScoreQuiz(req models.QuizScoreRequest) models.QuizScoreRes
 	}
 
 	// Save quiz result to database (async, don't block response)
-	go s.saveQuizResult(answers, result, req.Language)
+	go s.saveQuizResult(answers, result, req.Language, meta)
 
 	return models.QuizScoreResponse{
 		GlowtypeID:   result.ResultTypeCode,
@@ -123,7 +129,7 @@ func (s *QuizService) ScoreQuiz(req models.QuizScoreRequest) models.QuizScoreRes
 }
 
 // saveQuizResult saves the quiz result to the database for analytics
-func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *ScoringResult, language string) {
+func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *ScoringResult, language string, meta models.RequestMeta) {
 	answersJSON, _ := json.Marshal(answers)
 	scoresJSON, _ := json.Marshal(result.DimensionScores)
 
@@ -134,6 +140,14 @@ func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *Sc
 		ResultTypeCode:  result.ResultTypeCode,
 		Language:        language,
 		Source:          "web",
+		// Anonymized analytics fields
+		Region:      meta.Region,
+		DeviceType:  meta.DeviceType,
+		BrowserLang: meta.BrowserLang,
+		HourOfDay:   meta.HourOfDay,
+		Channel:     meta.Channel,
+		EntryPoint:  meta.EntryPoint,
+		UserAgent:   meta.UserAgent,
 	}
 
 	// Silently save - don't affect user experience if this fails

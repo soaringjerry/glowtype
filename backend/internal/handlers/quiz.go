@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/soaringjerry/glowtype/internal/models"
 	"github.com/soaringjerry/glowtype/internal/services"
+	"github.com/soaringjerry/glowtype/internal/utils"
 )
 
 type QuizHandler struct {
@@ -35,7 +36,18 @@ func (h *QuizHandler) ScoreQuiz(c *gin.Context) {
 		return
 	}
 
-	resp := h.service.ScoreQuiz(req)
+	// Extract anonymized metadata from request
+	anonInfo := utils.ExtractAnonymizedInfo(c.Request)
+	meta := models.RequestMeta{
+		Region:      anonInfo.Region,
+		DeviceType:  anonInfo.DeviceType,
+		BrowserLang: anonInfo.BrowserLang,
+		HourOfDay:   anonInfo.HourOfDay,
+		Channel:     c.Query("channel"),   // UTM channel parameter
+		EntryPoint:  c.Query("entry"),     // Entry point parameter
+		UserAgent:   c.Request.UserAgent(),
+	}
+
+	resp := h.service.ScoreQuizWithMeta(req, meta)
 	c.JSON(http.StatusOK, resp)
 }
-

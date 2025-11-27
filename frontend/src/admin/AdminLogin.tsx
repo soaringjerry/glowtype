@@ -9,12 +9,13 @@ interface AdminLoginProps {
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
   const { t } = useTranslation('admin');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { login, loading, error } = useAdminAuth();
+  const { login, loading, error, lockUntil } = useAdminAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await login(password);
+    const success = await login(username, password);
     if (success) {
       onLogin();
     }
@@ -33,6 +34,19 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('login.username')}
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('login.password')}
             </label>
             <input
@@ -40,20 +54,26 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
-              autoFocus
             />
           </div>
 
-          {error && (
+          {(error || lockUntil) && (
             <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
               <AlertCircle className="w-4 h-4" />
-              {t('login.error')}
+              <div className="flex flex-col">
+                {error && <span>{error}</span>}
+                {lockUntil && (
+                  <span className="text-xs text-red-400">
+                    {t('login.locked', { time: new Date(lockUntil).toLocaleString() })}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
           <button
             type="submit"
-            disabled={loading || !password}
+            disabled={loading || !password || !username}
             className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (

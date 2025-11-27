@@ -52,6 +52,9 @@ func InitDB() *gorm.DB {
 		&GlowStickDB{},
 		&UsageStats{},
 		&GlowtypeStats{},
+		&AdminUser{},
+		&AdminLoginAttempt{},
+		&AdminAuditLog{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
@@ -59,6 +62,8 @@ func InitDB() *gorm.DB {
 
 	DB = db
 	log.Printf("Database initialized at: %s", dbPath)
+
+	ensureDefaultSuperAdmin(db)
 
 	// Auto-seed if SEED_DB=true
 	// SEED_DB_FORCE=true will clear existing data and re-seed

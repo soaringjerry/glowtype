@@ -9,9 +9,13 @@ import {
   Loader2,
   RefreshCw,
   Activity,
-  Clock3
+  Clock3,
+  Globe,
+  Smartphone,
+  Clock,
+  Languages
 } from 'lucide-react';
-import { useAdminApi } from '../hooks/useAdmin';
+import { useAdminApi, type EnhancedStats } from '../hooks/useAdmin';
 
 interface StatsOverview {
   today: { quizCompleted: number; shareGenerated: number; aiChatsStarted: number; aiInsightUsed: number };
@@ -51,21 +55,24 @@ export default function Dashboard() {
   const [distribution, setDistribution] = useState<GlowtypeDistribution[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([]);
   const [recentResults, setRecentResults] = useState<QuizResult[]>([]);
+  const [enhancedStats, setEnhancedStats] = useState<EnhancedStats | null>(null);
   const [loading, setLoading] = useState(true);
   const api = useAdminApi();
 
   const loadData = async () => {
     setLoading(true);
-    const [statsData, distData, dailyData, resultsData] = await Promise.all([
+    const [statsData, distData, dailyData, resultsData, enhancedData] = await Promise.all([
       api.getStatsOverview(),
       api.getGlowtypeDistribution(),
       api.getDailyStats(14),
       api.listQuizResults({ limit: 8 }),
+      api.getEnhancedStats(14),
     ]);
     if (statsData) setStats(statsData);
     if (distData) setDistribution(distData);
     if (dailyData) setDailyStats(dailyData);
     if (resultsData) setRecentResults(resultsData);
+    if (enhancedData) setEnhancedStats(enhancedData);
     setLoading(false);
   };
 
@@ -259,6 +266,193 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Enhanced Analytics - Region, Device, Hourly */}
+      {enhancedStats && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Region Distribution */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">{t('dashboard.regionDistribution')}</h3>
+                <p className="text-sm text-gray-500">{t('dashboard.regionSubtitle')}</p>
+              </div>
+            </div>
+            {enhancedStats.quizByRegion.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">{t('dashboard.noRegionData')}</div>
+            ) : (
+              <div className="space-y-2">
+                {enhancedStats.quizByRegion.slice(0, 8).map((item) => {
+                  const maxCount = Math.max(...enhancedStats.quizByRegion.map((d) => d.count));
+                  const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                  return (
+                    <div key={item.region} className="flex items-center gap-3">
+                      <span className="w-12 text-xs font-medium text-gray-600">{item.region || 'N/A'}</span>
+                      <div className="flex-1 h-6 bg-gray-100 rounded-lg overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 transition-all"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <span className="w-10 text-xs text-gray-500 text-right">{item.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Device Distribution */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                <Smartphone className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">{t('dashboard.deviceDistribution')}</h3>
+                <p className="text-sm text-gray-500">{t('dashboard.deviceSubtitle')}</p>
+              </div>
+            </div>
+            {enhancedStats.quizByDevice.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">{t('dashboard.noDeviceData')}</div>
+            ) : (
+              <div className="grid grid-cols-3 gap-4">
+                {enhancedStats.quizByDevice.map((item) => {
+                  const totalDevices = enhancedStats.quizByDevice.reduce((s, d) => s + d.count, 0);
+                  const percentage = totalDevices > 0 ? Math.round((item.count / totalDevices) * 100) : 0;
+                  const deviceColors: Record<string, string> = {
+                    mobile: 'from-pink-500 to-rose-400',
+                    desktop: 'from-blue-500 to-indigo-400',
+                    tablet: 'from-amber-500 to-orange-400',
+                  };
+                  const color = deviceColors[item.deviceType?.toLowerCase()] || 'from-gray-500 to-gray-400';
+                  return (
+                    <div key={item.deviceType} className="text-center">
+                      <div className={`w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center mb-2`}>
+                        <span className="text-xl font-bold text-white">{percentage}%</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-700 capitalize">{item.deviceType || 'Unknown'}</p>
+                      <p className="text-xs text-gray-400">{item.count}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Hourly Activity */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">{t('dashboard.hourlyActivity')}</h3>
+                <p className="text-sm text-gray-500">{t('dashboard.hourlySubtitle')}</p>
+              </div>
+            </div>
+            {enhancedStats.quizByHour.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">{t('dashboard.noHourlyData')}</div>
+            ) : (
+              <div className="flex items-end gap-1 h-24">
+                {Array.from({ length: 24 }, (_, i) => {
+                  const hourData = enhancedStats.quizByHour.find((h) => h.hour === i);
+                  const count = hourData?.count || 0;
+                  const maxHour = Math.max(...enhancedStats.quizByHour.map((h) => h.count), 1);
+                  const height = (count / maxHour) * 100;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center">
+                      <div className="w-full bg-gray-100 rounded-sm overflow-hidden" style={{ height: '80px' }}>
+                        <div
+                          className="w-full bg-gradient-to-t from-sky-500 to-cyan-400 transition-all"
+                          style={{ height: `${height}%`, marginTop: `${100 - height}%` }}
+                        />
+                      </div>
+                      {i % 4 === 0 && <span className="text-[9px] text-gray-400 mt-1">{i}h</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Language Distribution */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center">
+                <Languages className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">{t('dashboard.languageDistribution')}</h3>
+                <p className="text-sm text-gray-500">{t('dashboard.languageSubtitle')}</p>
+              </div>
+            </div>
+            {enhancedStats.quizByLang.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">{t('dashboard.noLangData')}</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {enhancedStats.quizByLang.map((item) => {
+                  const totalLang = enhancedStats.quizByLang.reduce((s, d) => s + d.count, 0);
+                  const percentage = totalLang > 0 ? Math.round((item.count / totalLang) * 100) : 0;
+                  const langLabel = item.language === 'zh-CN' ? '中文' : item.language === 'en' ? 'English' : item.language;
+                  return (
+                    <div key={item.language} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-400 to-pink-400 flex items-center justify-center">
+                        <span className="text-lg font-bold text-white">{percentage}%</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-700">{langLabel}</p>
+                        <p className="text-xs text-gray-400">{item.count} {t('dashboard.sessions')}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Chat Analytics */}
+      {enhancedStats && enhancedStats.chatStats.totalSessions > 0 && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center">
+              <MessageSquare className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">{t('dashboard.chatAnalytics')}</h3>
+              <p className="text-sm text-gray-500">{t('dashboard.chatAnalyticsSubtitle')}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="text-center p-4 bg-indigo-50 rounded-xl">
+              <p className="text-2xl font-bold text-indigo-700">{enhancedStats.chatStats.totalSessions}</p>
+              <p className="text-xs text-indigo-500">{t('dashboard.totalSessions')}</p>
+            </div>
+            <div className="text-center p-4 bg-blue-50 rounded-xl">
+              <p className="text-2xl font-bold text-blue-700">{enhancedStats.chatStats.totalMessages}</p>
+              <p className="text-xs text-blue-500">{t('dashboard.totalMessages')}</p>
+            </div>
+            <div className="text-center p-4 bg-cyan-50 rounded-xl">
+              <p className="text-2xl font-bold text-cyan-700">{enhancedStats.chatStats.avgMessages.toFixed(1)}</p>
+              <p className="text-xs text-cyan-500">{t('dashboard.avgMessages')}</p>
+            </div>
+            <div className="text-center p-4 bg-teal-50 rounded-xl">
+              <p className="text-2xl font-bold text-teal-700">{Math.round(enhancedStats.chatStats.avgDurationSecs / 60)}m</p>
+              <p className="text-xs text-teal-500">{t('dashboard.avgDuration')}</p>
+            </div>
+            <div className="text-center p-4 bg-amber-50 rounded-xl">
+              <p className="text-2xl font-bold text-amber-700">{enhancedStats.chatStats.crisisSessions}</p>
+              <p className="text-xs text-amber-500">{t('dashboard.crisisSessions')}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Results */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

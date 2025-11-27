@@ -3,10 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/soaringjerry/glowtype/internal/database"
+	"github.com/soaringjerry/glowtype/internal/utils"
 	"gorm.io/datatypes"
 )
 
@@ -105,10 +107,152 @@ func SubmitQuizResultHandler(c *gin.Context) {
 		UserAgent:       c.GetHeader("User-Agent"),
 	}
 
+	// Extract anonymized info
+	anonInfo := utils.ExtractAnonymizedInfo(c.Request)
+	result.Region = anonInfo.Region
+	result.DeviceType = anonInfo.DeviceType
+	result.BrowserLang = anonInfo.BrowserLang
+	result.HourOfDay = anonInfo.HourOfDay
+
 	if err := database.GetDB().Create(&result).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save result"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "id": result.ID})
+}
+
+// ========== Enhanced Analytics Handlers ==========
+
+// RegionStat represents region statistics
+type RegionStat struct {
+	Region string `json:"region"`
+	Count  int    `json:"count"`
+}
+
+// DeviceStat represents device type statistics
+type DeviceStat struct {
+	DeviceType string `json:"deviceType"`
+	Count      int    `json:"count"`
+}
+
+// HourStat represents hourly statistics
+type HourStat struct {
+	Hour  int `json:"hour"`
+	Count int `json:"count"`
+}
+
+// GetEnhancedStatsHandler returns detailed analytics for admin dashboard
+// GET /api/admin/enhanced-stats
+func GetEnhancedStatsHandler(c *gin.Context) {
+	db := database.GetDB()
+	daysStr := c.DefaultQuery("days", "14")
+	days, _ := strconv.Atoi(daysStr)
+	if days <= 0 || days > 90 {
+		days = 14
+	}
+
+	startDate := time.Now().AddDate(0, 0, -days)
+
+	var stats struct {
+		// Quiz results analytics
+		QuizByRegion  []RegionStat `json:"quizByRegion"`
+		QuizByDevice  []DeviceStat `json:"quizByDevice"`
+		QuizByHour    []HourStat   `json:"quizByHour"`
+		QuizByLang    []struct {
+			Language string `json:"language"`
+			Count    int    `json:"count"`
+		} `json:"quizByLang"`
+		// Chat session analytics
+		ChatStats struct {
+			TotalSessions   int64   `json:"totalSessions"`
+			TotalMessages   int64   `json:"totalMessages"`
+			AvgMessages     float64 `json:"avgMessages"`
+			AvgDurationSecs float64 `json:"avgDurationSecs"`
+			CrisisSessions  int64   `json:"crisisSessions"`
+		} `json:"chatStats"`
+		ChatByRegion []RegionStat `json:"chatByRegion"`
+		ChatByDevice []DeviceStat `json:"chatByDevice"`
+		ChatByHour   []HourStat   `json:"chatByHour"`
+	}
+
+	// Quiz analytics by region
+	db.Model(&database.QuizResultDB{}).
+		Select("region, COUNT(*) as count").
+		Where("created_at >= ? AND region != '' AND region != 'unknown'", startDate).
+		Group("region").
+		Order("count DESC").
+		Limit(15).
+		Scan(&stats.QuizByRegion)
+
+	// Quiz analytics by device
+	db.Model(&database.QuizResultDB{}).
+		Select("device_type, COUNT(*) as count").
+		Where("created_at >= ? AND device_type != ''", startDate).
+		Group("device_type").
+		Scan(&stats.QuizByDevice)
+
+	// Quiz analytics by hour
+	db.Model(&database.QuizResultDB{}).
+		Select("hour_of_day as hour, COUNT(*) as count").
+		Where("created_at >= ?", startDate).
+		Group("hour_of_day").
+		Order("hour_of_day").
+		Scan(&stats.QuizByHour)
+
+	// Quiz analytics by language
+	db.Model(&database.QuizResultDB{}).
+		Select("language, COUNT(*) as count").
+		Where("created_at >= ? AND language != ''", startDate).
+		Group("language").
+		Scan(&stats.QuizByLang)
+
+	// Chat session statistics
+	db.Model(&database.ChatSessionDB{}).
+		Where("started_at >= ?", startDate).
+		Count(&stats.ChatStats.TotalSessions)
+
+	db.Model(&database.ChatSessionDB{}).
+		Where("started_at >= ?", startDate).
+		Select("COALESCE(SUM(message_count), 0)").
+		Scan(&stats.ChatStats.TotalMessages)
+
+	if stats.ChatStats.TotalSessions > 0 {
+		stats.ChatStats.AvgMessages = float64(stats.ChatStats.TotalMessages) / float64(stats.ChatStats.TotalSessions)
+	}
+
+	db.Model(&database.ChatSessionDB{}).
+		Where("started_at >= ?", startDate).
+		Select("COALESCE(AVG(duration_secs), 0)").
+		Scan(&stats.ChatStats.AvgDurationSecs)
+
+	db.Model(&database.ChatSessionDB{}).
+		Where("started_at >= ? AND has_crisis_keywords = ?", startDate, true).
+		Count(&stats.ChatStats.CrisisSessions)
+
+	// Chat by region
+	db.Model(&database.ChatSessionDB{}).
+		Select("region, COUNT(*) as count").
+		Where("started_at >= ? AND region != '' AND region != 'unknown'", startDate).
+		Group("region").
+		Order("count DESC").
+		Limit(15).
+		Scan(&stats.ChatByRegion)
+
+	// Chat by device
+	db.Model(&database.ChatSessionDB{}).
+		Select("device_type, COUNT(*) as count").
+		Where("started_at >= ? AND device_type != ''", startDate).
+		Group("device_type").
+		Scan(&stats.ChatByDevice)
+
+	// Chat by hour
+	db.Model(&database.ChatSessionDB{}).
+		Select("hour_of_day as hour, COUNT(*) as count").
+		Where("started_at >= ?", startDate).
+		Group("hour_of_day").
+		Order("hour_of_day").
+		Scan(&stats.ChatByHour)
+
+	c.JSON(http.StatusOK, stats)
 }

@@ -2,9 +2,11 @@
 package utils
 
 import (
+	"encoding/json"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,7 +26,8 @@ func ExtractAnonymizedInfo(r *http.Request) AnonymizedRequestInfo {
 	}
 
 	// Extract region from IP (then IP is discarded)
-	info.Region = GetRegionFromIP(GetClientIP(r))
+	// First check Cloudflare header, then fall back to GeoIP lookup
+	info.Region = GetRegionFromRequest(r)
 
 	// Parse User-Agent for device type
 	info.DeviceType = ParseDeviceType(r.UserAgent())
@@ -37,7 +40,13 @@ func ExtractAnonymizedInfo(r *http.Request) AnonymizedRequestInfo {
 
 // GetClientIP extracts client IP from request, handling proxies
 func GetClientIP(r *http.Request) string {
-	// Check X-Forwarded-For (from reverse proxies like nginx, cloudflare)
+	// Check CF-Connecting-IP (Cloudflare) first
+	cfip := r.Header.Get("CF-Connecting-IP")
+	if cfip != "" {
+		return cfip
+	}
+
+	// Check X-Forwarded-For (from reverse proxies like nginx)
 	xff := r.Header.Get("X-Forwarded-For")
 	if xff != "" {
 		// Take the first IP (original client)
@@ -56,12 +65,6 @@ func GetClientIP(r *http.Request) string {
 		return xri
 	}
 
-	// Check CF-Connecting-IP (Cloudflare)
-	cfip := r.Header.Get("CF-Connecting-IP")
-	if cfip != "" {
-		return cfip
-	}
-
 	// Fall back to RemoteAddr
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -70,28 +73,124 @@ func GetClientIP(r *http.Request) string {
 	return ip
 }
 
+// GetRegionFromRequest gets region, preferring Cloudflare header
+func GetRegionFromRequest(r *http.Request) string {
+	// Cloudflare provides country code in header (most reliable, no lookup needed)
+	cfCountry := r.Header.Get("CF-IPCountry")
+	if cfCountry != "" && cfCountry != "XX" {
+		return strings.ToUpper(cfCountry)
+	}
+
+	// Fall back to GeoIP lookup
+	ip := GetClientIP(r)
+	return GetRegionFromIP(ip)
+}
+
+// GeoIP cache to avoid repeated lookups
+var (
+	geoCache     = make(map[string]string)
+	geoCacheMu   sync.RWMutex
+	geoCacheTime = make(map[string]time.Time)
+	geoCacheTTL  = 24 * time.Hour
+)
+
+// ipAPIResponse is the response from ip-api.com
+type ipAPIResponse struct {
+	Status      string `json:"status"`
+	CountryCode string `json:"countryCode"`
+}
+
 // GetRegionFromIP derives region code from IP address
-// Uses a simple approach - for production, consider using MaxMind GeoIP or similar
+// Uses ip-api.com with caching (free tier: 45 req/min)
 // The IP is NOT stored, only the derived region
 func GetRegionFromIP(ip string) string {
-	// For now, return "unknown" - implement with GeoIP database if needed
-	// TODO: Integrate with a GeoIP service (MaxMind, ip-api, etc.)
-	//
-	// Example implementation with ip-api (rate limited, for low volume):
-	// resp, err := http.Get("http://ip-api.com/json/" + ip + "?fields=countryCode")
-	// if err == nil { ... parse response ... }
-	//
-	// For production, use local MaxMind database:
-	// db, _ := geoip2.Open("GeoLite2-Country.mmdb")
-	// record, _ := db.Country(net.ParseIP(ip))
-	// return record.Country.IsoCode
-
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return "local"
 	}
 
-	// Placeholder - always returns "unknown" until GeoIP is configured
+	// Check if it's a private IP
+	if isPrivateIP(ip) {
+		return "private"
+	}
+
+	// Check cache
+	geoCacheMu.RLock()
+	if region, ok := geoCache[ip]; ok {
+		if time.Since(geoCacheTime[ip]) < geoCacheTTL {
+			geoCacheMu.RUnlock()
+			return region
+		}
+	}
+	geoCacheMu.RUnlock()
+
+	// Query ip-api.com (free, no API key needed)
+	region := lookupIPRegion(ip)
+
+	// Cache result
+	geoCacheMu.Lock()
+	geoCache[ip] = region
+	geoCacheTime[ip] = time.Now()
+	// Clean old entries if cache gets too big
+	if len(geoCache) > 10000 {
+		cleanGeoCache()
+	}
+	geoCacheMu.Unlock()
+
+	return region
+}
+
+// lookupIPRegion queries ip-api.com for country code
+func lookupIPRegion(ip string) string {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get("http://ip-api.com/json/" + ip + "?fields=status,countryCode")
+	if err != nil {
+		return "unknown"
+	}
+	defer resp.Body.Close()
+
+	var result ipAPIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "unknown"
+	}
+
+	if result.Status == "success" && result.CountryCode != "" {
+		return result.CountryCode
+	}
 	return "unknown"
+}
+
+// cleanGeoCache removes entries older than TTL
+func cleanGeoCache() {
+	now := time.Now()
+	for ip, t := range geoCacheTime {
+		if now.Sub(t) > geoCacheTTL {
+			delete(geoCache, ip)
+			delete(geoCacheTime, ip)
+		}
+	}
+}
+
+// isPrivateIP checks if an IP is a private/internal address
+func isPrivateIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+
+	privateBlocks := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"fc00::/7",
+	}
+
+	for _, block := range privateBlocks {
+		_, cidr, _ := net.ParseCIDR(block)
+		if cidr.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // ParseDeviceType extracts device type from User-Agent
