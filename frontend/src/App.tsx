@@ -186,24 +186,24 @@ const trackEvent = async (event: 'quiz_complete' | 'share_generate' | 'ai_chat_s
 
 const TRANSLATIONS = {
   en: {
-    nav: { safety: "Safety", learn: "Learn", lang: "中文" },
+    nav: { safety: "Safety", learn: "Glowpedia", lang: "中文" },
     hero: { tag: "For ages 15–25 • Free • Anonymous", titlePre: "What's your", titleHighlight: "Glowtype?", subtitle: "A playful emotional mirror. Not a diagnosis, just a lighter way to understand your inner universe.", btnStart: "Start the Quiz", btnSafe: "Is this safe? How it works" },
     quiz: { question: "Question", total: "Total", back: "Back" },
     result: { label: "Your Glowtype", insightBtn: "Reveal Cosmic Insight", insightLoading: "Decoding Signal...", note: "Note: This is not a medical diagnosis. It's a tool for self-reflection.", btnChat: "Chat about this (AI)", btnHelp: "Find professional help", shareTitle: "Share your Glow", shareDesc: "Save this card or share link", promptContext: "Answer in English." },
     chat: { header: "Anonymous Chat", end: "End Chat", disclaimer: "Private • No Data Saved • Powered by Gemini", intro: "Hi there. I'm Glowtype AI. I'm here to listen gently. I'm not a human, but I care about what you have to say.", placeholder: "Type here...", crisisResponse: "I hear that you are in pain, but I am just an AI. Please, for your safety, use the red Crisis Help button below to talk to a real person who can help." },
     safety: { back: "Back", title: "Is it safe?", card1Title: "Privacy First", card1Desc: "We do not ask for your real name, phone number, or email. Your answers are processed in your browser session.", card2Title: "Anonymous AI Chat", card2Desc: "The chat is powered by AI (Gemini). It does not judge. Chat logs are transient. Please do not share personal info.", card3Title: "Crisis Support", card3Desc: "Glowtype is NOT a replacement for professional therapy. If you are in danger, please use the red button below." },
-    learn: { title: "Glow Sticks", subtitle: "Draw a light for your soul", back: "Home", draw: "Draw a Glow Stick", redraw: "Draw Again", keep: "Keep This Light" },
+    learn: { title: "Glowpedia", subtitle: "Your pocket guide to emotional wellness", back: "Home", draw: "Draw a Glow Stick", redraw: "Draw Again", keep: "Got It", pickPlanet: "What do you need right now?", changePlanet: "Change Topic", sectionTitle: "Glow Sticks" },
     crisis: { title: "Here for you", subtitle: "Whatever you're going through, help is available.", back: "Close", sectionCall: "Immediate Help (24/7)", sectionText: "Text & Counseling" },
     footer: { label: "Need someone to talk to?", btn: "Support is here" }
   },
   zh: {
-    nav: { safety: "安全说明", learn: "科普", lang: "English" },
+    nav: { safety: "安全说明", learn: "光芒百科", lang: "English" },
     hero: { tag: "面向 15–25 岁 • 免费 • 匿名", titlePre: "测测你的", titleHighlight: "光芒人格?", subtitle: "一面有趣的情绪镜子。不是医疗诊断，而是一种探索内心宇宙的轻松方式。", btnStart: "开始测试", btnSafe: "安全吗？如何运作" },
     quiz: { question: "第", total: "题 / 共", back: "返回上一题" },
     result: { label: "你的光芒类型", insightBtn: "揭示宇宙洞察", insightLoading: "正在连接星辰...", note: "注意：这不是医疗诊断。这只是一个自我探索的工具。", btnChat: "聊聊这个 (AI 陪伴)", btnHelp: "寻找专业帮助", shareTitle: "分享你的光芒", shareDesc: "保存卡片或复制链接", promptContext: "请用温暖、治愈的中文回答，像个知心朋友。" },
     chat: { header: "匿名树洞", end: "结束对话", disclaimer: "隐私保护 • 不保存数据 • Gemini AI 驱动", intro: "你好呀。我是 Glowtype AI。我会在这里静静倾听。虽然我不是人类，但我很在乎你想说的话。", placeholder: "在这里输入...", crisisResponse: "我听到了你的痛苦，但我只是一个 AI。为了你的安全，请立刻点击下方的红色“获取危机援助”按钮，寻找真人的帮助。" },
     safety: { back: "返回", title: "这安全吗？", card1Title: "隐私优先", card1Desc: "我们不需要你的真名、电话或邮箱。你的测试答案仅在浏览器中处理，不会建立个人档案。", card2Title: "匿名 AI 聊天", card2Desc: "聊天由 AI (Gemini) 驱动。它不会评判你。聊天记录是暂时的，结束后即销毁。请勿分享个人隐私。", card3Title: "危机支持", card3Desc: "Glowtype 不能替代专业治疗。如果你处于危险中，请务必使用屏幕底部的红色按钮求助。" },
-    learn: { title: "光签", subtitle: "为灵魂抽一道光", back: "返回首页", draw: "抽一支光签", redraw: "再抽一签", keep: "收下这道光" },
+    learn: { title: "光芒百科", subtitle: "你的情绪健康口袋指南", back: "返回首页", draw: "抽一支光签", redraw: "再抽一签", keep: "收下了", pickPlanet: "你现在需要什么？", changePlanet: "换个主题", sectionTitle: "光签" },
     crisis: { title: "我们在这里", subtitle: "无论你在经历什么，都有人愿意倾听。", back: "关闭", sectionCall: "立即通话 (24/7)", sectionText: "文字 & 辅导支持" },
     footer: { label: "想要找人聊聊？", btn: "温暖支持" }
   }
@@ -233,6 +233,44 @@ const APP_CONFIG = {
       textColor: "text-rose-900"
     }
   },
+  // 星球定义
+  glowPlanets: [
+    {
+      id: "calm",
+      name: { en: "Calm Nebula", zh: "静谧星云" },
+      desc: { en: "For when you need to slow down", zh: "当你需要慢下来" },
+      icon: "🌙",
+      gradient: "from-indigo-500 to-purple-600"
+    },
+    {
+      id: "anxiety",
+      name: { en: "Grounding Station", zh: "着陆空间站" },
+      desc: { en: "For racing thoughts & worry", zh: "当思绪翻涌、焦虑不安" },
+      icon: "🌍",
+      gradient: "from-emerald-500 to-teal-600"
+    },
+    {
+      id: "self-care",
+      name: { en: "Kindness Comet", zh: "温柔彗星" },
+      desc: { en: "For being gentle with yourself", zh: "当你需要善待自己" },
+      icon: "💫",
+      gradient: "from-rose-500 to-pink-600"
+    },
+    {
+      id: "courage",
+      name: { en: "Courage Cluster", zh: "勇气星团" },
+      desc: { en: "For finding your strength", zh: "当你需要力量" },
+      icon: "⭐",
+      gradient: "from-amber-500 to-orange-600"
+    },
+    {
+      id: "random",
+      name: { en: "Random Drift", zh: "随机漫游" },
+      desc: { en: "Surprise me with anything", zh: "随便来一个惊喜" },
+      icon: "✨",
+      gradient: "from-violet-500 to-fuchsia-600"
+    }
+  ],
   glowSticks: [
     {
       id: 1,
@@ -242,7 +280,8 @@ const APP_CONFIG = {
         zh: "情绪是信使，不是指挥官。它们带来信息，但由你决定如何回应。"
       },
       color: "from-violet-400 to-indigo-500",
-      forTypes: ["Quiet Comet", "Radiant Nebula"] // 通用
+      planet: "calm",
+      forTypes: ["Quiet Comet", "Radiant Nebula"]
     },
     {
       id: 2,
@@ -252,7 +291,8 @@ const APP_CONFIG = {
         zh: "当思绪翻涌时，试试 5-4-3-2-1：看5样、摸4样、听3样、闻2样、尝1样。你在这里，此刻。"
       },
       color: "from-emerald-400 to-teal-500",
-      forTypes: ["Quiet Comet"] // 内向者更容易思绪翻涌
+      planet: "anxiety",
+      forTypes: ["Quiet Comet", "Radiant Nebula"]
     },
     {
       id: 3,
@@ -262,7 +302,8 @@ const APP_CONFIG = {
         zh: "心跳加速？那是大脑在保护你。不舒服，但不危险。深呼吸——警报会平息。"
       },
       color: "from-amber-400 to-orange-500",
-      forTypes: ["Quiet Comet", "Radiant Nebula"] // 通用
+      planet: "anxiety",
+      forTypes: ["Quiet Comet", "Radiant Nebula"]
     },
     {
       id: 4,
@@ -272,7 +313,8 @@ const APP_CONFIG = {
         zh: "青春期情绪波动是正常的——荷尔蒙在作祟。你没有坏掉，你在成长。"
       },
       color: "from-rose-400 to-pink-500",
-      forTypes: ["Radiant Nebula"] // 情绪波动大的创造者
+      planet: "self-care",
+      forTypes: ["Radiant Nebula"]
     },
     {
       id: 5,
@@ -282,7 +324,8 @@ const APP_CONFIG = {
         zh: "空杯子倒不出水。休息不是懒惰——是重新注满自己。先照顾好自己。"
       },
       color: "from-sky-400 to-blue-500",
-      forTypes: ["Quiet Comet"] // 内向者需要更多独处恢复
+      planet: "calm",
+      forTypes: ["Quiet Comet", "Radiant Nebula"]
     },
     {
       id: 6,
@@ -292,7 +335,8 @@ const APP_CONFIG = {
         zh: "求助不是软弱——是智慧。最坚强的人知道，不必独自扛下一切。"
       },
       color: "from-fuchsia-400 to-purple-500",
-      forTypes: ["Quiet Comet"] // 内向者更难开口求助
+      planet: "courage",
+      forTypes: ["Quiet Comet", "Radiant Nebula"]
     },
     {
       id: 7,
@@ -302,7 +346,8 @@ const APP_CONFIG = {
         zh: "没有任何情绪是永恒的。像天气一样，情绪来了又走。风暴终会过去，即使此刻感觉不到。"
       },
       color: "from-cyan-400 to-teal-500",
-      forTypes: ["Radiant Nebula"] // 情绪强烈的人需要这个提醒
+      planet: "anxiety",
+      forTypes: ["Radiant Nebula"]
     },
     {
       id: 8,
@@ -312,7 +357,8 @@ const APP_CONFIG = {
         zh: "用对待朋友的方式对待自己。你值得拥有你给予他人的那份温柔。"
       },
       color: "from-lime-400 to-green-500",
-      forTypes: ["Quiet Comet", "Radiant Nebula"] // 通用
+      planet: "self-care",
+      forTypes: ["Quiet Comet", "Radiant Nebula"]
     },
     {
       id: 9,
@@ -322,7 +368,8 @@ const APP_CONFIG = {
         zh: "内心的风暴？不是缺陷——是原始的创造能量。引导它，而非对抗它。"
       },
       color: "from-orange-400 to-red-500",
-      forTypes: ["Radiant Nebula"] // 创造者专属
+      planet: "courage",
+      forTypes: ["Radiant Nebula"]
     },
     {
       id: 10,
@@ -332,7 +379,30 @@ const APP_CONFIG = {
         zh: "你的安静观察不是缺席——是在场。你看到别人忽略的。这是你的超能力。"
       },
       color: "from-indigo-400 to-blue-500",
-      forTypes: ["Quiet Comet"] // 内向者专属
+      planet: "courage",
+      forTypes: ["Quiet Comet"]
+    },
+    {
+      id: 11,
+      title: { en: "Breathe Through It", zh: "呼吸穿越它" },
+      message: {
+        en: "Inhale calm, exhale tension. Your breath is always with you—a portable reset button for your nervous system.",
+        zh: "吸入平静，呼出紧张。呼吸永远与你同在——随身携带的神经系统重启键。"
+      },
+      color: "from-teal-400 to-cyan-500",
+      planet: "anxiety",
+      forTypes: ["Quiet Comet", "Radiant Nebula"]
+    },
+    {
+      id: 12,
+      title: { en: "Small Steps Count", zh: "小步也算数" },
+      message: {
+        en: "You don't have to climb the whole mountain today. One step forward is still forward.",
+        zh: "你不必今天就爬完整座山。往前一步，依然是前进。"
+      },
+      color: "from-green-400 to-emerald-500",
+      planet: "courage",
+      forTypes: ["Quiet Comet", "Radiant Nebula"]
     }
   ],
   // NEW: Structured hotlines for better UX
@@ -959,22 +1029,34 @@ const SafetyView = ({ onBack, lang }) => {
 
 const LearnView = ({ onBack, lang, userType = null }) => {
   const t = TRANSLATIONS[lang].learn;
+  const planets = APP_CONFIG.glowPlanets;
   const allSticks = APP_CONFIG.glowSticks;
-  const [phase, setPhase] = useState<'idle' | 'shaking' | 'revealed'>('idle');
+  const [phase, setPhase] = useState<'planets' | 'idle' | 'shaking' | 'revealed'>('planets');
+  const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
   const [currentStick, setCurrentStick] = useState<typeof allSticks[0] | null>(null);
-  const [drawnIds, setDrawnIds] = useState<number[]>([]); // Track drawn sticks to avoid repeats
+  const [drawnIds, setDrawnIds] = useState<number[]>([]);
 
-  // Get sticks pool based on user type (prioritize matching, then all)
+  // Get sticks pool based on selected planet and user type
   const getStickPool = () => {
-    const availableSticks = allSticks.filter(s => !drawnIds.includes(s.id));
-    if (availableSticks.length === 0) {
-      // Reset if all drawn
-      setDrawnIds([]);
-      return allSticks;
+    let pool = allSticks;
+
+    // Filter by planet (unless random)
+    if (selectedPlanet && selectedPlanet !== 'random') {
+      pool = pool.filter(s => s.planet === selectedPlanet);
     }
 
-    if (userType) {
-      // Map type codes to display names
+    // Filter out already drawn
+    pool = pool.filter(s => !drawnIds.includes(s.id));
+
+    if (pool.length === 0) {
+      setDrawnIds([]);
+      pool = selectedPlanet && selectedPlanet !== 'random'
+        ? allSticks.filter(s => s.planet === selectedPlanet)
+        : allSticks;
+    }
+
+    // Apply Glowtype preference (70/30 split)
+    if (userType && pool.length > 1) {
       const typeMapping: Record<string, string> = {
         'quiet-comet': 'Quiet Comet',
         'radiant-nebula': 'Radiant Nebula',
@@ -982,13 +1064,17 @@ const LearnView = ({ onBack, lang, userType = null }) => {
         'Radiant Nebula': 'Radiant Nebula'
       };
       const mappedType = typeMapping[userType] || userType;
-      const matchingSticks = availableSticks.filter(s => s.forTypes?.includes(mappedType));
-      // 70% chance to pick from matching, 30% from all (adds variety)
+      const matchingSticks = pool.filter(s => s.forTypes?.includes(mappedType));
       if (matchingSticks.length > 0 && Math.random() < 0.7) {
         return matchingSticks;
       }
     }
-    return availableSticks;
+    return pool;
+  };
+
+  const selectPlanet = (planetId: string) => {
+    setSelectedPlanet(planetId);
+    setPhase('idle');
   };
 
   const drawStick = () => {
@@ -1007,6 +1093,14 @@ const LearnView = ({ onBack, lang, userType = null }) => {
     setCurrentStick(null);
   };
 
+  const changePlanet = () => {
+    setPhase('planets');
+    setSelectedPlanet(null);
+    setCurrentStick(null);
+  };
+
+  const currentPlanetData = planets.find(p => p.id === selectedPlanet);
+
   return (
     <div className="min-h-screen relative z-10 flex flex-col items-center justify-center px-6 py-20">
       {/* Background glow */}
@@ -1014,7 +1108,10 @@ const LearnView = ({ onBack, lang, userType = null }) => {
         <motion.div
           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
           transition={{ duration: 4, repeat: Infinity }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] bg-gradient-to-r from-purple-300/40 via-indigo-300/40 to-pink-300/40 rounded-full blur-[100px]"
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full blur-[100px] ${
+            currentPlanetData ? `bg-gradient-to-r ${currentPlanetData.gradient}` : 'bg-gradient-to-r from-purple-300/40 via-indigo-300/40 to-pink-300/40'
+          }`}
+          style={{ opacity: 0.4 }}
         />
       </div>
 
@@ -1027,15 +1124,50 @@ const LearnView = ({ onBack, lang, userType = null }) => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-12 relative z-10"
+        className="text-center mb-8 relative z-10"
       >
-        <h1 className="text-5xl font-serif text-gray-900 mb-3">{t.title}</h1>
-        <p className="text-gray-500 text-lg">{t.subtitle}</p>
+        <h1 className="text-4xl md:text-5xl font-serif text-gray-900 mb-2">{t.title}</h1>
+        <p className="text-gray-500">{phase === 'planets' ? t.pickPlanet : t.subtitle}</p>
       </motion.div>
 
       {/* Main content area */}
-      <div className="relative z-10 w-full max-w-sm">
+      <div className="relative z-10 w-full max-w-md">
         <AnimatePresence mode="wait">
+          {/* Planet selection */}
+          {phase === 'planets' && (
+            <motion.div
+              key="planets"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="grid grid-cols-2 gap-3"
+            >
+              {planets.map((planet, idx) => (
+                <motion.button
+                  key={planet.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: idx * 0.1 }}
+                  onClick={() => selectPlanet(planet.id)}
+                  className={`relative p-4 rounded-2xl bg-gradient-to-br ${planet.gradient} text-white text-left overflow-hidden group hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg`}
+                >
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                  <div className="relative z-10">
+                    <span className="text-2xl mb-2 block">{planet.icon}</span>
+                    <h3 className="font-bold text-sm mb-0.5">{planet.name[lang]}</h3>
+                    <p className="text-white/80 text-xs">{planet.desc[lang]}</p>
+                  </div>
+                  {/* Shimmer */}
+                  <motion.div
+                    animate={{ x: ['-100%', '200%'] }}
+                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                  />
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+
           {/* Idle state - show draw button */}
           {phase === 'idle' && (
             <motion.div
@@ -1045,6 +1177,18 @@ const LearnView = ({ onBack, lang, userType = null }) => {
               exit={{ opacity: 0, scale: 0.9 }}
               className="flex flex-col items-center"
             >
+              {/* Current planet indicator */}
+              {currentPlanetData && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`mb-6 px-4 py-2 rounded-full bg-gradient-to-r ${currentPlanetData.gradient} text-white text-sm font-medium flex items-center gap-2 shadow-lg`}
+                >
+                  <span>{currentPlanetData.icon}</span>
+                  <span>{currentPlanetData.name[lang]}</span>
+                </motion.div>
+              )}
+
               {/* Glowing container */}
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -1052,9 +1196,10 @@ const LearnView = ({ onBack, lang, userType = null }) => {
                 onClick={drawStick}
                 className="relative cursor-pointer group"
               >
-                <div className="w-40 h-56 rounded-3xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 backdrop-blur-xl border border-white/40 shadow-2xl flex items-center justify-center overflow-hidden">
-                  {/* Floating sticks inside */}
-                  <div className="absolute inset-4 flex flex-col items-center justify-center gap-1">
+                <div className={`w-40 h-56 rounded-3xl bg-gradient-to-br ${currentPlanetData?.gradient || 'from-indigo-500/20 via-purple-500/20 to-pink-500/20'} backdrop-blur-xl border border-white/40 shadow-2xl flex items-center justify-center overflow-hidden`} style={{ opacity: 0.3 }}>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-1">
                     {[...Array(5)].map((_, i) => (
                       <motion.div
                         key={i}
@@ -1063,16 +1208,13 @@ const LearnView = ({ onBack, lang, userType = null }) => {
                           rotate: [(i - 2) * 3, (i - 2) * 3 + 2, (i - 2) * 3]
                         }}
                         transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }}
-                        className={`w-2 h-24 rounded-full bg-gradient-to-b ${sticks[i]?.color || 'from-indigo-400 to-purple-500'} shadow-lg`}
+                        className={`w-2 h-20 rounded-full bg-gradient-to-b ${allSticks[i]?.color || 'from-indigo-400 to-purple-500'} shadow-lg`}
                         style={{ transform: `rotate(${(i - 2) * 8}deg)` }}
                       />
                     ))}
                   </div>
-                  {/* Glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent" />
                 </div>
-                {/* Outer glow */}
-                <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className={`absolute -inset-4 bg-gradient-to-r ${currentPlanetData?.gradient || 'from-indigo-500/20 via-purple-500/20 to-pink-500/20'} rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-50 transition-opacity duration-500`} />
               </motion.div>
 
               <motion.button
@@ -1080,10 +1222,17 @@ const LearnView = ({ onBack, lang, userType = null }) => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
                 onClick={drawStick}
-                className="mt-8 px-8 py-4 bg-gray-900 text-white rounded-2xl font-medium shadow-xl hover:bg-gray-800 transition-all flex items-center gap-2"
+                className="mt-6 px-8 py-4 bg-gray-900 text-white rounded-2xl font-medium shadow-xl hover:bg-gray-800 transition-all flex items-center gap-2"
               >
                 <Sparkles size={18} /> {t.draw}
               </motion.button>
+
+              <button
+                onClick={changePlanet}
+                className="mt-3 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {t.changePlanet}
+              </button>
             </motion.div>
           )}
 
@@ -1102,9 +1251,9 @@ const LearnView = ({ onBack, lang, userType = null }) => {
                   y: [0, -10, 0, -8, 0, -5, 0]
                 }}
                 transition={{ duration: 1.5, ease: "easeInOut" }}
-                className="w-40 h-56 rounded-3xl bg-gradient-to-br from-indigo-500/30 via-purple-500/30 to-pink-500/30 backdrop-blur-xl border border-white/40 shadow-2xl flex items-center justify-center overflow-hidden"
+                className={`w-40 h-56 rounded-3xl bg-gradient-to-br ${currentPlanetData?.gradient || 'from-indigo-500/30 via-purple-500/30 to-pink-500/30'} backdrop-blur-xl border border-white/40 shadow-2xl flex items-center justify-center overflow-hidden`}
+                style={{ opacity: 0.5 }}
               >
-                {/* Sticks shaking */}
                 <div className="flex flex-col items-center gap-1">
                   {[...Array(5)].map((_, i) => (
                     <motion.div
@@ -1114,7 +1263,7 @@ const LearnView = ({ onBack, lang, userType = null }) => {
                         rotate: [-10, 10, -10, 10, 0]
                       }}
                       transition={{ duration: 0.3, repeat: 5, delay: i * 0.05 }}
-                      className={`w-2 h-24 rounded-full bg-gradient-to-b ${sticks[i]?.color || 'from-indigo-400 to-purple-500'} shadow-lg`}
+                      className={`w-2 h-20 rounded-full bg-gradient-to-b ${allSticks[i]?.color || 'from-indigo-400 to-purple-500'} shadow-lg`}
                     />
                   ))}
                 </div>
