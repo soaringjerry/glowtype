@@ -160,12 +160,16 @@ export const LearnView = ({ onBack, lang, userType = null }: LearnViewProps) => 
         : [...allSticks];
     }
     if (userType && pool.length > 1) {
-      const typeMapping: Record<string, string> = {
-        'quiet-comet': 'Quiet Comet', 'radiant-nebula': 'Radiant Nebula',
-        'Quiet Comet': 'Quiet Comet', 'Radiant Nebula': 'Radiant Nebula'
-      };
-      const mappedType = typeMapping[userType] || userType;
-      const matching = pool.filter(s => s.forTypes?.includes(mappedType));
+      // Match by userType directly, or by normalized slug form
+      // This allows matching whether forTypes stores "quiet-comet" or "Quiet Comet"
+      const normalizedUserType = userType.toLowerCase().replace(/\s+/g, '-');
+      const matching = pool.filter(s => {
+        if (!s.forTypes || s.forTypes.length === 0) return false;
+        return s.forTypes.some(ft => {
+          const normalizedFt = ft.toLowerCase().replace(/\s+/g, '-');
+          return ft === userType || normalizedFt === normalizedUserType;
+        });
+      });
       if (matching.length > 0 && Math.random() < 0.7) return matching;
     }
     return pool;
