@@ -25,6 +25,7 @@ The script will:
 - pull/build and start the Dockerized backend + frontend via `docker-compose`;
 - start a small Watchtower container that automatically pulls new backend/frontend images from GHCR and restarts them;
 - auto-generate admin secrets into `backend/.env` (`ADMIN_JWT_SECRET`, `ADMIN_SUPER_PASSWORD`, default username `ADMIN_SUPER_USERNAME=superadmin`). Check that file after首次启动获取超管口令，然后尽快更换并创建独立管理员。
+- 如果忘记超管密码或被登录锁定，可设置 `ADMIN_SUPER_PASSWORD=<新密码>` + `ADMIN_SUPER_PASSWORD_ROTATE=true` 后重启；想暂时关闭登录锁定则设置 `ADMIN_LOGIN_RATE_LIMIT_DISABLE=1`（排障后请恢复）。
 
 You can override defaults with environment variables:
 

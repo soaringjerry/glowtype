@@ -106,6 +106,10 @@ func ValidateAdminToken(token string) (*AdminTokenClaims, error) {
 
 // IsLoginLocked returns whether the username/IP combination is temporarily locked.
 func IsLoginLocked(db *gorm.DB, username, ip string) (bool, time.Time, error) {
+	if isRateLimitDisabled() {
+		return false, time.Time{}, nil
+	}
+
 	attempt, err := loadLoginAttempt(db, username, ip)
 	if err != nil || attempt == nil {
 		return false, time.Time{}, err
@@ -129,6 +133,10 @@ func IsLoginLocked(db *gorm.DB, username, ip string) (bool, time.Time, error) {
 
 // RegisterLoginFailure increments the attempt counter and locks if necessary.
 func RegisterLoginFailure(db *gorm.DB, username, ip string) error {
+	if isRateLimitDisabled() {
+		return nil
+	}
+
 	attempt, err := loadLoginAttempt(db, username, ip)
 	if err != nil {
 		return err
@@ -156,6 +164,9 @@ func RegisterLoginFailure(db *gorm.DB, username, ip string) error {
 
 // RegisterLoginSuccess clears the attempt counter on successful login.
 func RegisterLoginSuccess(db *gorm.DB, username, ip string) error {
+	if isRateLimitDisabled() {
+		return nil
+	}
 	return db.Where("username = ? AND ip = ?", username, ip).Delete(&database.AdminLoginAttempt{}).Error
 }
 
@@ -182,4 +193,14 @@ func getAdminTokenSecret() []byte {
 		return []byte(secret)
 	}
 	return []byte("glowtype-admin-secret")
+}
+
+func isRateLimitDisabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("ADMIN_LOGIN_RATE_LIMIT_DISABLE")))
+	return v == "1" || v == "true" || v == "yes"
+}
+
+// IsRateLimitDisabled is exposed for handlers to check rate limit status.
+func IsRateLimitDisabled() bool {
+	return isRateLimitDisabled()
 }

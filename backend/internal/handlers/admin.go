@@ -124,17 +124,19 @@ func AdminLoginHandler(c *gin.Context) {
 	}
 
 	clientIP := c.ClientIP()
-	locked, unlockAt, err := services.IsLoginLocked(database.GetDB(), req.Username, clientIP)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Login check failed"})
-		return
-	}
-	if locked {
-		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error":    "Too many attempts. Please try again later.",
-			"unlockAt": unlockAt,
-		})
-		return
+	if !services.IsRateLimitDisabled() {
+		locked, unlockAt, err := services.IsLoginLocked(database.GetDB(), req.Username, clientIP)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Login check failed"})
+			return
+		}
+		if locked {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":    "Too many attempts. Please try again later.",
+				"unlockAt": unlockAt,
+			})
+			return
+		}
 	}
 
 	var user database.AdminUser
