@@ -46,6 +46,7 @@ func InitDB() *gorm.DB {
 		&GlowtypeI18NDB{},
 		&ScoringRuleDB{},
 		&QuizResultDB{},
+		&ChatSessionDB{},
 		&AIPromptDB{},
 		&BookChapterDB{},
 		&GlowStickDB{},

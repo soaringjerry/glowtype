@@ -209,6 +209,12 @@ type QuizResultDB struct {
 	UserAgent string `json:"userAgent"`
 	Source    string `json:"source"` // "web", "app", "embed"
 
+	// Anonymized analytics fields (derived from request, original data discarded)
+	Region      string `gorm:"index" json:"region"`      // Country/region code (derived from IP, IP not stored)
+	DeviceType  string `json:"deviceType"`               // "mobile", "tablet", "desktop" (parsed from UA)
+	BrowserLang string `json:"browserLang"`              // Browser language preference (from Accept-Language)
+	HourOfDay   int    `json:"hourOfDay"`                // 0-23, local hour when quiz was taken
+
 	// Traffic attribution (for marketing analysis)
 	Channel    string `gorm:"index" json:"channel"`    // Distribution channel: "wechat", "linkedin", "organic", etc.
 	EntryPoint string `json:"entryPoint"`              // Specific campaign/source: "homepage", "blog_post_1", "ad_campaign_q1"
@@ -217,8 +223,43 @@ type QuizResultDB struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+// ============ Chat Sessions (Anonymous Analytics) ============
+
+// ChatSessionDB tracks anonymous chat session metrics
+// NO PII - only aggregated metrics for analysis
+type ChatSessionDB struct {
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	TenantID  *uint  `gorm:"index" json:"tenantId"`
+	SessionID string `gorm:"index;not null" json:"sessionId"` // Anonymous session identifier
+
+	// Chat metrics
+	MessageCount  int `json:"messageCount"`  // Total messages in session
+	UserMessages  int `json:"userMessages"`  // Messages from user
+	AIMessages    int `json:"aiMessages"`    // Messages from AI
+	DurationSecs  int `json:"durationSecs"`  // Session duration in seconds
+
+	// Context
+	GlowtypeCode string `gorm:"index" json:"glowtypeCode"` // User's glowtype (if known)
+	Language     string `json:"language"`
+
+	// Anonymized analytics
+	Region      string `gorm:"index" json:"region"` // Country/region (derived from IP)
+	DeviceType  string `json:"deviceType"`
+	HourOfDay   int    `json:"hourOfDay"`
+
+	// Flags for research
+	HasCrisisKeywords bool `json:"hasCrisisKeywords"` // Whether crisis keywords were detected
+
+	StartedAt time.Time `json:"startedAt"`
+	EndedAt   time.Time `json:"endedAt"`
+}
+
 func (QuizResultDB) TableName() string {
 	return "quiz_results"
+}
+
+func (ChatSessionDB) TableName() string {
+	return "chat_sessions"
 }
 
 // AnswerRecord is the Go struct for parsing Answers JSON

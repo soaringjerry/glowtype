@@ -23,14 +23,38 @@ import (
 
 // AnonymizedQuizResult represents an anonymized quiz result for export
 type AnonymizedQuizResult struct {
-	ID              uint              `json:"id"`
-	AnonymousID     string            `json:"anonymousId"` // Hashed session ID
+	ID              uint               `json:"id"`
+	AnonymousID     string             `json:"anonymousId"` // Hashed session ID
 	DimensionScores map[string]float64 `json:"dimensionScores"`
-	ResultTypeCode  string            `json:"resultTypeCode"`
-	Language        string            `json:"language"`
-	Source          string            `json:"source"`
-	Channel         string            `json:"channel,omitempty"`
-	CreatedDate     string            `json:"createdDate"` // Date only, no time
+	ResultTypeCode  string             `json:"resultTypeCode"`
+	Language        string             `json:"language"`
+	Source          string             `json:"source"`
+	Channel         string             `json:"channel,omitempty"`
+	// Enhanced analytics fields
+	Region      string `json:"region,omitempty"`
+	DeviceType  string `json:"deviceType,omitempty"`
+	BrowserLang string `json:"browserLang,omitempty"`
+	HourOfDay   int    `json:"hourOfDay"`
+	CreatedDate string `json:"createdDate"`
+	CreatedHour string `json:"createdHour"` // "2025-01-15 14:00" format
+}
+
+// AnonymizedChatSession represents an anonymized chat session for export
+type AnonymizedChatSession struct {
+	ID            uint   `json:"id"`
+	AnonymousID   string `json:"anonymousId"`
+	MessageCount  int    `json:"messageCount"`
+	UserMessages  int    `json:"userMessages"`
+	AIMessages    int    `json:"aiMessages"`
+	DurationSecs  int    `json:"durationSecs"`
+	GlowtypeCode  string `json:"glowtypeCode,omitempty"`
+	Language      string `json:"language"`
+	Region        string `json:"region,omitempty"`
+	DeviceType    string `json:"deviceType,omitempty"`
+	HourOfDay     int    `json:"hourOfDay"`
+	HasCrisisFlag bool   `json:"hasCrisisFlag"`
+	StartedDate   string `json:"startedDate"`
+	StartedHour   string `json:"startedHour"`
 }
 
 // AnonymizedStats represents aggregated usage statistics
@@ -51,19 +75,20 @@ type GlowtypeDistribution struct {
 
 // ExportData contains all exportable data
 type ExportData struct {
-	ExportedAt           string                 `json:"exportedAt"`
-	ExportVersion        string                 `json:"exportVersion"`
-	AnonymizationNote    string                 `json:"anonymizationNote"`
-	QuizResults          []AnonymizedQuizResult `json:"quizResults,omitempty"`
-	UsageStats           []AnonymizedStats      `json:"usageStats,omitempty"`
-	GlowtypeDistribution []GlowtypeDistribution `json:"glowtypeDistribution,omitempty"`
+	ExportedAt           string                  `json:"exportedAt"`
+	ExportVersion        string                  `json:"exportVersion"`
+	AnonymizationNote    string                  `json:"anonymizationNote"`
+	QuizResults          []AnonymizedQuizResult  `json:"quizResults,omitempty"`
+	ChatSessions         []AnonymizedChatSession `json:"chatSessions,omitempty"`
+	UsageStats           []AnonymizedStats       `json:"usageStats,omitempty"`
+	GlowtypeDistribution []GlowtypeDistribution  `json:"glowtypeDistribution,omitempty"`
 }
 
 func main() {
 	// CLI flags
 	outputDir := flag.String("output", "./exports", "Output directory for export files")
 	format := flag.String("format", "json", "Export format: json or csv")
-	dataType := flag.String("type", "all", "Data type to export: all, results, stats, distribution")
+	dataType := flag.String("type", "all", "Data type to export: all, results, chats, stats, distribution")
 	startDate := flag.String("start", "", "Start date filter (YYYY-MM-DD)")
 	endDate := flag.String("end", "", "End date filter (YYYY-MM-DD)")
 	flag.Parse()
@@ -82,19 +107,27 @@ func main() {
 
 	// Prepare export data
 	exportData := ExportData{
-		ExportedAt:        time.Now().UTC().Format(time.RFC3339),
-		ExportVersion:     "1.0",
-		AnonymizationNote: "All data has been anonymized. Session IDs are SHA256 hashed with a random salt. Timestamps are truncated to date only. No PII is included.",
+		ExportedAt:    time.Now().UTC().Format(time.RFC3339),
+		ExportVersion: "2.0",
+		AnonymizationNote: `All data has been anonymized:
+- Session IDs are SHA256 hashed with a random salt
+- IP addresses are converted to region codes, then discarded (not stored)
+- User agents are parsed for device type only
+- Timestamps include hour for temporal analysis but session IDs prevent cross-day tracking
+- No PII (names, emails, phone numbers) is collected or exported`,
 	}
 
 	// Export based on type
 	switch *dataType {
 	case "all":
 		exportData.QuizResults = exportQuizResults(db, *startDate, *endDate)
+		exportData.ChatSessions = exportChatSessions(db, *startDate, *endDate)
 		exportData.UsageStats = exportUsageStats(db, *startDate, *endDate)
 		exportData.GlowtypeDistribution = exportGlowtypeDistribution(db, *startDate, *endDate)
 	case "results":
 		exportData.QuizResults = exportQuizResults(db, *startDate, *endDate)
+	case "chats":
+		exportData.ChatSessions = exportChatSessions(db, *startDate, *endDate)
 	case "stats":
 		exportData.UsageStats = exportUsageStats(db, *startDate, *endDate)
 	case "distribution":
@@ -164,7 +197,54 @@ func exportQuizResults(db *gorm.DB, startDate, endDate string) []AnonymizedQuizR
 			Language:        r.Language,
 			Source:          r.Source,
 			Channel:         r.Channel,
-			CreatedDate:     r.CreatedAt.Format("2006-01-02"), // Date only
+			Region:          r.Region,
+			DeviceType:      r.DeviceType,
+			BrowserLang:     r.BrowserLang,
+			HourOfDay:       r.HourOfDay,
+			CreatedDate:     r.CreatedAt.Format("2006-01-02"),
+			CreatedHour:     r.CreatedAt.Format("2006-01-02 15:00"), // Hour precision
+		})
+	}
+
+	log.Printf("  Found %d records", len(anonymized))
+	return anonymized
+}
+
+func exportChatSessions(db *gorm.DB, startDate, endDate string) []AnonymizedChatSession {
+	log.Println("Exporting chat sessions (anonymized)...")
+
+	var sessions []database.ChatSessionDB
+	query := db.Order("started_at DESC")
+
+	if startDate != "" {
+		query = query.Where("DATE(started_at) >= ?", startDate)
+	}
+	if endDate != "" {
+		query = query.Where("DATE(started_at) <= ?", endDate)
+	}
+
+	if err := query.Find(&sessions).Error; err != nil {
+		log.Printf("Error fetching chat sessions: %v", err)
+		return nil
+	}
+
+	anonymized := make([]AnonymizedChatSession, 0, len(sessions))
+	for _, s := range sessions {
+		anonymized = append(anonymized, AnonymizedChatSession{
+			ID:            s.ID,
+			AnonymousID:   anonymizeSessionID(s.SessionID, s.StartedAt),
+			MessageCount:  s.MessageCount,
+			UserMessages:  s.UserMessages,
+			AIMessages:    s.AIMessages,
+			DurationSecs:  s.DurationSecs,
+			GlowtypeCode:  s.GlowtypeCode,
+			Language:      s.Language,
+			Region:        s.Region,
+			DeviceType:    s.DeviceType,
+			HourOfDay:     s.HourOfDay,
+			HasCrisisFlag: s.HasCrisisKeywords,
+			StartedDate:   s.StartedAt.Format("2006-01-02"),
+			StartedHour:   s.StartedAt.Format("2006-01-02 15:00"),
 		})
 	}
 
@@ -267,7 +347,11 @@ func writeCSV(outputDir, filename string, data ExportData) {
 		defer writer.Flush()
 
 		// Header
-		writer.Write([]string{"id", "anonymous_id", "result_type", "language", "source", "channel", "created_date", "dimension_scores_json"})
+		writer.Write([]string{
+			"id", "anonymous_id", "result_type", "language", "source", "channel",
+			"region", "device_type", "browser_lang", "hour_of_day",
+			"created_date", "created_hour", "dimension_scores_json",
+		})
 
 		for _, r := range data.QuizResults {
 			scoresJSON, _ := json.Marshal(r.DimensionScores)
@@ -278,8 +362,52 @@ func writeCSV(outputDir, filename string, data ExportData) {
 				r.Language,
 				r.Source,
 				r.Channel,
+				r.Region,
+				r.DeviceType,
+				r.BrowserLang,
+				fmt.Sprintf("%d", r.HourOfDay),
 				r.CreatedDate,
+				r.CreatedHour,
 				string(scoresJSON),
+			})
+		}
+		log.Printf("Written to: %s", filepath)
+	}
+
+	// Write chat sessions CSV
+	if len(data.ChatSessions) > 0 {
+		filepath := filepath.Join(outputDir, filename+"_chats.csv")
+		file, err := os.Create(filepath)
+		if err != nil {
+			log.Fatalf("Failed to create file: %v", err)
+		}
+		defer file.Close()
+
+		writer := csv.NewWriter(file)
+		defer writer.Flush()
+
+		writer.Write([]string{
+			"id", "anonymous_id", "message_count", "user_messages", "ai_messages",
+			"duration_secs", "glowtype_code", "language", "region", "device_type",
+			"hour_of_day", "has_crisis_flag", "started_date", "started_hour",
+		})
+
+		for _, s := range data.ChatSessions {
+			writer.Write([]string{
+				fmt.Sprintf("%d", s.ID),
+				s.AnonymousID,
+				fmt.Sprintf("%d", s.MessageCount),
+				fmt.Sprintf("%d", s.UserMessages),
+				fmt.Sprintf("%d", s.AIMessages),
+				fmt.Sprintf("%d", s.DurationSecs),
+				s.GlowtypeCode,
+				s.Language,
+				s.Region,
+				s.DeviceType,
+				fmt.Sprintf("%d", s.HourOfDay),
+				fmt.Sprintf("%t", s.HasCrisisFlag),
+				s.StartedDate,
+				s.StartedHour,
 			})
 		}
 		log.Printf("Written to: %s", filepath)
