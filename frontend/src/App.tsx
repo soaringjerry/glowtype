@@ -931,8 +931,8 @@ const TermsView = ({ onBack, lang }) => {
         <GlassCard className="p-6">
           <h2 className="text-lg font-bold text-gray-900 mb-3">{isZh ? '4. 知识产权' : '4. Intellectual Property'}</h2>
           <p>{isZh
-            ? 'Glowtype.me 的所有内容、设计和代码均为我们的财产。未经许可不得复制或分发。'
-            : 'All content, design, and code of Glowtype.me are our property. May not be copied or distributed without permission.'}</p>
+            ? 'Glowtype.me 的内容、设计和代码可供个人学习和非商业用途使用。未经书面许可，禁止用于商业目的。'
+            : 'Content, design, and code of Glowtype.me may be used for personal learning and non-commercial purposes. Commercial use is prohibited without written permission.'}</p>
         </GlassCard>
 
         <GlassCard className="p-6">
