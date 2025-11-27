@@ -150,6 +150,14 @@ func New(cfg config.Config) *gin.Engine {
 		admin.POST("/glowsticks", handlers.CreateGlowStick)
 		admin.PUT("/glowsticks/:id", handlers.UpdateGlowStick)
 		admin.DELETE("/glowsticks/:id", handlers.DeleteGlowStick)
+
+		// Reset to Defaults
+		admin.POST("/dimensions/reset", handlers.ResetDimensionsHandler)
+		admin.POST("/questions/reset", handlers.ResetQuestionsHandler)
+		admin.POST("/glowtypes/reset", handlers.ResetGlowtypesHandler)
+		admin.POST("/rules/reset", handlers.ResetRulesHandler)
+		admin.POST("/prompts/reset-all", handlers.ResetPromptsHandler)
+		admin.POST("/glowpedia/reset", handlers.ResetGlowpediaHandler)
 	}
 
 	return r

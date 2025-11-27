@@ -413,6 +413,13 @@ export const useAdminApi = () => {
     createGlowStick: (data: any) => apiCall('/admin/glowsticks', { method: 'POST', body: JSON.stringify(data) }),
     updateGlowStick: (id: number, data: any) => apiCall(`/admin/glowsticks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteGlowStick: (id: number) => apiCall(`/admin/glowsticks/${id}`, { method: 'DELETE' }),
+    // Reset to Defaults
+    resetDimensions: () => apiCall<{ message: string }>('/admin/dimensions/reset', { method: 'POST' }),
+    resetQuestions: () => apiCall<{ message: string }>('/admin/questions/reset', { method: 'POST' }),
+    resetGlowtypes: () => apiCall<{ message: string }>('/admin/glowtypes/reset', { method: 'POST' }),
+    resetRules: () => apiCall<{ message: string }>('/admin/rules/reset', { method: 'POST' }),
+    resetAllPrompts: () => apiCall<{ message: string }>('/admin/prompts/reset-all', { method: 'POST' }),
+    resetGlowpedia: () => apiCall<{ message: string }>('/admin/glowpedia/reset', { method: 'POST' }),
     // Admin
     getCurrentAdmin,
     listAdmins,

@@ -391,6 +391,11 @@
     "switchToChinese": "切换到中文",
     "refresh": "刷新",
     "save": "保存",
-    "cancel": "取消"
+    "cancel": "取消",
+    "reset": "重置",
+    "resetToDefaults": "恢复默认",
+    "confirmReset": "确定要恢复默认设置吗？这将删除所有当前数据并还原为初始设置。",
+    "resetSuccess": "已成功恢复默认设置！",
+    "resetFailed": "重置失败"
   }
 }

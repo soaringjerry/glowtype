@@ -466,6 +466,95 @@ var DefaultGlowSticks = []GlowStickDB{
 	{TitleZH: "小步也算数", TitleEN: "Small Steps Count", MessageZH: "你不必今天就爬完整座山。往前一步，依然是前进。", MessageEN: "You don't have to climb the whole mountain today. One step forward is still forward.", Color: "from-green-400 to-emerald-500", ChapterID: "courage", ForTypes: "Quiet Comet,Radiant Nebula", Order: 11, IsActive: true},
 }
 
+// ============================================================
+// RESET FUNCTIONS - For admin "Reset to Defaults" feature
+// ============================================================
+
+// ResetDimensions clears all dimensions and reseeds defaults
+func ResetDimensions(db *gorm.DB) error {
+	log.Println("Resetting dimensions to defaults...")
+	if err := db.Exec("DELETE FROM trait_dimensions").Error; err != nil {
+		return err
+	}
+	seedDimensions(db)
+	log.Println("Dimensions reset complete!")
+	return nil
+}
+
+// ResetQuestions clears all questions and reseeds defaults
+func ResetQuestions(db *gorm.DB) error {
+	log.Println("Resetting questions to defaults...")
+	if err := db.Exec("DELETE FROM quiz_questions").Error; err != nil {
+		return err
+	}
+	seedQuestions(db)
+	log.Println("Questions reset complete!")
+	return nil
+}
+
+// ResetGlowtypes clears all glowtypes (and i18n) and reseeds defaults
+func ResetGlowtypes(db *gorm.DB) error {
+	log.Println("Resetting glowtypes to defaults...")
+	if err := db.Exec("DELETE FROM glowtype_i18n").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("DELETE FROM glowtypes").Error; err != nil {
+		return err
+	}
+	seedGlowtypes(db)
+	log.Println("Glowtypes reset complete!")
+	return nil
+}
+
+// ResetRules clears all scoring rules and reseeds defaults
+func ResetRules(db *gorm.DB) error {
+	log.Println("Resetting scoring rules to defaults...")
+	if err := db.Exec("DELETE FROM scoring_rules").Error; err != nil {
+		return err
+	}
+	seedRules(db)
+	log.Println("Scoring rules reset complete!")
+	return nil
+}
+
+// ResetPrompts clears all AI prompts and reseeds defaults
+func ResetPrompts(db *gorm.DB) error {
+	log.Println("Resetting AI prompts to defaults...")
+	if err := db.Exec("DELETE FROM ai_prompts").Error; err != nil {
+		return err
+	}
+	for _, p := range DefaultPrompts {
+		if err := db.Create(&p).Error; err != nil {
+			log.Printf("  Failed to create prompt '%s': %v", p.Key, err)
+		}
+	}
+	log.Println("AI prompts reset complete!")
+	return nil
+}
+
+// ResetGlowpedia clears all chapters and glow sticks and reseeds defaults
+func ResetGlowpedia(db *gorm.DB) error {
+	log.Println("Resetting Glowpedia to defaults...")
+	if err := db.Exec("DELETE FROM glow_sticks").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("DELETE FROM book_chapters").Error; err != nil {
+		return err
+	}
+	for _, ch := range DefaultBookChapters {
+		if err := db.Create(&ch).Error; err != nil {
+			log.Printf("  Failed to create chapter '%s': %v", ch.ChapterID, err)
+		}
+	}
+	for _, gs := range DefaultGlowSticks {
+		if err := db.Create(&gs).Error; err != nil {
+			log.Printf("  Failed to create glow stick '%s': %v", gs.TitleZH, err)
+		}
+	}
+	log.Println("Glowpedia reset complete!")
+	return nil
+}
+
 // EnsureDefaultGlowpedia seeds default chapters and glow sticks ONLY if tables are empty.
 // This allows users to delete items without them being recreated on restart.
 func EnsureDefaultGlowpedia(db *gorm.DB) {

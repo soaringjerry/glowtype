@@ -12,7 +12,8 @@ import {
   Upload,
   Download,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  RotateCcw
 } from 'lucide-react';
 import { useAdminApi, type ImportMode, type ImportResult, type RuleImportItem } from '../hooks/useAdmin';
 
@@ -68,8 +69,22 @@ export default function Rules() {
   const [importData, setImportData] = useState<RuleImportItem[] | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importing, setImporting] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const api = useAdminApi();
+
+  const handleReset = async () => {
+    if (!confirm(t('common.confirmReset'))) return;
+    setResetting(true);
+    const result = await api.resetRules();
+    if (result) {
+      await loadData();
+      alert(t('common.resetSuccess'));
+    } else if (api.error) {
+      alert(t('common.resetFailed') + ': ' + api.error);
+    }
+    setResetting(false);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -290,6 +305,15 @@ export default function Rules() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
+            title={t('common.resetToDefaults')}
+          >
+            <RotateCcw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} />
+            {t('common.reset')}
+          </button>
           <button
             onClick={() => setShowImportModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition"

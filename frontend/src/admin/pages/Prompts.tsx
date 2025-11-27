@@ -26,8 +26,22 @@ export default function Prompts() {
   const [editActive, setEditActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState<string | null>(null);
+  const [resettingAll, setResettingAll] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const api = useAdminApi();
+
+  const handleResetAll = async () => {
+    if (!confirm(t('common.confirmReset'))) return;
+    setResettingAll(true);
+    const result = await api.resetAllPrompts();
+    if (result) {
+      await loadPrompts();
+      alert(t('common.resetSuccess'));
+    } else if (api.error) {
+      alert(t('common.resetFailed') + ': ' + api.error);
+    }
+    setResettingAll(false);
+  };
 
   const loadPrompts = async () => {
     setLoading(true);
@@ -131,13 +145,24 @@ export default function Prompts() {
           <h1 className="text-2xl font-bold text-gray-900">{t('prompts.title')}</h1>
           <p className="text-gray-500">{t('prompts.subtitle')}</p>
         </div>
-        <button
-          onClick={loadPrompts}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
-        >
-          <RefreshCw className="w-4 h-4" />
-          {t('prompts.refresh')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleResetAll}
+            disabled={resettingAll}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
+            title={t('common.resetToDefaults')}
+          >
+            <RotateCcw className={`w-4 h-4 ${resettingAll ? 'animate-spin' : ''}`} />
+            {t('common.reset')}
+          </button>
+          <button
+            onClick={loadPrompts}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+          >
+            <RefreshCw className="w-4 h-4" />
+            {t('prompts.refresh')}
+          </button>
+        </div>
       </div>
 
       {/* Info Box */}

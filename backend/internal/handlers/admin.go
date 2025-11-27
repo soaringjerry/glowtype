@@ -1763,3 +1763,67 @@ func ExportRules(c *gin.Context) {
 		"count": len(items),
 	})
 }
+
+// ============================================================
+// RESET TO DEFAULTS HANDLERS
+// ============================================================
+
+// ResetDimensionsHandler resets trait dimensions to default values
+func ResetDimensionsHandler(c *gin.Context) {
+	db := database.GetDB()
+	if err := database.ResetDimensions(db); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset dimensions: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Dimensions reset to defaults successfully"})
+}
+
+// ResetQuestionsHandler resets quiz questions to default values
+func ResetQuestionsHandler(c *gin.Context) {
+	db := database.GetDB()
+	if err := database.ResetQuestions(db); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset questions: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Questions reset to defaults successfully"})
+}
+
+// ResetGlowtypesHandler resets glowtypes to default values
+func ResetGlowtypesHandler(c *gin.Context) {
+	db := database.GetDB()
+	if err := database.ResetGlowtypes(db); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset glowtypes: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Glowtypes reset to defaults successfully"})
+}
+
+// ResetRulesHandler resets scoring rules to default values
+func ResetRulesHandler(c *gin.Context) {
+	db := database.GetDB()
+	if err := database.ResetRules(db); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset rules: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Scoring rules reset to defaults successfully"})
+}
+
+// ResetPromptsHandler resets AI prompts to default values
+func ResetPromptsHandler(c *gin.Context) {
+	db := database.GetDB()
+	if err := database.ResetPrompts(db); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset prompts: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "AI prompts reset to defaults successfully"})
+}
+
+// ResetGlowpediaHandler resets Glowpedia chapters and glow sticks to default values
+func ResetGlowpediaHandler(c *gin.Context) {
+	db := database.GetDB()
+	if err := database.ResetGlowpedia(db); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset Glowpedia: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Glowpedia reset to defaults successfully"})
+}

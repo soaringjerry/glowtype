@@ -6,7 +6,8 @@ import {
   Trash2,
   Save,
   X,
-  Loader2
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdmin';
 
@@ -32,7 +33,21 @@ export default function Dimensions() {
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
   const api = useAdminApi();
+
+  const handleReset = async () => {
+    if (!confirm(t('common.confirmReset'))) return;
+    setResetting(true);
+    const result = await api.resetDimensions();
+    if (result) {
+      await loadDimensions();
+      alert(t('common.resetSuccess'));
+    } else if (api.error) {
+      alert(t('common.resetFailed') + ': ' + api.error);
+    }
+    setResetting(false);
+  };
 
   const loadDimensions = async () => {
     setLoading(true);
@@ -123,13 +138,24 @@ export default function Dimensions() {
             {t('dimensions.count', { count: dimensions.length })}
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition"
-        >
-          <Plus className="w-4 h-4" />
-          {t('dimensions.add')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
+            title={t('common.resetToDefaults')}
+          >
+            <RotateCcw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} />
+            {t('common.reset')}
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition"
+          >
+            <Plus className="w-4 h-4" />
+            {t('dimensions.add')}
+          </button>
+        </div>
       </div>
 
       {/* Create/Edit Form */}
