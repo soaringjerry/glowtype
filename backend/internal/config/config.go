@@ -14,9 +14,10 @@ type Config struct {
 
 func Load() Config {
 	cfg := Config{
-		Env:           getEnv("ENV", "development"),
-		Port:          getEnv("PORT", "18080"),
-		AllowedOrigin: getEnv("ALLOWED_ORIGINS", "*"),
+		Env:  getEnv("ENV", "development"),
+		Port: getEnv("PORT", "18080"),
+		// Default: same-origin only; configure ALLOWED_ORIGINS (comma-separated) to enable CORS.
+		AllowedOrigin: getEnv("ALLOWED_ORIGINS", ""),
 		LogLevel:      getEnv("LOG_LEVEL", "info"),
 		ChatProvider:  getEnv("CHAT_PROVIDER", "mock"),
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -19,7 +20,10 @@ func ensureDefaultSuperAdmin(db *gorm.DB) {
 	}
 	if count == 0 {
 		username := getEnv("ADMIN_SUPER_USERNAME", getEnv("ADMIN_USERNAME", "superadmin"))
-		password := getSeedPassword()
+		password, err := getSeedPassword()
+		if err != nil {
+			log.Fatalf("super admin bootstrap requires ADMIN_SUPER_PASSWORD: %v", err)
+		}
 
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -52,15 +56,15 @@ func rotateSuperAdminPassword(db *gorm.DB) {
 	}
 
 	username := getEnv("ADMIN_SUPER_USERNAME", getEnv("ADMIN_USERNAME", "superadmin"))
-	password := getSeedPassword()
-	if password == "" {
+	password, err := getSeedPassword()
+	if err != nil {
 		log.Printf("ADMIN_SUPER_PASSWORD_ROTATE is set but no password provided; skipping rotation")
 		return
 	}
 
 	var user AdminUser
-	err := db.Where("username = ?", username).First(&user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	dbErr := db.Where("username = ?", username).First(&user).Error
+	if errors.Is(dbErr, gorm.ErrRecordNotFound) {
 		log.Printf("No super admin with username '%s' found; creating a new one.", username)
 		hash, hErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if hErr != nil {
@@ -80,8 +84,8 @@ func rotateSuperAdminPassword(db *gorm.DB) {
 		db.Where("username = ?", username).Delete(&AdminLoginAttempt{})
 		log.Printf("Super admin created and password set via ADMIN_SUPER_PASSWORD_ROTATE for '%s'.", username)
 		return
-	} else if err != nil {
-		log.Printf("failed to load super admin for rotation: %v", err)
+	} else if dbErr != nil {
+		log.Printf("failed to load super admin for rotation: %v", dbErr)
 		return
 	}
 
@@ -103,13 +107,10 @@ func rotateSuperAdminPassword(db *gorm.DB) {
 	log.Printf("Super admin password rotated for '%s' (ADMIN_SUPER_PASSWORD_ROTATE).", username)
 }
 
-func getSeedPassword() string {
-	password := os.Getenv("ADMIN_SUPER_PASSWORD")
+func getSeedPassword() (string, error) {
+	password := strings.TrimSpace(os.Getenv("ADMIN_SUPER_PASSWORD"))
 	if password == "" {
-		password = os.Getenv("ADMIN_PASSWORD")
+		return "", errors.New("ADMIN_SUPER_PASSWORD must be set")
 	}
-	if password == "" {
-		password = "ChangeMeNow123!"
-	}
-	return password
+	return password, nil
 }

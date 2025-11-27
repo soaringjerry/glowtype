@@ -2,9 +2,11 @@
 package utils
 
 import (
-	"encoding/json"
+	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -94,18 +96,17 @@ var (
 	geoCacheTTL  = 24 * time.Hour
 )
 
-// ipAPIResponse is the response from ip-api.com
-type ipAPIResponse struct {
-	Status      string `json:"status"`
-	CountryCode string `json:"countryCode"`
-}
-
-// GetRegionFromIP derives region code from IP address
-// Uses ip-api.com with caching (free tier: 45 req/min)
-// The IP is NOT stored, only the derived region
+// GetRegionFromIP derives region code from IP address.
+// External lookup is disabled by default; set ENABLE_GEOIP_LOOKUP=true to enable HTTPS lookups.
+// The IP is NOT stored, only the derived region.
 func GetRegionFromIP(ip string) string {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return "local"
+	}
+
+	// Avoid external calls unless explicitly enabled.
+	if !isGeoLookupEnabled() {
+		return "unknown"
 	}
 
 	// Check if it's a private IP
@@ -139,22 +140,25 @@ func GetRegionFromIP(ip string) string {
 	return region
 }
 
-// lookupIPRegion queries ip-api.com for country code
+// lookupIPRegion queries a HTTPS GeoIP endpoint for country code
 func lookupIPRegion(ip string) string {
 	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get("http://ip-api.com/json/" + ip + "?fields=status,countryCode")
+	escapedIP := url.PathEscape(ip)
+	resp, err := client.Get("https://ipapi.co/" + escapedIP + "/country/")
 	if err != nil {
 		return "unknown"
 	}
 	defer resp.Body.Close()
 
-	var result ipAPIResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// ipapi.co returns the country code as plain text
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return "unknown"
 	}
 
-	if result.Status == "success" && result.CountryCode != "" {
-		return result.CountryCode
+	code := strings.TrimSpace(string(body))
+	if len(code) == 2 {
+		return strings.ToUpper(code)
 	}
 	return "unknown"
 }
@@ -191,6 +195,11 @@ func isPrivateIP(ipStr string) bool {
 		}
 	}
 	return false
+}
+
+func isGeoLookupEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("ENABLE_GEOIP_LOOKUP")))
+	return v == "1" || v == "true" || v == "yes"
 }
 
 // ParseDeviceType extracts device type from User-Agent

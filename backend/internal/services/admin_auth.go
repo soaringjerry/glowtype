@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -23,6 +25,11 @@ const (
 	loginWindow          = 15 * time.Minute
 	lockDuration         = 15 * time.Minute
 	adminTokenSecretHint = "ADMIN_JWT_SECRET"
+)
+
+var (
+	adminTokenSecret []byte
+	adminSecretOnce  sync.Once
 )
 
 // AdminTokenClaims defines signed admin session data
@@ -186,13 +193,14 @@ func loadLoginAttempt(db *gorm.DB, username, ip string) (*database.AdminLoginAtt
 }
 
 func getAdminTokenSecret() []byte {
-	if secret := os.Getenv(adminTokenSecretHint); secret != "" {
-		return []byte(secret)
-	}
-	if secret := os.Getenv("ADMIN_PASSWORD"); secret != "" {
-		return []byte(secret)
-	}
-	return []byte("glowtype-admin-secret")
+	adminSecretOnce.Do(func() {
+		secret := strings.TrimSpace(os.Getenv(adminTokenSecretHint))
+		if secret == "" {
+			log.Fatalf("%s must be set to a strong secret", adminTokenSecretHint)
+		}
+		adminTokenSecret = []byte(secret)
+	})
+	return adminTokenSecret
 }
 
 func isRateLimitDisabled() bool {

@@ -21,6 +21,10 @@ func New(cfg config.Config) *gin.Engine {
 	database.InitDB()
 
 	r := gin.New()
+	// Default to trusting no proxy headers to avoid spoofed client IPs; configure upstream proxies explicitly if needed.
+	if err := r.SetTrustedProxies(nil); err != nil {
+		log.Fatalf("failed to set trusted proxies: %v", err)
+	}
 	r.Use(middleware.PrivacyLogger())
 	r.Use(gin.Recovery())
 	r.Use(middleware.CORS(cfg.AllowedOrigin))

@@ -80,10 +80,25 @@ export interface PromptSlot {
 const ADMIN_TOKEN_KEY = 'admin_token';
 const ADMIN_USER_KEY = 'admin_user';
 
+const storage = {
+  get: (key: string) => {
+    if (typeof sessionStorage === 'undefined') return null;
+    return sessionStorage.getItem(key);
+  },
+  set: (key: string, value: string) => {
+    if (typeof sessionStorage === 'undefined') return;
+    sessionStorage.setItem(key, value);
+  },
+  remove: (key: string) => {
+    if (typeof sessionStorage === 'undefined') return;
+    sessionStorage.removeItem(key);
+  },
+};
+
 export const useAdminAuth = () => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(ADMIN_TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(() => storage.get(ADMIN_TOKEN_KEY));
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => {
-    const raw = localStorage.getItem(ADMIN_USER_KEY);
+    const raw = storage.get(ADMIN_USER_KEY);
     return raw ? JSON.parse(raw) : null;
   });
   const [loading, setLoading] = useState(false);
@@ -92,21 +107,21 @@ export const useAdminAuth = () => {
   const [lockUntil, setLockUntil] = useState<string | null>(null);
 
   const persistSession = (user: AdminUser, newToken: string) => {
-    localStorage.setItem(ADMIN_TOKEN_KEY, newToken);
-    localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
+    storage.set(ADMIN_TOKEN_KEY, newToken);
+    storage.set(ADMIN_USER_KEY, JSON.stringify(user));
     setToken(newToken);
     setCurrentUser(user);
   };
 
   const logout = useCallback(() => {
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_USER_KEY);
+    storage.remove(ADMIN_TOKEN_KEY);
+    storage.remove(ADMIN_USER_KEY);
     setToken(null);
     setCurrentUser(null);
   }, []);
 
   const getAuthHeader = useCallback((): Record<string, string> => {
-    const activeToken = localStorage.getItem(ADMIN_TOKEN_KEY);
+    const activeToken = storage.get(ADMIN_TOKEN_KEY);
     return activeToken ? { Authorization: `Bearer ${activeToken}` } : {};
   }, []);
 
@@ -188,7 +203,7 @@ export const useAdminApi = () => {
   const [error, setError] = useState<string | null>(null);
 
   const getAuthHeader = useCallback((): Record<string, string> => {
-    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+    const token = storage.get(ADMIN_TOKEN_KEY);
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
 
@@ -213,8 +228,8 @@ export const useAdminApi = () => {
         })(),
       });
       if (res.status === 401) {
-        localStorage.removeItem(ADMIN_TOKEN_KEY);
-        localStorage.removeItem(ADMIN_USER_KEY);
+        storage.remove(ADMIN_TOKEN_KEY);
+        storage.remove(ADMIN_USER_KEY);
         window.location.reload();
         return null;
       }
