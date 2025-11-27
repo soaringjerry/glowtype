@@ -1575,7 +1575,7 @@ const AppShell = () => {
       {showChrome && (
         <Navbar view={view} setView={setView} lang={lang} toggleLang={toggleLang} tNav={tNav} />
       )}
-      <main className="relative z-10">
+      <main className={`relative ${showChrome ? 'z-10' : 'z-[70]'}`}>
         <AnimatePresence mode="wait">
           {view === 'landing' && (<motion.div key="landing" exit={{ opacity: 0, y: -20 }} className="absolute w-full top-0"><HeroView onStart={() => setView('quiz')} onViewSafety={() => setView('safety')} lang={lang} /></motion.div>)}
           {view === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><QuizView onComplete={handleQuizComplete} lang={lang} /></motion.div>)}
