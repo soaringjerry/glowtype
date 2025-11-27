@@ -573,16 +573,20 @@ const findGlowtypeConfig = (typeId: string | null) => {
   const codeToName: Record<string, GlowtypeKey> = {
     'quiet-comet': 'Quiet Comet',
     'radiant-nebula': 'Radiant Nebula',
-    'hidden-aurora': 'Quiet Comet', // fallback
-    'warm-ember': 'Radiant Nebula', // fallback
   };
   const lowerTypeId = typeId?.toLowerCase() ?? '';
   const mappedName = codeToName[lowerTypeId];
   if (mappedName && glowtypeKeys.includes(mappedName)) {
     return APP_CONFIG.glowtypes[mappedName];
   }
-  // Default fallback
-  return APP_CONFIG.glowtypes["Quiet Comet"];
+  // Default fallback: show a generic card but keep the code in the title
+  return {
+    ...APP_CONFIG.glowtypes["Quiet Comet"],
+    title: {
+      en: typeId ? typeId : APP_CONFIG.glowtypes["Quiet Comet"].title.en,
+      zh: typeId ? typeId : APP_CONFIG.glowtypes["Quiet Comet"].title.zh,
+    },
+  };
 };
 
 interface ResultViewProps {
