@@ -4,17 +4,22 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 env:
   REGISTRY: ghcr.io
   IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/glowtype-backend
   IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/glowtype-frontend
-  IMAGE_TAG: latest
-  # Default API base URL baked into the frontend image; can be adjusted later.
+  IMAGE_TAG: ${{ github.sha }}
   VITE_API_BASE_URL: https://api.glowtype.me/api/v1
 
 jobs:
-  test-and-build:
+  # ==================== CI JOBS (Parallel) ====================
+
+  backend-test:
+    name: Backend Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,11 +29,27 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.24"
+          cache: true
+          cache-dependency-path: backend/go.sum
 
-      - name: Backend tests
+      - name: Run tests
         run: |
           cd backend
-          go test ./...
+          go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.out
+          retention-days: 7
+
+  frontend-lint:
+    name: Frontend Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -37,14 +58,60 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Frontend build
+      - name: Install dependencies
         run: |
           cd frontend
           npm ci
-          npm run build
 
-  docker-build-and-push:
-    needs: test-and-build
+      - name: Lint
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Type check
+        run: |
+          cd frontend
+          npx tsc --noEmit
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build
+        run: |
+          cd frontend
+          npm run build
+        env:
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 1
+
+  # ==================== DOCKER BUILD (Parallel, after CI) ====================
+
+  docker-backend:
+    name: Docker Backend
+    needs: [backend-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -70,14 +137,67 @@ jobs:
           context: .
           file: Dockerfile.backend
           push: true
-          tags: ${{ env.IMAGE_BACKEND }}:${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ env.IMAGE_BACKEND }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_BACKEND }}:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  docker-frontend:
+    name: Docker Frontend
+    needs: [frontend-lint, frontend-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push frontend image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.frontend
+          file: Dockerfile.frontend.prod
           push: true
-          tags: ${{ env.IMAGE_FRONTEND }}:${{ env.IMAGE_TAG }}
-          build-args: |
-            VITE_API_BASE_URL=${{ env.VITE_API_BASE_URL }}
+          tags: |
+            ${{ env.IMAGE_FRONTEND }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_FRONTEND }}:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  # ==================== DEPLOY (after Docker builds) ====================
+
+  deploy:
+    name: Deploy Notification
+    needs: [docker-backend, docker-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy summary
+        run: |
+          echo "## 🚀 Deployment Ready" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Images pushed to GHCR:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.IMAGE_BACKEND }}:${{ env.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.IMAGE_FRONTEND }}:${{ env.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Both images also tagged as \`:latest\`" >> $GITHUB_STEP_SUMMARY
