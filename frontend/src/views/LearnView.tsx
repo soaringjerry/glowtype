@@ -1,8 +1,32 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { TRANSLATIONS, type Lang } from '../config/translations';
 import { APP_CONFIG, type GlowStick } from '../config/appConfig';
+import { getApiBaseUrl } from '../api/baseUrl';
+
+type GlowpediaResponse = {
+  chapters?: {
+    id: number;
+    chapterId: string;
+    nameZh: string;
+    nameEn: string;
+    descZh: string;
+    descEn: string;
+    icon: string;
+    color: string;
+  }[];
+  glowSticks?: {
+    id: number;
+    titleZh: string;
+    titleEn: string;
+    messageZh: string;
+    messageEn: string;
+    color: string;
+    chapterId: string;
+    forTypes: string;
+  }[];
+};
 
 interface LearnViewProps {
   onBack: () => void;
@@ -14,12 +38,71 @@ type Phase = 'cover' | 'chapters' | 'drawing' | 'revealed';
 
 export const LearnView = ({ onBack, lang, userType = null }: LearnViewProps) => {
   const t = TRANSLATIONS[lang].learn;
-  const chapters = APP_CONFIG.bookChapters;
-  const allSticks = APP_CONFIG.glowSticks;
+  const randomChapter = APP_CONFIG.bookChapters.find((ch) => ch.id === 'random');
+  const [chapters, setChapters] = useState(APP_CONFIG.bookChapters);
+  const [allSticks, setAllSticks] = useState(APP_CONFIG.glowSticks);
   const [phase, setPhase] = useState<Phase>('cover');
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [currentStick, setCurrentStick] = useState<GlowStick | null>(null);
   const [drawnIds, setDrawnIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    const fetchGlowpedia = async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/glowpedia`);
+        if (!res.ok) return;
+        const data: GlowpediaResponse = await res.json();
+
+        if (data.chapters?.length) {
+          const mapped = data.chapters
+            .filter((ch) => ch.chapterId)
+            .map((ch) => ({
+              id: ch.chapterId,
+              name: { en: ch.nameEn || ch.nameZh || ch.chapterId, zh: ch.nameZh || ch.nameEn || ch.chapterId },
+              desc: { en: ch.descEn || ch.descZh || '', zh: ch.descZh || ch.descEn || '' },
+              icon: ch.icon || '✨',
+              color: ch.color || 'violet',
+            }));
+
+          let nextChapters = mapped;
+          if (randomChapter && !nextChapters.some((ch) => ch.id === 'random')) {
+            nextChapters = [...nextChapters, randomChapter];
+          }
+
+          if (nextChapters.length) {
+            setChapters(nextChapters);
+          }
+        }
+
+        if (data.glowSticks?.length) {
+          const parseForTypes = (val?: string) =>
+            val ? val.split(',').map((s) => s.trim()).filter(Boolean) : [];
+          const fallbackChapter = (data.chapters && data.chapters[0]?.chapterId) || 'random';
+
+          const mappedSticks = data.glowSticks.map((stick) => ({
+            id: stick.id,
+            title: {
+              en: stick.titleEn || stick.titleZh || '',
+              zh: stick.titleZh || stick.titleEn || '',
+            },
+            message: {
+              en: stick.messageEn || stick.messageZh || '',
+              zh: stick.messageZh || stick.messageEn || '',
+            },
+            color: stick.color || 'from-violet-400 to-indigo-500',
+            planet: stick.chapterId || fallbackChapter,
+            forTypes: parseForTypes(stick.forTypes),
+          }));
+
+          setAllSticks(mappedSticks);
+        }
+      } catch (err) {
+        console.warn('Failed to load Glowpedia content from API, using defaults', err);
+      }
+    };
+
+    fetchGlowpedia();
+  }, [randomChapter]);
 
   // Pre-compute random particle data to avoid impure render
   const particleData = useMemo(() =>

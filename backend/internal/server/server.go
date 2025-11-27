@@ -53,6 +53,7 @@ func New(cfg config.Config) *gin.Engine {
 		api.POST("/chat/message", chatHandler.SendMessage)
 		api.POST("/chat/analytics", chatHandler.TrackChatAnalytics)
 		api.GET("/help", helpHandler.GetHelp)
+		api.GET("/glowpedia", handlers.GetGlowpediaContent)
 
 		// Public stats endpoint (anonymous event tracking)
 		api.POST("/stats/event", handlers.RecordEventHandler)
