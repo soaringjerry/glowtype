@@ -74,30 +74,26 @@ SessionID string `gorm:"index;not null" json:"sessionId"`
 
 ## 解决方案
 
-### 1. 前端：生成幂等性令牌 + 防重复提交
+### 方案演进
+
+**V1 方案（有缺陷）**: 前端生成 quizSessionId + 后端 Upsert
+- 问题：前端组件未正确卸载时，不同人用同一 sessionId 导致结果丢失
+
+**V2 方案（当前）**: 后端答案哈希 + 时间窗口去重
+- 优点：不依赖前端状态，更可靠
+
+### 1. 前端：仅防止双击
 
 **文件**: `frontend/src/App.tsx`
 
 ```typescript
 const QuizView = ({ onComplete, lang }: QuizViewProps) => {
-  // ... existing state ...
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // 在测试开始时生成唯一 session ID（幂等性令牌）
-  const [quizSessionId] = useState(() => crypto.randomUUID());
 
   const handleAnswer = async (value: string) => {
-    // ... handle intermediate questions ...
-
     // 最后一题提交时
     if (isSubmitting) return;  // 防止重复点击
     setIsSubmitting(true);
-
-    const payload = {
-      quizId,
-      quizSessionId,  // 幂等性令牌
-      language,
-      answers
-    };
 
     try {
       const res = await fetch('/api/v1/quiz/score', { ... });
@@ -109,84 +105,56 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
 };
 ```
 
-### 2. 后端：使用前端 SessionID + Upsert 逻辑
-
-**文件**: `internal/models/quiz.go`
-
-```go
-type QuizScoreRequest struct {
-    QuizID        string       `json:"quizId"`
-    QuizSessionId string       `json:"quizSessionId"` // 幂等性令牌
-    Language      string       `json:"language"`
-    Answers       []QuizAnswer `json:"answers"`
-}
-```
+### 2. 后端：答案哈希 + 时间窗口去重
 
 **文件**: `internal/services/quiz_service.go`
 
 ```go
-func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models.RequestMeta) models.QuizScoreResponse {
-    // ... scoring logic ...
+// saveQuizResult saves the quiz result to the database for analytics
+// Uses answers hash + time window to prevent duplicate submissions
+// - Same answers within 30 seconds = duplicate (network retry), skip
+// - Same answers after 30 seconds = different person, save
+// - Different answers = always save
+func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *ScoringResult, language string, meta models.RequestMeta) {
+    answersJSON, _ := json.Marshal(answers)
+    answersHash := hashAnswers(answersJSON)
 
-    // 使用前端提供的 session ID，如果没有则回退到生成新的
-    sessionId := req.QuizSessionId
-    if sessionId == "" {
-        sessionId = uuid.New().String()
+    // Check for duplicate: same answers hash within last 30 seconds
+    var recentCount int64
+    cutoffTime := time.Now().Add(-30 * time.Second)
+    s.db.Model(&database.QuizResultDB{}).
+        Where("answers_hash = ? AND created_at > ?", answersHash, cutoffTime).
+        Count(&recentCount)
+
+    if recentCount > 0 {
+        log.Printf("[QuizService] Skipping duplicate submission")
+        return
     }
 
-    go s.saveQuizResult(sessionId, answers, result, req.Language, meta)
-    // ...
-}
-
-func (s *QuizService) saveQuizResult(sessionId string, ...) {
     quizResult := database.QuizResultDB{
-        SessionID: sessionId,
+        SessionID:   uuid.New().String(),  // 每次生成新 ID
+        AnswersHash: answersHash,
         // ...
     }
+    s.db.Create(&quizResult)
+}
 
-    // Upsert: 存在则忽略，不存在则插入
-    s.db.Clauses(clause.OnConflict{
-        Columns:   []clause.Column{{Name: "session_id"}},
-        DoNothing: true,
-    }).Create(&quizResult)
+func hashAnswers(answersJSON []byte) string {
+    hash := sha256.Sum256(answersJSON)
+    return hex.EncodeToString(hash[:])
 }
 ```
 
-### 3. 数据库：添加唯一约束 + 数据迁移
+### 3. 数据库：添加 AnswersHash 字段
 
 **文件**: `internal/database/models.go`
 
 ```go
 type QuizResultDB struct {
+    ID          uint   `gorm:"primaryKey" json:"id"`
+    SessionID   string `gorm:"index;not null" json:"sessionId"`
+    AnswersHash string `gorm:"index;size:64" json:"answersHash"`  // SHA256 hash for dedup
     // ...
-    // 从 index 改为 uniqueIndex
-    SessionID string `gorm:"uniqueIndex;not null" json:"sessionId"`
-    // ...
-}
-```
-
-**文件**: `internal/database/database.go`
-
-```go
-// 迁移函数：清理现有重复数据
-func migrateQuizResultsUniqueSessionID(db *gorm.DB) {
-    // 检查并删除重复记录（保留最早的）
-    var duplicateCount int64
-    db.Raw(`
-        SELECT COUNT(*) FROM (
-            SELECT session_id FROM quiz_results
-            GROUP BY session_id HAVING COUNT(*) > 1
-        )
-    `).Scan(&duplicateCount)
-
-    if duplicateCount > 0 {
-        db.Exec(`
-            DELETE FROM quiz_results
-            WHERE id NOT IN (
-                SELECT MIN(id) FROM quiz_results GROUP BY session_id
-            )
-        `)
-    }
 }
 ```
 
@@ -197,9 +165,9 @@ func migrateQuizResultsUniqueSessionID(db *gorm.DB) {
 | 场景 | 防护层 | 机制 |
 |-----|-------|------|
 | 用户快速双击 | 前端 | `isSubmitting` 状态锁 |
-| 网络超时重试 | 前端+后端 | 相同 `quizSessionId` + Upsert |
-| 恶意重复请求 | 数据库 | 唯一约束兜底 |
-| 刷新页面重做 | - | 新 sessionId = 新记录（正确行为） |
+| 网络超时重试 | 后端 | 答案哈希 + 30秒时间窗口 |
+| 同设备不同人做 | 后端 | 答案不同直接保存；答案相同超过30秒也保存 |
+| 恶意重复请求 | 后端 | 答案哈希去重 |
 
 ---
 
@@ -207,11 +175,9 @@ func migrateQuizResultsUniqueSessionID(db *gorm.DB) {
 
 | 文件 | 修改内容 |
 |-----|---------|
-| `frontend/src/App.tsx` | 添加 `quizSessionId` 和 `isSubmitting` |
-| `backend/internal/models/quiz.go` | `QuizScoreRequest` 添加 `QuizSessionId` |
-| `backend/internal/services/quiz_service.go` | 使用前端 sessionId + Upsert |
-| `backend/internal/database/models.go` | `SessionID` 改为 `uniqueIndex` |
-| `backend/internal/database/database.go` | 添加数据迁移函数 |
+| `frontend/src/App.tsx` | 添加 `isSubmitting` 状态防双击 |
+| `backend/internal/services/quiz_service.go` | 答案哈希 + 时间窗口去重 |
+| `backend/internal/database/models.go` | 添加 `AnswersHash` 字段 |
 
 ---
 

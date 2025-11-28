@@ -186,9 +186,10 @@ type DimensionCondition struct {
 // QuizResultDB stores user quiz results for tracking and research
 // NO PII - only stores answers and computed results
 type QuizResultDB struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	TenantID  *uint  `gorm:"index" json:"tenantId"`
-	SessionID string `gorm:"uniqueIndex;not null" json:"sessionId"` // Anonymous session identifier (unique to prevent duplicates)
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	TenantID    *uint  `gorm:"index" json:"tenantId"`
+	SessionID   string `gorm:"index;not null" json:"sessionId"`         // Anonymous session identifier
+	AnswersHash string `gorm:"index;size:64" json:"answersHash"`        // SHA256 hash for deduplication
 
 	// User's answers: [{"questionId": "q1", "optionIndex": 0, "optionValue": "introvert"}]
 	Answers datatypes.JSON `gorm:"type:json" json:"answers"`

@@ -395,8 +395,6 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Generate a unique session ID for this quiz attempt (for idempotency)
-  const [quizSessionId] = useState(() => crypto.randomUUID());
   const t = TRANSLATIONS[lang].quiz;
 
   // Fetch questions from API (single source of truth)
@@ -457,7 +455,6 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
       try {
         const payload = {
           quizId,
-          quizSessionId, // Idempotency key to prevent duplicate records
           language: lang === 'zh' ? 'zh-CN' : 'en',
           answers: Object.entries(newAnswers).map(([questionId, optionId]) => ({
             questionId,

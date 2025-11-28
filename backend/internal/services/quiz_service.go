@@ -1,14 +1,17 @@
 package services
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/models"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type QuizService struct {
@@ -120,14 +123,8 @@ func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models
 		}
 	}
 
-	// Use frontend-provided session ID for idempotency, fallback to new UUID if not provided
-	sessionId := req.QuizSessionId
-	if sessionId == "" {
-		sessionId = uuid.New().String()
-	}
-
 	// Save quiz result to database (async, don't block response)
-	go s.saveQuizResult(sessionId, answers, result, req.Language, meta)
+	go s.saveQuizResult(answers, result, req.Language, meta)
 
 	return models.QuizScoreResponse{
 		GlowtypeID:   result.ResultTypeCode,
@@ -136,13 +133,32 @@ func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models
 }
 
 // saveQuizResult saves the quiz result to the database for analytics
-// Uses Upsert (ON CONFLICT DO NOTHING) to prevent duplicate records
-func (s *QuizService) saveQuizResult(sessionId string, answers []database.AnswerRecord, result *ScoringResult, language string, meta models.RequestMeta) {
+// Uses answers hash + time window to prevent duplicate submissions
+// - Same answers within 30 seconds = duplicate (network retry), skip
+// - Same answers after 30 seconds = different person, save
+// - Different answers = always save
+func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *ScoringResult, language string, meta models.RequestMeta) {
 	answersJSON, _ := json.Marshal(answers)
 	scoresJSON, _ := json.Marshal(result.DimensionScores)
 
+	// Generate hash of answers for deduplication
+	answersHash := hashAnswers(answersJSON)
+
+	// Check for duplicate: same answers hash within last 30 seconds
+	var recentCount int64
+	cutoffTime := time.Now().Add(-30 * time.Second)
+	s.db.Model(&database.QuizResultDB{}).
+		Where("answers_hash = ? AND created_at > ?", answersHash, cutoffTime).
+		Count(&recentCount)
+
+	if recentCount > 0 {
+		log.Printf("[QuizService] Skipping duplicate submission (same answers within 30s), hash=%s", answersHash[:16])
+		return
+	}
+
 	quizResult := database.QuizResultDB{
-		SessionID:       sessionId,
+		SessionID:       uuid.New().String(), // Always generate new session ID
+		AnswersHash:     answersHash,
 		Answers:         answersJSON,
 		DimensionScores: scoresJSON,
 		ResultTypeCode:  result.ResultTypeCode,
@@ -158,12 +174,15 @@ func (s *QuizService) saveQuizResult(sessionId string, answers []database.Answer
 		UserAgent:   meta.UserAgent,
 	}
 
-	// Use Upsert: insert if not exists, ignore if sessionId already exists
-	// This prevents duplicate records from network retries or double submissions
-	s.db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "session_id"}},
-		DoNothing: true,
-	}).Create(&quizResult)
+	if err := s.db.Create(&quizResult).Error; err != nil {
+		log.Printf("[QuizService] Failed to save quiz result: %v", err)
+	}
+}
+
+// hashAnswers generates a SHA256 hash of the answers JSON for deduplication
+func hashAnswers(answersJSON []byte) string {
+	hash := sha256.Sum256(answersJSON)
+	return hex.EncodeToString(hash[:])
 }
 
 // normalizeLangInternal is defined in glowtype_service.go
