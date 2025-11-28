@@ -540,7 +540,31 @@ func CreateGlowtype(c *gin.Context) {
 		return
 	}
 
-	// Create main glowtype record
+	// Check if glowtype with same typeCode already exists (including inactive ones)
+	var existing database.GlowtypeDB
+	if err := database.GetDB().Unscoped().Where("type_code = ?", input.TypeCode).First(&existing).Error; err == nil {
+		// TypeCode exists - update and reactivate it
+		existing.PrimaryColor = input.PrimaryColor
+		existing.AuraGradient = input.Gradient
+		existing.CardAccent = input.CardAccent
+		existing.TextColor = input.TextColor
+		existing.IsActive = true
+		existing.Version++
+		if err := database.GetDB().Save(&existing).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Update or create i18n records
+		updateOrCreateI18N(existing.ID, "zh", input.NameZh, input.TaglineZh, input.DescriptionZh, input.SelfCareTipsZh, input.DisclaimerZh)
+		updateOrCreateI18N(existing.ID, "en", input.NameEn, input.TaglineEn, input.DescriptionEn, input.SelfCareTipsEn, input.DisclaimerEn)
+
+		input.ID = existing.ID
+		c.JSON(http.StatusOK, input)
+		return
+	}
+
+	// Create new glowtype record
 	glowtype := database.GlowtypeDB{
 		TypeCode:     input.TypeCode,
 		PrimaryColor: input.PrimaryColor,
@@ -584,6 +608,36 @@ func CreateGlowtype(c *gin.Context) {
 	// Return merged result
 	input.ID = glowtype.ID
 	c.JSON(http.StatusCreated, input)
+}
+
+// updateOrCreateI18N updates existing i18n record or creates a new one
+func updateOrCreateI18N(glowtypeID uint, lang, name, tagline, description, tips, disclaimer string) {
+	if name == "" && tagline == "" && description == "" {
+		return
+	}
+	var i18n database.GlowtypeI18NDB
+	err := database.GetDB().Where("glowtype_id = ? AND lang = ?", glowtypeID, lang).First(&i18n).Error
+	if err == nil {
+		// Update existing
+		i18n.Name = name
+		i18n.Tagline = tagline
+		i18n.Description = description
+		i18n.SelfCareTips = tips
+		i18n.Disclaimer = disclaimer
+		database.GetDB().Save(&i18n)
+	} else {
+		// Create new
+		i18n = database.GlowtypeI18NDB{
+			GlowtypeID:   glowtypeID,
+			Lang:         lang,
+			Name:         name,
+			Tagline:      tagline,
+			Description:  description,
+			SelfCareTips: tips,
+			Disclaimer:   disclaimer,
+		}
+		database.GetDB().Create(&i18n)
+	}
 }
 
 func UpdateGlowtype(c *gin.Context) {
