@@ -143,7 +143,7 @@ func (GlowtypeI18NDB) TableName() string {
 type ScoringRuleDB struct {
 	ID          uint   `gorm:"primaryKey" json:"id"`
 	TenantID    *uint  `gorm:"index" json:"tenantId"`
-	Name        string `json:"name"`
+	Name        string `gorm:"uniqueIndex:idx_tenant_rule_name;not null" json:"name"`
 	Description string `gorm:"type:text" json:"description"`
 
 	// Structured conditions: {"dimensions": {"energy": {"max": 0}, "style": {"min": -2, "max": 2}}}

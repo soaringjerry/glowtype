@@ -776,18 +776,39 @@ func ListRules(c *gin.Context) {
 }
 
 func CreateRule(c *gin.Context) {
-	var rule database.ScoringRuleDB
-	if err := c.ShouldBindJSON(&rule); err != nil {
+	var input database.ScoringRuleDB
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	rule.IsActive = true
-	rule.Version = 1
-	if err := database.GetDB().Create(&rule).Error; err != nil {
+
+	// Check if rule with same name exists (including soft-deleted)
+	var existing database.ScoringRuleDB
+	if err := database.GetDB().Unscoped().Where("name = ?", input.Name).First(&existing).Error; err == nil {
+		// Name exists - update and reactivate
+		existing.Description = input.Description
+		existing.Conditions = input.Conditions
+		existing.ResultTypeCode = input.ResultTypeCode
+		existing.Priority = input.Priority
+		existing.IsFallback = input.IsFallback
+		existing.IsActive = true
+		existing.Version++
+		if err := database.GetDB().Save(&existing).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, existing)
+		return
+	}
+
+	// Create new rule
+	input.IsActive = true
+	input.Version = 1
+	if err := database.GetDB().Create(&input).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, rule)
+	c.JSON(http.StatusCreated, input)
 }
 
 func UpdateRule(c *gin.Context) {
