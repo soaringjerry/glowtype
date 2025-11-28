@@ -38,14 +38,20 @@ interface Glowtype {
 
 // Color presets for easy selection
 const COLOR_PRESETS = [
+  // Single-hue gradients
   { name: 'Indigo', cardAccent: 'from-indigo-50 to-blue-50', textColor: 'text-indigo-900', gradient: 'radial-gradient(circle at center, #a5b4fc, #818cf8, #4f46e5, transparent 70%)', primary: '#4f46e5' },
-  { name: 'Rose', cardAccent: 'from-rose-50 to-orange-50', textColor: 'text-rose-900', gradient: 'radial-gradient(circle at center, #fbcfe8, #f472b6, #db2777, transparent 70%)', primary: '#db2777' },
-  { name: 'Teal', cardAccent: 'from-teal-50 to-emerald-50', textColor: 'text-teal-900', gradient: 'radial-gradient(circle at center, #99f6e4, #5eead4, #14b8a6, transparent 70%)', primary: '#14b8a6' },
-  { name: 'Amber', cardAccent: 'from-amber-50 to-orange-50', textColor: 'text-amber-900', gradient: 'radial-gradient(circle at center, #fde68a, #fbbf24, #d97706, transparent 70%)', primary: '#d97706' },
   { name: 'Purple', cardAccent: 'from-purple-50 to-violet-50', textColor: 'text-purple-900', gradient: 'radial-gradient(circle at center, #e9d5ff, #c084fc, #9333ea, transparent 70%)', primary: '#9333ea' },
-  { name: 'Sky', cardAccent: 'from-sky-50 to-cyan-50', textColor: 'text-sky-900', gradient: 'radial-gradient(circle at center, #bae6fd, #38bdf8, #0284c7, transparent 70%)', primary: '#0284c7' },
-  { name: 'Green', cardAccent: 'from-green-50 to-emerald-50', textColor: 'text-green-900', gradient: 'radial-gradient(circle at center, #bbf7d0, #4ade80, #16a34a, transparent 70%)', primary: '#16a34a' },
-  { name: 'Pink', cardAccent: 'from-pink-50 to-fuchsia-50', textColor: 'text-pink-900', gradient: 'radial-gradient(circle at center, #fbcfe8, #f472b6, #db2777, transparent 70%)', primary: '#db2777' },
+  { name: 'Teal', cardAccent: 'from-teal-50 to-emerald-50', textColor: 'text-teal-900', gradient: 'radial-gradient(circle at center, #99f6e4, #5eead4, #14b8a6, transparent 70%)', primary: '#14b8a6' },
+  { name: 'Rose', cardAccent: 'from-rose-50 to-orange-50', textColor: 'text-rose-900', gradient: 'radial-gradient(circle at center, #fbcfe8, #f472b6, #db2777, transparent 70%)', primary: '#db2777' },
+  // Multi-hue gradients (more layered effects)
+  { name: '🌅 Sunset', cardAccent: 'from-amber-50 to-rose-50', textColor: 'text-orange-900', gradient: 'radial-gradient(circle at center, #fef08a, #fbbf24, #f97316, #ef4444, transparent 70%)', primary: '#f97316' },
+  { name: '🌊 Ocean', cardAccent: 'from-cyan-50 to-blue-50', textColor: 'text-blue-900', gradient: 'radial-gradient(circle at center, #67e8f9, #22d3ee, #0ea5e9, #3b82f6, transparent 70%)', primary: '#0ea5e9' },
+  { name: '🔮 Aurora', cardAccent: 'from-violet-50 to-cyan-50', textColor: 'text-violet-900', gradient: 'radial-gradient(circle at center, #67e8f9, #a78bfa, #8b5cf6, #6366f1, transparent 70%)', primary: '#8b5cf6' },
+  { name: '🌸 Sakura', cardAccent: 'from-pink-50 to-purple-50', textColor: 'text-pink-900', gradient: 'radial-gradient(circle at center, #fbcfe8, #f9a8d4, #e879f9, #c026d3, transparent 70%)', primary: '#ec4899' },
+  { name: '🍊 Citrus', cardAccent: 'from-yellow-50 to-lime-50', textColor: 'text-orange-900', gradient: 'radial-gradient(circle at center, #fef08a, #a3e635, #84cc16, #65a30d, transparent 70%)', primary: '#84cc16' },
+  { name: '🔥 Ember', cardAccent: 'from-orange-50 to-red-50', textColor: 'text-red-900', gradient: 'radial-gradient(circle at center, #fde047, #fb923c, #f97316, #dc2626, transparent 70%)', primary: '#ea580c' },
+  { name: '🌌 Cosmos', cardAccent: 'from-indigo-50 to-purple-50', textColor: 'text-indigo-900', gradient: 'radial-gradient(circle at center, #c7d2fe, #a78bfa, #7c3aed, #4c1d95, transparent 70%)', primary: '#6d28d9' },
+  { name: '🌿 Forest', cardAccent: 'from-emerald-50 to-teal-50', textColor: 'text-emerald-900', gradient: 'radial-gradient(circle at center, #a7f3d0, #34d399, #059669, #047857, transparent 70%)', primary: '#059669' },
 ];
 
 // Helper: convert multi-line text to array (for description/tips)
