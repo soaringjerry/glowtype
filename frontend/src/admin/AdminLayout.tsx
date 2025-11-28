@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useLocation, useNavigate, Routes, Route } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,7 +19,8 @@ import {
   ScrollText,
   Loader2
 } from 'lucide-react';
-import { useAdminAuth } from './hooks/useAdmin';
+import { roleHasPermission, useAdminAuth } from './hooks/useAdmin';
+import type { AdminPermission } from './hooks/useAdmin';
 import AdminLogin from './AdminLogin';
 import Dashboard from './pages/Dashboard';
 import Dimensions from './pages/Dimensions';
@@ -51,22 +52,20 @@ export default function AdminLayout() {
   }, [location.pathname]);
 
   const navItems = useMemo(() => {
-    const base = [
-      { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard },
-      { path: '/admin/dimensions', labelKey: 'nav.dimensions', icon: Compass },
-      { path: '/admin/questions', labelKey: 'nav.questions', icon: HelpCircle },
-      { path: '/admin/glowtypes', labelKey: 'nav.glowtypes', icon: Sparkles },
-      { path: '/admin/rules', labelKey: 'nav.rules', icon: Settings2 },
-      { path: '/admin/debugger', labelKey: 'nav.debugger', icon: Bug },
-      { path: '/admin/results', labelKey: 'nav.results', icon: BarChart3 },
-      { path: '/admin/prompts', labelKey: 'nav.prompts', icon: MessageSquare },
-      { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles },
+    const items: Array<{ path: string; labelKey: string; icon: any; perm: AdminPermission }> = [
+      { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard, perm: 'stats.view' },
+      { path: '/admin/users', labelKey: 'nav.adminUsers', icon: Shield, perm: 'admin.manage' },
+      { path: '/admin/dimensions', labelKey: 'nav.dimensions', icon: Compass, perm: 'dimensions.write' },
+      { path: '/admin/questions', labelKey: 'nav.questions', icon: HelpCircle, perm: 'questions.write' },
+      { path: '/admin/glowtypes', labelKey: 'nav.glowtypes', icon: Sparkles, perm: 'glowtypes.write' },
+      { path: '/admin/rules', labelKey: 'nav.rules', icon: Settings2, perm: 'rules.write' },
+      { path: '/admin/debugger', labelKey: 'nav.debugger', icon: Bug, perm: 'rules.write' },
+      { path: '/admin/results', labelKey: 'nav.results', icon: BarChart3, perm: 'results.view' },
+      { path: '/admin/prompts', labelKey: 'nav.prompts', icon: MessageSquare, perm: 'prompts.write' },
+      { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles, perm: 'content.write' },
+      { path: '/admin/audit', labelKey: 'nav.audit', icon: ScrollText, perm: 'audit.view' },
     ];
-    if (currentUser?.role === 'superadmin') {
-      base.splice(1, 0, { path: '/admin/users', labelKey: 'nav.adminUsers', icon: Shield });
-      base.splice(base.length, 0, { path: '/admin/audit', labelKey: 'nav.audit', icon: ScrollText });
-    }
-    return base;
+    return items.filter((item) => roleHasPermission(currentUser?.role, item.perm as any));
   }, [currentUser]);
 
   if (initializing) {
@@ -131,7 +130,7 @@ export default function AdminLayout() {
         {currentUser && (
           <div className="px-6 pt-3 pb-2 text-xs text-gray-500">
             <div className="font-medium text-gray-800">{currentUser.username}</div>
-            <div>{currentUser.role === 'superadmin' ? t('roles.superadmin') : t('roles.admin')}</div>
+            <div>{t(`roles.${currentUser.role}`)}</div>
           </div>
         )}
 
@@ -171,20 +170,39 @@ export default function AdminLayout() {
       <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
         <div className="p-6">
           <Routes>
-            <Route path="/admin" element={<Dashboard />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/dimensions" element={<Dimensions />} />
-            <Route path="/admin/questions" element={<Questions />} />
-            <Route path="/admin/glowtypes" element={<Glowtypes />} />
-            <Route path="/admin/rules" element={<Rules />} />
-            <Route path="/admin/debugger" element={<RuleDebugger />} />
-            <Route path="/admin/results" element={<Results />} />
-            <Route path="/admin/prompts" element={<Prompts />} />
-            <Route path="/admin/glowpedia" element={<Glowpedia />} />
-            <Route path="/admin/audit" element={<AuditLogs />} />
+            <Route path="/admin" element={<Protected perm="stats.view"><Dashboard /></Protected>} />
+            <Route path="/admin/users" element={<Protected perm="admin.manage"><AdminUsers /></Protected>} />
+            <Route path="/admin/dimensions" element={<Protected perm="dimensions.write"><Dimensions /></Protected>} />
+            <Route path="/admin/questions" element={<Protected perm="questions.write"><Questions /></Protected>} />
+            <Route path="/admin/glowtypes" element={<Protected perm="glowtypes.write"><Glowtypes /></Protected>} />
+            <Route path="/admin/rules" element={<Protected perm="rules.write"><Rules /></Protected>} />
+            <Route path="/admin/debugger" element={<Protected perm="rules.write"><RuleDebugger /></Protected>} />
+            <Route path="/admin/results" element={<Protected perm="results.view"><Results /></Protected>} />
+            <Route path="/admin/prompts" element={<Protected perm="prompts.write"><Prompts /></Protected>} />
+            <Route path="/admin/glowpedia" element={<Protected perm="content.write"><Glowpedia /></Protected>} />
+            <Route path="/admin/audit" element={<Protected perm="audit.view"><AuditLogs /></Protected>} />
           </Routes>
         </div>
       </main>
     </div>
   );
+}
+
+type ProtectedProps = {
+  perm: AdminPermission;
+  children: ReactNode;
+};
+
+function Protected({ perm, children }: ProtectedProps) {
+  const { t } = useTranslation('admin');
+  const { currentUser } = useAdminAuth();
+  if (!roleHasPermission(currentUser?.role, perm)) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-amber-100">
+        <h2 className="text-lg font-semibold text-gray-800 mb-1">{t('accessDenied.title')}</h2>
+        <p className="text-sm text-gray-600">{t('accessDenied.desc')}</p>
+      </div>
+    );
+  }
+  return <>{children}</>;
 }

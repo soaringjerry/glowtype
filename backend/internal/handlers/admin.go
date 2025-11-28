@@ -406,6 +406,131 @@ func CreateAdminUser(c *gin.Context) {
 	})
 }
 
+// UpdateAdminUser updates role/activation for an admin (super admin only).
+func UpdateAdminUser(c *gin.Context) {
+	current, ok := getAdminFromContext(c)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid admin id"})
+		return
+	}
+
+	var req struct {
+		Role     *string `json:"role"`
+		IsActive *bool   `json:"isActive"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	if req.Role == nil && req.IsActive == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No changes provided"})
+		return
+	}
+
+	var target database.AdminUser
+	if err := database.GetDB().First(&target, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Admin not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Prevent self-lockout via role change or deactivation
+	if target.ID == current.ID {
+		if req.Role != nil && strings.TrimSpace(*req.Role) != target.Role {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot change your own role"})
+			return
+		}
+		if req.IsActive != nil && !*req.IsActive {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot deactivate yourself"})
+			return
+		}
+	}
+
+	updates := map[string]any{}
+	prevRole := target.Role
+	prevActive := target.IsActive
+
+	if req.Role != nil {
+		role := strings.TrimSpace(*req.Role)
+		if !isValidAdminRole(role) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+			return
+		}
+		if target.Role == database.AdminRoleSuper && role != database.AdminRoleSuper {
+			var count int64
+			if err := database.GetDB().Model(&database.AdminUser{}).
+				Where("role = ? AND is_active = ?", database.AdminRoleSuper, true).
+				Count(&count).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate super admin count"})
+				return
+			}
+			if count <= 1 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot remove the last active superadmin"})
+				return
+			}
+		}
+		updates["role"] = role
+		target.Role = role
+	}
+
+	if req.IsActive != nil {
+		if target.Role == database.AdminRoleSuper && !*req.IsActive {
+			var count int64
+			if err := database.GetDB().Model(&database.AdminUser{}).
+				Where("role = ? AND is_active = ?", database.AdminRoleSuper, true).
+				Count(&count).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate super admin count"})
+				return
+			}
+			if count <= 1 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot deactivate the last active superadmin"})
+				return
+			}
+		}
+		updates["is_active"] = *req.IsActive
+		target.IsActive = *req.IsActive
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid changes"})
+		return
+	}
+
+	if err := database.GetDB().Model(&target).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Set("auditMetadata", map[string]any{
+		"targetUser": target.Username,
+		"targetId":   target.ID,
+		"fromRole":   prevRole,
+		"toRole":     target.Role,
+		"fromActive": prevActive,
+		"toActive":   target.IsActive,
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":          target.ID,
+		"username":    target.Username,
+		"role":        target.Role,
+		"isActive":    target.IsActive,
+		"lastLoginAt": target.LastLoginAt,
+		"lastLoginIp": target.LastLoginIP,
+		"createdAt":   target.CreatedAt,
+		"updatedAt":   target.UpdatedAt,
+	})
+}
+
 // ListAuditLogs returns recent admin audit logs (super admin only).
 func ListAuditLogs(c *gin.Context) {
 	limit := 200

@@ -1,12 +1,68 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getApiBaseUrl } from '../../api/baseUrl';
 
-export type AdminRole = 'superadmin' | 'admin';
+export type AdminRole = 'superadmin' | 'admin' | 'content_admin' | 'data_admin' | 'analyst';
+export type AdminPermission =
+  | 'admin.manage'
+  | 'audit.view'
+  | 'dimensions.write'
+  | 'questions.write'
+  | 'rules.write'
+  | 'glowtypes.write'
+  | 'prompts.write'
+  | 'content.write'
+  | 'stats.view'
+  | 'results.view'
+  | 'data.reset';
+
+const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
+  superadmin: [
+    'admin.manage',
+    'audit.view',
+    'dimensions.write',
+    'questions.write',
+    'rules.write',
+    'glowtypes.write',
+    'prompts.write',
+    'content.write',
+    'stats.view',
+    'results.view',
+    'data.reset',
+  ],
+  admin: [
+    'dimensions.write',
+    'questions.write',
+    'rules.write',
+    'glowtypes.write',
+    'prompts.write',
+    'content.write',
+    'stats.view',
+    'results.view',
+  ],
+  content_admin: ['content.write', 'stats.view'],
+  data_admin: [
+    'dimensions.write',
+    'questions.write',
+    'rules.write',
+    'glowtypes.write',
+    'prompts.write',
+    'stats.view',
+    'results.view',
+  ],
+  analyst: ['stats.view', 'results.view', 'audit.view'],
+};
+
+export const roleHasPermission = (role: AdminRole | undefined, perm: AdminPermission) => {
+  if (!role) return false;
+  if (role === 'superadmin') return true;
+  return ROLE_PERMISSIONS[role]?.includes(perm) ?? false;
+};
 
 export interface AdminUser {
   id: number;
   username: string;
   role: AdminRole;
+  isActive?: boolean;
   lastLoginAt?: string;
   lastLoginIp?: string;
   createdAt?: string;
@@ -374,6 +430,11 @@ export const useAdminApi = () => {
       apiCall<AdminUser>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
     [apiCall],
   );
+  const updateAdmin = useCallback(
+    (id: number, data: { role?: AdminRole; isActive?: boolean }) =>
+      apiCall<AdminUser>(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    [apiCall],
+  );
   const listAuditLogs = useCallback((limit = 200) => apiCall<AdminAuditLog[]>(`/admin/audit?limit=${limit}`), [apiCall]);
 
   return {
@@ -441,6 +502,7 @@ export const useAdminApi = () => {
     getCurrentAdmin,
     listAdmins,
     createAdmin,
+    updateAdmin,
     listAuditLogs,
   };
 };

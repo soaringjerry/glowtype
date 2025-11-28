@@ -16,7 +16,14 @@
   },
   "roles": {
     "superadmin": "超级管理员",
-    "admin": "管理员"
+    "admin": "管理员",
+    "content_admin": "内容管理员",
+    "data_admin": "数据管理员",
+    "analyst": "分析员"
+  },
+  "accessDenied": {
+    "title": "没有权限",
+    "desc": "你没有执行此操作或查看该页面的权限。"
   },
   "login": {
     "title": "管理员登录",
@@ -37,6 +44,12 @@
     "passwordPlaceholder": "建议设置强密码",
     "role": "角色",
     "create": "创建管理员",
+    "status": "状态",
+    "actions": "操作",
+    "active": "启用",
+    "inactive": "停用",
+    "save": "保存修改",
+    "updated": "已更新管理员 {{user}}",
     "listTitle": "已有管理员",
     "lastLogin": "最近登录",
     "lastIp": "登录 IP",
@@ -50,8 +63,8 @@
     "title": "操作审计",
     "subtitle": "查看每个管理员做了什么",
     "latest": "最近 200 条操作",
-    "superOnlyTitle": "需要超级管理员",
-    "superOnlyDesc": "只有超级管理员可以查看审计日志。",
+    "superOnlyTitle": "没有权限",
+    "superOnlyDesc": "你没有查看审计日志的权限。",
     "empty": "暂无管理员操作记录。",
     "time": "时间",
     "user": "管理员",
@@ -59,7 +72,8 @@
     "path": "路径",
     "status": "状态",
     "ip": "IP",
-    "meta": "耗时"
+    "meta": "耗时",
+    "details": "详情"
   },
   "dashboard": {
     "title": "仪表盘",

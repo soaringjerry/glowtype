@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock3, Shield, ScrollText, Loader2 } from 'lucide-react';
 import type { AdminAuditLog } from '../hooks/useAdmin';
-import { useAdminApi, useAdminAuth } from '../hooks/useAdmin';
+import { roleHasPermission, useAdminApi, useAdminAuth } from '../hooks/useAdmin';
 
 export default function AuditLogs() {
   const { t } = useTranslation('admin');
@@ -10,24 +10,24 @@ export default function AuditLogs() {
   const { listAuditLogs, loading } = useAdminApi();
   const [logs, setLogs] = useState<AdminAuditLog[]>([]);
 
-  const isSuper = useMemo(() => currentUser?.role === 'superadmin', [currentUser]);
+  const canView = useMemo(() => roleHasPermission(currentUser?.role, 'audit.view'), [currentUser]);
 
   useEffect(() => {
-    if (!isSuper) return;
+    if (!canView) return;
     const load = async () => {
       const res = await listAuditLogs(200);
       if (res) setLogs(res);
     };
     load();
-  }, [isSuper, listAuditLogs]);
+  }, [canView, listAuditLogs]);
 
-  if (!isSuper) {
+  if (!canView) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-6 flex items-center gap-3">
         <Shield className="w-5 h-5 text-amber-500" />
         <div>
-          <h2 className="text-lg font-semibold text-gray-800">{t('audit.superOnlyTitle')}</h2>
-          <p className="text-sm text-gray-500">{t('audit.superOnlyDesc')}</p>
+          <h2 className="text-lg font-semibold text-gray-800">{t('accessDenied.title')}</h2>
+          <p className="text-sm text-gray-500">{t('accessDenied.desc')}</p>
         </div>
       </div>
     );
@@ -80,6 +80,9 @@ export default function AuditLogs() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     {t('audit.meta')}
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t('audit.details')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100 text-sm">
@@ -125,6 +128,29 @@ export default function AuditLogs() {
                       <td className="px-4 py-3 text-gray-600">{log.ip || '-'}</td>
                       <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                         {meta.durationMs ? `${meta.durationMs}ms` : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 text-xs max-w-sm">
+                        <details className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+                          <summary className="cursor-pointer text-gray-700">
+                            {meta.requestedAt || t('audit.details')}
+                          </summary>
+                          <pre className="mt-2 whitespace-pre-wrap break-words text-gray-700">
+                            {JSON.stringify(
+                              {
+                                pathParams: meta.pathParams,
+                                query: meta.query,
+                                requestBody: meta.requestBody,
+                                responseSample: meta.responseSample,
+                                status: meta.status,
+                                adminRole: meta.adminRole,
+                                ip: meta.ip,
+                                durationMs: meta.durationMs,
+                              },
+                              null,
+                              2,
+                            )}
+                          </pre>
+                        </details>
                       </td>
                     </tr>
                   );

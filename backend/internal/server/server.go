@@ -3,8 +3,10 @@ package server
 import (
 	"log"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/soaringjerry/glowtype/internal/backup"
 	"github.com/soaringjerry/glowtype/internal/config"
 	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/handlers"
@@ -19,7 +21,7 @@ func New(cfg config.Config) *gin.Engine {
 	}
 
 	// Initialize database
-	database.InitDB()
+	database.InitDB(cfg)
 
 	r := gin.New()
 	proxyCfg := buildTrustedProxies(cfg.TrustedProxies)
@@ -88,6 +90,7 @@ func New(cfg config.Config) *gin.Engine {
 		{
 			adminUsers.GET("/users", handlers.ListAdminUsers)
 			adminUsers.POST("/users", handlers.CreateAdminUser)
+			adminUsers.PUT("/users/:id", handlers.UpdateAdminUser)
 		}
 
 		// Audit
@@ -199,6 +202,15 @@ func New(cfg config.Config) *gin.Engine {
 			reset.POST("/glowpedia/reset", handlers.ResetGlowpediaHandler)
 		}
 	}
+
+	// Start background database backups (no HTTP surface exposed)
+	backup.Start(backup.Config{
+		Enabled:       cfg.BackupEnabled,
+		DBPath:        cfg.DBPath,
+		BackupDir:     cfg.BackupDir,
+		Interval:      time.Duration(cfg.BackupIntervalMins) * time.Minute,
+		MaxTotalBytes: cfg.BackupMaxTotalBytes,
+	}, db)
 
 	return r
 }

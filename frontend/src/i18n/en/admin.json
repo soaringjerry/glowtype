@@ -16,7 +16,14 @@
   },
   "roles": {
     "superadmin": "Super Admin",
-    "admin": "Admin"
+    "admin": "Admin",
+    "content_admin": "Content Admin",
+    "data_admin": "Data Admin",
+    "analyst": "Analyst"
+  },
+  "accessDenied": {
+    "title": "Access denied",
+    "desc": "You do not have permission to view or perform this action."
   },
   "login": {
     "title": "Admin Login",
@@ -37,6 +44,12 @@
     "passwordPlaceholder": "Strong password recommended",
     "role": "Role",
     "create": "Create admin",
+    "status": "Status",
+    "actions": "Actions",
+    "active": "Active",
+    "inactive": "Inactive",
+    "save": "Save changes",
+    "updated": "Updated admin {{user}}",
     "listTitle": "Existing admins",
     "lastLogin": "Last login",
     "lastIp": "Last IP",
@@ -50,8 +63,8 @@
     "title": "Audit Log",
     "subtitle": "See which admin performed which action",
     "latest": "Latest 200 actions",
-    "superOnlyTitle": "Super admin required",
-    "superOnlyDesc": "Only the super admin can view the audit log.",
+    "superOnlyTitle": "Access denied",
+    "superOnlyDesc": "You do not have permission to view the audit log.",
     "empty": "No admin actions recorded yet.",
     "time": "Time",
     "user": "Admin",
@@ -59,7 +72,8 @@
     "path": "Path",
     "status": "Status",
     "ip": "IP",
-    "meta": "Duration"
+    "meta": "Duration",
+    "details": "Details"
   },
   "dashboard": {
     "title": "Dashboard",
