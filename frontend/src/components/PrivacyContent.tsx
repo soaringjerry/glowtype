@@ -139,7 +139,7 @@ OpenAI、Anthropic、Google，提供AI功能的技术支持。您与AI的对话�
 
 我们将确保在适用《通用数据保护条例》的情况下，任何向欧洲经济区以外的个人数据传输都将遵守适当或合适的相关保障措施，例如欧盟委员会批准的标准合同条款，这些措施旨在帮助保护您的隐私权，并在您的个人信息被滥用的情况下为您提供补救措施。
 
-对于从中国大陆传输的数据，我们依据《个人信息保护法》的相关规定处理跨境数据传输事宜。
+对于从中国大陆传输的数据，我们目前不符合《个人信息保护法》关于个人信息出境的资质或认证要求，无法提供相关合规保障。继续使用本服务即表示您已知悉并理解上述情况。
 
 若您所在国家或地区的适用法律对跨境数据传输有更严格的要求，我们将在法律允许的范围内遵守该等要求。如您对数据传输有任何疑虑，请在使用本服务前与我们联系。
 
@@ -353,7 +353,7 @@ As a global digital service, we need to work with multiple service providers, so
 
 We will ensure that where the General Data Protection Regulation applies, any transfer of personal data outside the European Economic Area will be subject to appropriate or suitable relevant safeguards, such as European Commission-approved standard contractual clauses, designed to help protect your privacy rights and provide you with remedies in the event of misuse of your personal information.
 
-For data transferred from Mainland China, we handle cross-border data transfer matters in accordance with the relevant provisions of the Personal Information Protection Law.
+For data transferred from Mainland China, we do not meet the qualification or certification requirements under the Personal Information Protection Law for cross-border transfers and cannot provide related compliance assurances. By continuing to use the service, you acknowledge and understand this.
 
 If the applicable laws in your country or region have stricter requirements for cross-border data transfer, we will comply with such requirements to the extent permitted by law. If you have any concerns about data transfer, please contact us before using this service.
 
