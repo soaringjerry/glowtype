@@ -42,9 +42,10 @@ type QuizAnswer struct {
 }
 
 type QuizScoreRequest struct {
-	QuizID   string       `json:"quizId"`
-	Language string       `json:"language"`
-	Answers  []QuizAnswer `json:"answers"`
+	QuizID        string       `json:"quizId"`
+	QuizSessionId string       `json:"quizSessionId"` // Idempotency key to prevent duplicate records
+	Language      string       `json:"language"`
+	Answers       []QuizAnswer `json:"answers"`
 }
 
 type QuizScoreResponse struct {

@@ -93,21 +93,20 @@ export default function Results() {
     });
 
   const renderScores = (scores: Record<string, number>) => {
-    const items = Object.entries(scores)
-      .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-      .slice(0, 3);
+    // Show all dimension scores for debugging, sorted by dimension key for consistency
+    const items = Object.entries(scores).sort((a, b) => a[0].localeCompare(b[0]));
     if (items.length === 0) return <span className="text-gray-400">{t('results.noScores')}</span>;
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {items.map(([dim, score]) => (
           <span
             key={dim}
-            className={`px-2 py-1 text-xs rounded ${
+            className={`px-2 py-0.5 text-xs rounded font-mono ${
               score > 0 ? 'bg-green-100 text-green-700' : score < 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
             }`}
+            title={`${dim}: ${score}`}
           >
-            {dim}: {score > 0 ? '+' : ''}
-            {score}
+            {dim}: {score > 0 ? '+' : ''}{score}
           </span>
         ))}
       </div>

@@ -394,6 +394,9 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Generate a unique session ID for this quiz attempt (for idempotency)
+  const [quizSessionId] = useState(() => crypto.randomUUID());
   const t = TRANSLATIONS[lang].quiz;
 
   // Fetch questions from API (single source of truth)
@@ -446,10 +449,15 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
       setDirection(1);
       setCurrentQ(prev => prev + 1);
     } else {
+      // Prevent double submission
+      if (isSubmitting) return;
+      setIsSubmitting(true);
+
       // Submit to API for scoring
       try {
         const payload = {
           quizId,
+          quizSessionId, // Idempotency key to prevent duplicate records
           language: lang === 'zh' ? 'zh-CN' : 'en',
           answers: Object.entries(newAnswers).map(([questionId, optionId]) => ({
             questionId,
@@ -469,7 +477,7 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
         throw new Error('Failed to score quiz');
       } catch (e) {
         console.error('Failed to submit quiz', e);
-        // Show error - in production this would be a proper error state
+        setIsSubmitting(false); // Allow retry on error
         alert(lang === 'zh' ? '提交测试失败，请重试' : 'Failed to submit quiz, please try again');
       }
     }

@@ -188,7 +188,7 @@ type DimensionCondition struct {
 type QuizResultDB struct {
 	ID        uint   `gorm:"primaryKey" json:"id"`
 	TenantID  *uint  `gorm:"index" json:"tenantId"`
-	SessionID string `gorm:"index;not null" json:"sessionId"` // Anonymous session identifier
+	SessionID string `gorm:"uniqueIndex;not null" json:"sessionId"` // Anonymous session identifier (unique to prevent duplicates)
 
 	// User's answers: [{"questionId": "q1", "optionIndex": 0, "optionValue": "introvert"}]
 	Answers datatypes.JSON `gorm:"type:json" json:"answers"`

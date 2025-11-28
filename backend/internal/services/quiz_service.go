@@ -8,6 +8,7 @@ import (
 	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type QuizService struct {
@@ -119,8 +120,14 @@ func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models
 		}
 	}
 
+	// Use frontend-provided session ID for idempotency, fallback to new UUID if not provided
+	sessionId := req.QuizSessionId
+	if sessionId == "" {
+		sessionId = uuid.New().String()
+	}
+
 	// Save quiz result to database (async, don't block response)
-	go s.saveQuizResult(answers, result, req.Language, meta)
+	go s.saveQuizResult(sessionId, answers, result, req.Language, meta)
 
 	return models.QuizScoreResponse{
 		GlowtypeID:   result.ResultTypeCode,
@@ -129,12 +136,13 @@ func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models
 }
 
 // saveQuizResult saves the quiz result to the database for analytics
-func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *ScoringResult, language string, meta models.RequestMeta) {
+// Uses Upsert (ON CONFLICT DO NOTHING) to prevent duplicate records
+func (s *QuizService) saveQuizResult(sessionId string, answers []database.AnswerRecord, result *ScoringResult, language string, meta models.RequestMeta) {
 	answersJSON, _ := json.Marshal(answers)
 	scoresJSON, _ := json.Marshal(result.DimensionScores)
 
 	quizResult := database.QuizResultDB{
-		SessionID:       uuid.New().String(),
+		SessionID:       sessionId,
 		Answers:         answersJSON,
 		DimensionScores: scoresJSON,
 		ResultTypeCode:  result.ResultTypeCode,
@@ -150,8 +158,12 @@ func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *Sc
 		UserAgent:   meta.UserAgent,
 	}
 
-	// Silently save - don't affect user experience if this fails
-	s.db.Create(&quizResult)
+	// Use Upsert: insert if not exists, ignore if sessionId already exists
+	// This prevents duplicate records from network retries or double submissions
+	s.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "session_id"}},
+		DoNothing: true,
+	}).Create(&quizResult)
 }
 
 // normalizeLangInternal is defined in glowtype_service.go
