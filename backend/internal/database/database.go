@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/glebarez/sqlite"
+	"github.com/soaringjerry/glowtype/internal/config"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -13,8 +14,11 @@ import (
 var DB *gorm.DB
 
 // InitDB initializes the SQLite database connection
-func InitDB() *gorm.DB {
-	dbPath := getEnv("DB_PATH", "/data/glowtype.db")
+func InitDB(cfg config.Config) *gorm.DB {
+	dbPath := cfg.DBPath
+	if dbPath == "" {
+		dbPath = config.DefaultDBPath
+	}
 
 	// Ensure directory exists
 	dir := filepath.Dir(dbPath)
@@ -25,7 +29,7 @@ func InitDB() *gorm.DB {
 	}
 
 	var gormLogger logger.Interface
-	if getEnv("ENV", "development") == "production" {
+	if cfg.Env == "production" {
 		gormLogger = logger.Default.LogMode(logger.Silent)
 	} else {
 		gormLogger = logger.Default.LogMode(logger.Info)

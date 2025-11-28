@@ -210,6 +210,7 @@ func New(cfg config.Config) *gin.Engine {
 		BackupDir:     cfg.BackupDir,
 		Interval:      time.Duration(cfg.BackupIntervalMins) * time.Minute,
 		MaxTotalBytes: cfg.BackupMaxTotalBytes,
+		MinFreeBytes:  cfg.BackupMinFreeBytes,
 	}, db)
 
 	return r

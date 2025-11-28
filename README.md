@@ -73,6 +73,12 @@ npm run dev
 
 In development, the frontend uses `VITE_API_BASE_URL` (default `http://localhost:18080/api/v1`) to talk to the backend.
 
+### Database backups
+
+- Backend takes hourly SQLite snapshots by default into `/data/backup` with rolling cleanup; backups are not exposed over HTTP.
+- Configure via `backend/.env`: `BACKUP_MAX_TOTAL_BYTES=5GB` (总容量上限), `BACKUP_INTERVAL_MINUTES=60`，`BACKUP_DIR=/data/backup`，`BACKUP_ENABLED=1`，`BACKUP_MIN_FREE_BYTES=1GB`（备份前保留的最小剩余空间）。
+- Files are named `glowtype_<timestamp>.db`; restore by stopping the backend and replacing `DB_PATH` (default `/data/glowtype.db`) with a chosen snapshot.
+
 ### Directory overview (goal structure)
 
 - Backend:

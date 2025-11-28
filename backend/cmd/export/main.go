@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/soaringjerry/glowtype/internal/config"
 	"github.com/soaringjerry/glowtype/internal/database"
 	"gorm.io/gorm"
 )
@@ -98,7 +99,8 @@ func main() {
 	log.Println("")
 
 	// Initialize database
-	db := database.InitDB()
+	cfg := config.Load()
+	db := database.InitDB(cfg)
 
 	// Create output directory
 	if err := os.MkdirAll(*outputDir, 0700); err != nil {
