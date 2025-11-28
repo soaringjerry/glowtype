@@ -34,6 +34,16 @@ func NewChatService(cfg config.Config) *ChatService {
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.OpenAIBaseURL), "/")
 	model := strings.TrimSpace(cfg.OpenAIModel)
 
+	// If an API key is present, default to the OpenAI provider even if CHAT_PROVIDER was left as mock/empty.
+	if apiKey != "" && provider != "openai" {
+		log.Printf("[ChatService] OpenAI API key detected, switching provider from %q to \"openai\"", provider)
+		provider = "openai"
+	}
+
+	if provider == "" {
+		provider = "mock"
+	}
+
 	// Default base URL if not set
 	if baseURL == "" {
 		baseURL = defaultOpenAIBase
