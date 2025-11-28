@@ -143,7 +143,18 @@
     "negativePlaceholder": "e.g., introvert",
     "empty": "No dimensions yet. Click \"Add Dimension\" to create one.",
     "displayOrderLabel": "Order: {{order}}",
-    "thresholdLabel": "Thresholds: {{mild}} / {{strong}}"
+    "thresholdLabel": "Thresholds: {{mild}} / {{strong}}",
+    "importTitle": "Import Dimensions",
+    "importMode": "Import Mode",
+    "modeMerge": "Merge",
+    "modeMergeDesc": "Update existing by key, create new ones",
+    "modeReplace": "Replace",
+    "modeReplaceDesc": "Delete ALL existing and import fresh",
+    "replaceWarning": "This will permanently delete all existing dimensions!",
+    "itemsFound": "Found {{count}} dimensions to import",
+    "importSuccessTitle": "Import Successful",
+    "importFailedTitle": "Import Failed",
+    "importStats": "Created: {{created}}, Updated: {{updated}}"
   },
   "questions": {
     "title": "Quiz Questions",
@@ -171,7 +182,18 @@
     "optionCount": "{{count}} option",
     "optionCount_plural": "{{count}} options",
     "inactive": "Inactive",
-    "valuePlaceholder": "e.g., introvert"
+    "valuePlaceholder": "e.g., introvert",
+    "importTitle": "Import Questions",
+    "importMode": "Import Mode",
+    "modeMerge": "Merge",
+    "modeMergeDesc": "Update existing by questionId, create new ones",
+    "modeReplace": "Replace",
+    "modeReplaceDesc": "Delete ALL existing and import fresh",
+    "replaceWarning": "This will permanently delete all existing questions!",
+    "itemsFound": "Found {{count}} questions to import",
+    "importSuccessTitle": "Import Successful",
+    "importFailedTitle": "Import Failed",
+    "importStats": "Created: {{created}}, Updated: {{updated}}"
   },
   "glowtypes": {
     "title": "Glowtypes",
@@ -265,7 +287,18 @@
     "empty": "No rules yet. Click \"Add Rule\" to create one.",
     "priorityLabel": "Priority: {{priority}}",
     "fallbackBadge": "Fallback",
-    "inactiveBadge": "Inactive"
+    "inactiveBadge": "Inactive",
+    "importTitle": "Import Rules",
+    "importMode": "Import Mode",
+    "modeMerge": "Merge",
+    "modeMergeDesc": "Update existing by name, create new ones",
+    "modeReplace": "Replace",
+    "modeReplaceDesc": "Delete ALL existing and import fresh",
+    "replaceWarning": "This will permanently delete all existing rules!",
+    "itemsFound": "Found {{count}} rules to import",
+    "importSuccessTitle": "Import Successful",
+    "importFailedTitle": "Import Failed",
+    "importStats": "Created: {{created}}, Updated: {{updated}}"
   },
   "debugger": {
     "title": "Rule Debugger",

@@ -407,18 +407,39 @@ func ListQuestions(c *gin.Context) {
 }
 
 func CreateQuestion(c *gin.Context) {
-	var question database.QuizQuestionDB
-	if err := c.ShouldBindJSON(&question); err != nil {
+	var input database.QuizQuestionDB
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	question.IsActive = true
-	question.Version = 1
-	if err := database.GetDB().Create(&question).Error; err != nil {
+
+	// Check if question with same questionId exists (including soft-deleted)
+	var existing database.QuizQuestionDB
+	if err := database.GetDB().Unscoped().Where("question_id = ?", input.QuestionID).First(&existing).Error; err == nil {
+		// QuestionID exists - update and reactivate
+		existing.Order = input.Order
+		existing.QuestionZH = input.QuestionZH
+		existing.QuestionEN = input.QuestionEN
+		existing.Options = input.Options
+		existing.PrimaryDimensionID = input.PrimaryDimensionID
+		existing.IsActive = true
+		existing.Version++
+		if err := database.GetDB().Save(&existing).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, existing)
+		return
+	}
+
+	// Create new question
+	input.IsActive = true
+	input.Version = 1
+	if err := database.GetDB().Create(&input).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, question)
+	c.JSON(http.StatusCreated, input)
 }
 
 func UpdateQuestion(c *gin.Context) {

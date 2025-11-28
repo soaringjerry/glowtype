@@ -63,6 +63,11 @@ jobs:
           cd frontend
           npm ci
 
+      - name: Check i18n translations
+        run: |
+          cd frontend
+          npm run check:i18n
+
       - name: Lint
         run: |
           cd frontend
