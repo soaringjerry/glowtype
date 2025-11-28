@@ -154,7 +154,11 @@
     "itemsFound": "Found {{count}} dimensions to import",
     "importSuccessTitle": "Import Successful",
     "importFailedTitle": "Import Failed",
-    "importStats": "Created: {{created}}, Updated: {{updated}}"
+    "importStats": "Created: {{created}}, Updated: {{updated}}",
+    "selectFile": "Select File",
+    "clickToSelectFile": "Click to select a JSON file",
+    "invalidJsonFormat": "Invalid JSON format",
+    "jsonParseError": "JSON parse error"
   },
   "questions": {
     "title": "Quiz Questions",
@@ -193,7 +197,11 @@
     "itemsFound": "Found {{count}} questions to import",
     "importSuccessTitle": "Import Successful",
     "importFailedTitle": "Import Failed",
-    "importStats": "Created: {{created}}, Updated: {{updated}}"
+    "importStats": "Created: {{created}}, Updated: {{updated}}",
+    "selectFile": "Select File",
+    "clickToSelectFile": "Click to select a JSON file",
+    "invalidJsonFormat": "Invalid JSON format",
+    "jsonParseError": "JSON parse error"
   },
   "glowtypes": {
     "title": "Glowtypes",
@@ -298,7 +306,11 @@
     "itemsFound": "Found {{count}} rules to import",
     "importSuccessTitle": "Import Successful",
     "importFailedTitle": "Import Failed",
-    "importStats": "Created: {{created}}, Updated: {{updated}}"
+    "importStats": "Created: {{created}}, Updated: {{updated}}",
+    "selectFile": "Select File",
+    "clickToSelectFile": "Click to select a JSON file",
+    "invalidJsonFormat": "Invalid JSON format",
+    "jsonParseError": "JSON parse error"
   },
   "debugger": {
     "title": "Rule Debugger",
@@ -433,6 +445,7 @@
     "refresh": "Refresh",
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "reset": "Reset",
     "resetToDefaults": "Reset to defaults",
     "confirmReset": "Are you sure you want to reset to defaults? This will delete all current data and restore the original settings.",
