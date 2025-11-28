@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -15,6 +17,69 @@ import (
 	"github.com/soaringjerry/glowtype/internal/services"
 	"gorm.io/gorm"
 )
+
+const (
+	maxAuditBodyBytes     = 8 * 1024
+	maxAuditResponseBytes = 4 * 1024
+	maxAuditString        = 1024
+	// Stop reading bodies that are clearly oversized for audit logging to avoid memory churn.
+	maxAuditCaptureBytes = 2 * 1024 * 1024
+)
+
+type Permission string
+
+const (
+	PermManageAdmins Permission = "admin.manage"
+	PermAuditView    Permission = "audit.view"
+	PermDimensions   Permission = "dimensions.write"
+	PermQuestions    Permission = "questions.write"
+	PermRules        Permission = "rules.write"
+	PermGlowtypes    Permission = "glowtypes.write"
+	PermPrompts      Permission = "prompts.write"
+	PermContent      Permission = "content.write"
+	PermStatsView    Permission = "stats.view"
+	PermResultsView  Permission = "results.view"
+	PermResetData    Permission = "data.reset"
+)
+
+var rolePermissions = map[string]map[Permission]struct{}{
+	database.AdminRoleStandard: permissionSet(
+		PermDimensions,
+		PermQuestions,
+		PermRules,
+		PermGlowtypes,
+		PermPrompts,
+		PermContent,
+		PermStatsView,
+		PermResultsView,
+	),
+	database.AdminRoleContent: permissionSet(
+		PermContent,
+		PermStatsView,
+	),
+	database.AdminRoleData: permissionSet(
+		PermDimensions,
+		PermQuestions,
+		PermRules,
+		PermGlowtypes,
+		PermPrompts,
+		PermStatsView,
+		PermResultsView,
+	),
+	database.AdminRoleAnalyst: permissionSet(
+		PermStatsView,
+		PermResultsView,
+		PermAuditView,
+	),
+}
+
+func permissionSet(perms ...Permission) map[Permission]struct{} {
+	set := make(map[Permission]struct{}, len(perms))
+	for _, p := range perms {
+		set[p] = struct{}{}
+	}
+	return set
+}
 
 // AdminAuthMiddleware validates admin tokens and loads the user into context.
 func AdminAuthMiddleware() gin.HandlerFunc {
@@ -52,6 +117,12 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 func AdminAuditMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
+
+		reqSnapshot := captureAuditRequest(c)
+
+		recorder := newAuditResponseRecorder(c.Writer, maxAuditResponseBytes)
+		c.Writer = recorder
+
 		c.Next()
 
 		admin, ok := getAdminFromContext(c)
@@ -65,12 +136,39 @@ func AdminAuditMiddleware() gin.HandlerFunc {
 		}
 
 		payload := map[string]any{
-			"durationMs": time.Since(start).Milliseconds(),
-			"status":     c.Writer.Status(),
+			"durationMs":  time.Since(start).Milliseconds(),
+			"status":      c.Writer.Status(),
+			"adminRole":   admin.Role,
+			"ip":          c.ClientIP(),
+			"userAgent":   c.Request.UserAgent(),
+			"requestedAt": start.UTC().Format(time.RFC3339Nano),
+		}
+
+		if len(reqSnapshot.PathParams) > 0 {
+			payload["pathParams"] = reqSnapshot.PathParams
+		}
+		if len(reqSnapshot.Query) > 0 {
+			payload["query"] = reqSnapshot.Query
+		}
+		if reqSnapshot.Body != nil {
+			payload["requestBody"] = reqSnapshot.Body
+		}
+		if reqSnapshot.BodyTruncated {
+			payload["requestBodyTruncated"] = true
+		}
+
+		if sample := recorder.Sample(); sample != "" {
+			payload["responseSample"] = sample
+			if recorder.Truncated() {
+				payload["responseSampleTruncated"] = true
+			}
 		}
 		if extra, ok := c.Get("auditMetadata"); ok {
 			if meta, ok := extra.(map[string]any); ok {
 				for k, v := range meta {
+					if _, exists := payload[k]; exists {
+						continue
+					}
 					payload[k] = v
 				}
 			}
@@ -100,6 +198,25 @@ func RequireSuperAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		admin, ok := getAdminFromContext(c)
 		if !ok || admin.Role != database.AdminRoleSuper {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
+			return
+		}
+		c.Next()
+	}
+}
+
+// RequirePermission enforces RBAC for admin routes. superadmin bypasses checks.
+func RequirePermission(perms ...Permission) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		admin, ok := getAdminFromContext(c)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		for _, p := range perms {
+			if roleHasPermission(admin.Role, p) {
+				continue
+			}
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 			return
 		}
@@ -244,7 +361,7 @@ func CreateAdminUser(c *gin.Context) {
 	if role == "" {
 		role = database.AdminRoleStandard
 	}
-	if role != database.AdminRoleStandard && role != database.AdminRoleSuper {
+	if !isValidAdminRole(role) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
 		return
 	}
@@ -317,6 +434,218 @@ func getAdminFromContext(c *gin.Context) (database.AdminUser, bool) {
 	}
 	admin, ok := adminVal.(database.AdminUser)
 	return admin, ok
+}
+
+func roleHasPermission(role string, perm Permission) bool {
+	if role == database.AdminRoleSuper {
+		return true
+	}
+	allowed, ok := rolePermissions[role]
+	if !ok {
+		return false
+	}
+	_, ok = allowed[perm]
+	return ok
+}
+
+func isValidAdminRole(role string) bool {
+	switch role {
+	case database.AdminRoleSuper,
+		database.AdminRoleStandard,
+		database.AdminRoleContent,
+		database.AdminRoleData,
+		database.AdminRoleAnalyst:
+		return true
+	default:
+		return false
+	}
+}
+
+type auditRequestContext struct {
+	PathParams    map[string]string
+	Query         map[string]any
+	Body          any
+	BodyTruncated bool
+}
+
+func captureAuditRequest(c *gin.Context) auditRequestContext {
+	ctx := auditRequestContext{
+		PathParams: map[string]string{},
+	}
+
+	for _, param := range c.Params {
+		key := strings.ToLower(param.Key)
+		if isSensitiveKey(key) {
+			ctx.PathParams[param.Key] = "[redacted]"
+			continue
+		}
+		ctx.PathParams[param.Key] = param.Value
+	}
+	if len(ctx.PathParams) == 0 {
+		ctx.PathParams = nil
+	}
+
+	if c.Request != nil {
+		query := c.Request.URL.Query()
+		if len(query) > 0 {
+			ctx.Query = make(map[string]any, len(query))
+			for k, vals := range query {
+				if isSensitiveKey(strings.ToLower(k)) {
+					ctx.Query[k] = "[redacted]"
+					continue
+				}
+				if len(vals) == 1 {
+					ctx.Query[k] = truncateForAudit(vals[0], maxAuditString)
+					continue
+				}
+				items := make([]string, len(vals))
+				for i, v := range vals {
+					items[i] = truncateForAudit(v, maxAuditString)
+				}
+				ctx.Query[k] = items
+			}
+		}
+	}
+
+	body, truncated := captureRequestBody(c)
+	ctx.Body = body
+	ctx.BodyTruncated = truncated
+
+	return ctx
+}
+
+func captureRequestBody(c *gin.Context) (any, bool) {
+	if c.Request == nil || c.Request.Body == nil || !shouldLogBody(c.Request.Method) {
+		return nil, false
+	}
+
+	if c.Request.ContentLength > maxAuditCaptureBytes && c.Request.ContentLength != -1 {
+		return fmt.Sprintf("[skipped logging body larger than %d bytes]", maxAuditCaptureBytes), true
+	}
+
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return "[unreadable body]", false
+	}
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	truncated := len(bodyBytes) > maxAuditBodyBytes
+	loggableBytes := bodyBytes
+	if truncated {
+		loggableBytes = bodyBytes[:maxAuditBodyBytes]
+	}
+
+	if len(bytes.TrimSpace(loggableBytes)) == 0 {
+		return nil, truncated
+	}
+
+	var obj any
+	if err := json.Unmarshal(loggableBytes, &obj); err == nil {
+		return sanitizeAuditValue(obj), truncated
+	}
+
+	return truncateForAudit(string(loggableBytes), maxAuditString), truncated
+}
+
+func shouldLogBody(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return false
+	default:
+		return true
+	}
+}
+
+type auditResponseRecorder struct {
+	gin.ResponseWriter
+	buf       bytes.Buffer
+	limit     int
+	truncated bool
+}
+
+func newAuditResponseRecorder(writer gin.ResponseWriter, limit int) *auditResponseRecorder {
+	return &auditResponseRecorder{
+		ResponseWriter: writer,
+		limit:          limit,
+	}
+}
+
+func (r *auditResponseRecorder) Write(b []byte) (int, error) {
+	if r.limit > 0 && r.buf.Len() < r.limit {
+		remaining := r.limit - r.buf.Len()
+		if len(b) > remaining {
+			r.buf.Write(b[:remaining])
+			r.truncated = true
+		} else {
+			r.buf.Write(b)
+		}
+	} else if r.limit > 0 {
+		r.truncated = true
+	}
+	return r.ResponseWriter.Write(b)
+}
+
+func (r *auditResponseRecorder) WriteString(s string) (int, error) {
+	return r.Write([]byte(s))
+}
+
+func (r *auditResponseRecorder) Sample() string {
+	return strings.TrimSpace(r.buf.String())
+}
+
+func (r *auditResponseRecorder) Truncated() bool {
+	return r.truncated
+}
+
+func sanitizeAuditValue(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		clean := make(map[string]any, len(v))
+		for k, val := range v {
+			if isSensitiveKey(strings.ToLower(k)) {
+				clean[k] = "[redacted]"
+				continue
+			}
+			clean[k] = sanitizeAuditValue(val)
+		}
+		return clean
+	case []any:
+		clean := make([]any, len(v))
+		for i, item := range v {
+			clean[i] = sanitizeAuditValue(item)
+		}
+		return clean
+	case string:
+		return truncateForAudit(v, maxAuditString)
+	default:
+		return v
+	}
+}
+
+var auditSensitiveKeys = []string{
+	"password",
+	"pass",
+	"pwd",
+	"token",
+	"secret",
+	"authorization",
+	"credential",
+}
+
+func isSensitiveKey(key string) bool {
+	for _, marker := range auditSensitiveKeys {
+		if strings.Contains(key, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func truncateForAudit(val string, limit int) string {
+	if limit <= 0 || len(val) <= limit {
+		return val
+	}
+	return val[:limit] + "...[truncated]"
 }
 
 func createAuditLog(admin database.AdminUser, action string, c *gin.Context, status int, metadata map[string]any) {
@@ -1287,14 +1616,14 @@ const (
 
 // ImportResult contains the result of an import operation
 type ImportResult struct {
-	Success  bool              `json:"success"`
-	Mode     ImportMode        `json:"mode"`
-	Total    int               `json:"total"`
-	Created  int               `json:"created"`
-	Updated  int               `json:"updated"`
-	Skipped  int               `json:"skipped"`
-	Errors   []ImportError     `json:"errors,omitempty"`
-	Warnings []string          `json:"warnings,omitempty"`
+	Success  bool          `json:"success"`
+	Mode     ImportMode    `json:"mode"`
+	Total    int           `json:"total"`
+	Created  int           `json:"created"`
+	Updated  int           `json:"updated"`
+	Skipped  int           `json:"skipped"`
+	Errors   []ImportError `json:"errors,omitempty"`
+	Warnings []string      `json:"warnings,omitempty"`
 }
 
 // ImportError describes an error for a specific item
@@ -1306,12 +1635,12 @@ type ImportError struct {
 
 // QuestionImportItem represents a question in import format
 type QuestionImportItem struct {
-	QuestionID         string             `json:"questionId"`
-	Order              int                `json:"order"`
-	QuestionZH         string             `json:"questionZh"`
-	QuestionEN         string             `json:"questionEn"`
+	QuestionID         string                  `json:"questionId"`
+	Order              int                     `json:"order"`
+	QuestionZH         string                  `json:"questionZh"`
+	QuestionEN         string                  `json:"questionEn"`
 	Options            []database.OptionConfig `json:"options"`
-	PrimaryDimensionID *uint              `json:"primaryDimensionId,omitempty"`
+	PrimaryDimensionID *uint                   `json:"primaryDimensionId,omitempty"`
 }
 
 // ImportQuestions handles bulk question import with validation
@@ -1570,12 +1899,12 @@ func validateQuestionItem(item QuestionImportItem, index int, validDimKeys map[s
 
 // RuleImportItem represents a scoring rule in import format
 type RuleImportItem struct {
-	Name           string                    `json:"name"`
-	Description    string                    `json:"description,omitempty"`
-	Conditions     database.RuleConditions   `json:"conditions"`
-	ResultTypeCode string                    `json:"resultTypeCode"`
-	Priority       int                       `json:"priority"`
-	IsFallback     bool                      `json:"isFallback"`
+	Name           string                  `json:"name"`
+	Description    string                  `json:"description,omitempty"`
+	Conditions     database.RuleConditions `json:"conditions"`
+	ResultTypeCode string                  `json:"resultTypeCode"`
+	Priority       int                     `json:"priority"`
+	IsFallback     bool                    `json:"isFallback"`
 }
 
 // ImportRules handles bulk scoring rules import with validation

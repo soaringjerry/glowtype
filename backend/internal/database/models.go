@@ -188,8 +188,8 @@ type DimensionCondition struct {
 type QuizResultDB struct {
 	ID          uint   `gorm:"primaryKey" json:"id"`
 	TenantID    *uint  `gorm:"index" json:"tenantId"`
-	SessionID   string `gorm:"index;not null" json:"sessionId"`         // Anonymous session identifier
-	AnswersHash string `gorm:"index;size:64" json:"answersHash"`        // SHA256 hash for deduplication
+	SessionID   string `gorm:"index;not null" json:"sessionId"`  // Anonymous session identifier
+	AnswersHash string `gorm:"index;size:64" json:"answersHash"` // SHA256 hash for deduplication
 
 	// User's answers: [{"questionId": "q1", "optionIndex": 0, "optionValue": "introvert"}]
 	Answers datatypes.JSON `gorm:"type:json" json:"answers"`
@@ -278,7 +278,7 @@ type AIPromptDB struct {
 	TenantID    *uint  `gorm:"index" json:"tenantId"`
 	Key         string `gorm:"uniqueIndex:idx_tenant_prompt;not null" json:"key"`
 	Name        string `json:"name"`
-	Description string `json:"description"`                      // What this prompt is used for
+	Description string `json:"description"` // What this prompt is used for
 	Content     string `gorm:"type:text;not null" json:"content"`
 
 	Version  int  `gorm:"default:1" json:"version"`
@@ -377,6 +377,9 @@ func (GlowtypeStats) TableName() string {
 const (
 	AdminRoleSuper    = "superadmin"
 	AdminRoleStandard = "admin"
+	AdminRoleContent  = "content_admin"
+	AdminRoleData     = "data_admin"
+	AdminRoleAnalyst  = "analyst"
 )
 
 // AdminUser represents an authenticated admin account

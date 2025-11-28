@@ -150,6 +150,34 @@ backend/
 - **设备识别**：从 User-Agent 提取设备类型（mobile/desktop/tablet）
 - **时间粒度**：仅记录小时级别（0-23）
 
+### 2.7 管理操作审计 & 权限建议
+
+#### 审计日志（`admin_audit_logs`）
+- 记录字段：`adminId`, `username`, `action`（如 `PUT /api/v1/admin/chapters/:id`）、`method`, `path`, `statusCode`, `ip`, `metadata`（JSON）、`createdAt`
+- `metadata` 现包含：
+  - `requestedAt`, `durationMs`, `adminRole`, `ip`, `userAgent`
+  - `pathParams`, `query`（敏感键如 password/token/secret 会被 `[redacted]`）
+  - `requestBody`（JSON 自动脱敏 + 8KB 截断；>2MB 直接跳过并标记 `requestBodyTruncated`）
+  - `responseSample`（截取前 4KB，超限标记 `responseSampleTruncated`）
+  - 业务 handler 可附加 `auditMetadata`（同名键不会覆盖上述核心字段）
+- 作用：明确“谁、在什么时间、从哪里、对哪个资源、做了什么、结果怎样”，方便溯源误操作。
+
+#### RBAC 细化（建议）
+- 现状：仅区分 `superadmin` 与 `admin` 两级；越权与误操作风险仍存在。
+- 已落地的 RBAC 中间件（代码：`handlers.RequirePermission` + `rolePermissions`），角色 → 权限矩阵：
+
+| 角色 | 权限 |
+| ---- | ---- |
+| `superadmin` | 全部 |
+| `admin` | `dimensions.write`, `questions.write`, `rules.write`, `glowtypes.write`, `prompts.write`, `content.write`, `stats.view`, `results.view` |
+| `content_admin` | `content.write`, `stats.view` |
+| `data_admin` | `dimensions.write`, `questions.write`, `rules.write`, `glowtypes.write`, `prompts.write`, `stats.view`, `results.view` |
+| `analyst` | `stats.view`, `results.view`, `audit.view` |
+
+- 路由权限绑定（节选）：账号管理 `admin.manage`；审计 `audit.view`；题库/规则/类型/文案 CRUD 分别绑定对应 `*.write`；统计 `stats.view`；结果 `results.view`；默认数据重置 `data.reset`（仅 superadmin）。
+- 如需拓展更细粒度权限，可扩展 `rolePermissions` 映射或迁移到数据库表（`admin_roles`, `admin_permissions`, `admin_role_permissions`, `admin_user_roles`）。
+- 配合 UI：在管理后台新增“仅查看”模式和危险操作二次确认；表单提交时将当前角色写入 `auditMetadata` 便于审计。
+
 ---
 
 ## 3. 前端（frontend/）

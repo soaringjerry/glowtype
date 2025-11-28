@@ -82,84 +82,122 @@ func New(cfg config.Config) *gin.Engine {
 	{
 		admin.GET("/me", handlers.GetAdminProfile)
 
-		// Admin user management & audit (super admin only)
-		super := admin.Group("/")
-		super.Use(handlers.RequireSuperAdmin())
+		// Admin user management
+		adminUsers := admin.Group("/")
+		adminUsers.Use(handlers.RequirePermission(handlers.PermManageAdmins))
 		{
-			super.GET("/users", handlers.ListAdminUsers)
-			super.POST("/users", handlers.CreateAdminUser)
-			super.GET("/audit", handlers.ListAuditLogs)
+			adminUsers.GET("/users", handlers.ListAdminUsers)
+			adminUsers.POST("/users", handlers.CreateAdminUser)
 		}
 
+		// Audit
+		adminAudit := admin.Group("/")
+		adminAudit.Use(handlers.RequirePermission(handlers.PermAuditView))
+		adminAudit.GET("/audit", handlers.ListAuditLogs)
+
 		// Trait Dimensions CRUD
-		admin.GET("/dimensions", handlers.ListDimensions)
-		admin.POST("/dimensions", handlers.CreateDimension)
-		admin.PUT("/dimensions/:id", handlers.UpdateDimension)
-		admin.DELETE("/dimensions/:id", handlers.DeleteDimension)
-		admin.POST("/dimensions/import", handlers.ImportDimensions)
-		admin.GET("/dimensions/export", handlers.ExportDimensions)
+		dimensions := admin.Group("/")
+		dimensions.Use(handlers.RequirePermission(handlers.PermDimensions))
+		{
+			dimensions.GET("/dimensions", handlers.ListDimensions)
+			dimensions.POST("/dimensions", handlers.CreateDimension)
+			dimensions.PUT("/dimensions/:id", handlers.UpdateDimension)
+			dimensions.DELETE("/dimensions/:id", handlers.DeleteDimension)
+			dimensions.POST("/dimensions/import", handlers.ImportDimensions)
+			dimensions.GET("/dimensions/export", handlers.ExportDimensions)
+		}
 
 		// Quiz Questions CRUD
-		admin.GET("/questions", handlers.ListQuestions)
-		admin.POST("/questions", handlers.CreateQuestion)
-		admin.PUT("/questions/:id", handlers.UpdateQuestion)
-		admin.DELETE("/questions/:id", handlers.DeleteQuestion)
-		admin.POST("/questions/import", handlers.ImportQuestions)
+		questions := admin.Group("/")
+		questions.Use(handlers.RequirePermission(handlers.PermQuestions))
+		{
+			questions.GET("/questions", handlers.ListQuestions)
+			questions.POST("/questions", handlers.CreateQuestion)
+			questions.PUT("/questions/:id", handlers.UpdateQuestion)
+			questions.DELETE("/questions/:id", handlers.DeleteQuestion)
+			questions.POST("/questions/import", handlers.ImportQuestions)
+		}
 
 		// Glowtypes CRUD
-		admin.GET("/glowtypes", handlers.ListGlowtypes)
-		admin.GET("/glowtypes/:id", handlers.GetGlowtypeWithI18N)
-		admin.POST("/glowtypes", handlers.CreateGlowtype)
-		admin.PUT("/glowtypes/:id", handlers.UpdateGlowtype)
-		admin.DELETE("/glowtypes/:id", handlers.DeleteGlowtype)
+		glowtypes := admin.Group("/")
+		glowtypes.Use(handlers.RequirePermission(handlers.PermGlowtypes))
+		{
+			glowtypes.GET("/glowtypes", handlers.ListGlowtypes)
+			glowtypes.GET("/glowtypes/:id", handlers.GetGlowtypeWithI18N)
+			glowtypes.POST("/glowtypes", handlers.CreateGlowtype)
+			glowtypes.PUT("/glowtypes/:id", handlers.UpdateGlowtype)
+			glowtypes.DELETE("/glowtypes/:id", handlers.DeleteGlowtype)
 
-		// Glowtype I18N
-		admin.POST("/glowtypes/i18n", handlers.CreateGlowtypeI18N)
-		admin.PUT("/glowtypes/i18n/:id", handlers.UpdateGlowtypeI18N)
+			// Glowtype I18N
+			glowtypes.POST("/glowtypes/i18n", handlers.CreateGlowtypeI18N)
+			glowtypes.PUT("/glowtypes/i18n/:id", handlers.UpdateGlowtypeI18N)
+		}
 
 		// Scoring Rules CRUD
-		admin.GET("/rules", handlers.ListRules)
-		admin.POST("/rules", handlers.CreateRule)
-		admin.PUT("/rules/:id", handlers.UpdateRule)
-		admin.DELETE("/rules/:id", handlers.DeleteRule)
-		admin.POST("/rules/import", handlers.ImportRules)
-		admin.GET("/rules/export", handlers.ExportRules)
+		rules := admin.Group("/")
+		rules.Use(handlers.RequirePermission(handlers.PermRules))
+		{
+			rules.GET("/rules", handlers.ListRules)
+			rules.POST("/rules", handlers.CreateRule)
+			rules.PUT("/rules/:id", handlers.UpdateRule)
+			rules.DELETE("/rules/:id", handlers.DeleteRule)
+			rules.POST("/rules/import", handlers.ImportRules)
+			rules.GET("/rules/export", handlers.ExportRules)
 
-		// Rule Debugging
-		admin.POST("/rules/debug", handlers.DebugRules)
-		admin.GET("/rules/validate", handlers.ValidateRules)
+			// Rule Debugging
+			rules.POST("/rules/debug", handlers.DebugRules)
+			rules.GET("/rules/validate", handlers.ValidateRules)
+		}
 
 		// AI Prompts (fixed slots - can update/reset but not create/delete)
-		admin.GET("/prompts", handlers.ListPrompts)
-		admin.PUT("/prompts/:id", handlers.UpdatePrompt)
-		admin.POST("/prompts/:key/reset", handlers.ResetPrompt)
+		prompts := admin.Group("/")
+		prompts.Use(handlers.RequirePermission(handlers.PermPrompts))
+		{
+			prompts.GET("/prompts", handlers.ListPrompts)
+			prompts.PUT("/prompts/:id", handlers.UpdatePrompt)
+			prompts.POST("/prompts/:key/reset", handlers.ResetPrompt)
+		}
 
 		// Statistics
-		admin.GET("/stats/overview", handlers.GetStatsOverview)
-		admin.GET("/stats/daily", handlers.GetDailyStats)
-		admin.GET("/stats/glowtypes", handlers.GetGlowtypeDistribution)
-		admin.GET("/stats/enhanced", handlers.GetEnhancedStatsHandler)
+		stats := admin.Group("/")
+		stats.Use(handlers.RequirePermission(handlers.PermStatsView))
+		{
+			stats.GET("/stats/overview", handlers.GetStatsOverview)
+			stats.GET("/stats/daily", handlers.GetDailyStats)
+			stats.GET("/stats/glowtypes", handlers.GetGlowtypeDistribution)
+			stats.GET("/stats/enhanced", handlers.GetEnhancedStatsHandler)
+		}
 
 		// Quiz Results
-		admin.GET("/results", handlers.ListQuizResults)
+		results := admin.Group("/")
+		results.Use(handlers.RequirePermission(handlers.PermResultsView))
+		results.GET("/results", handlers.ListQuizResults)
 
 		// Glowpedia (光签)
-		admin.GET("/chapters", handlers.ListChapters)
-		admin.POST("/chapters", handlers.CreateChapter)
-		admin.PUT("/chapters/:id", handlers.UpdateChapter)
-		admin.DELETE("/chapters/:id", handlers.DeleteChapter)
-		admin.GET("/glowsticks", handlers.ListGlowSticks)
-		admin.POST("/glowsticks", handlers.CreateGlowStick)
-		admin.PUT("/glowsticks/:id", handlers.UpdateGlowStick)
-		admin.DELETE("/glowsticks/:id", handlers.DeleteGlowStick)
+		content := admin.Group("/")
+		content.Use(handlers.RequirePermission(handlers.PermContent))
+		{
+			content.GET("/chapters", handlers.ListChapters)
+			content.POST("/chapters", handlers.CreateChapter)
+			content.PUT("/chapters/:id", handlers.UpdateChapter)
+			content.DELETE("/chapters/:id", handlers.DeleteChapter)
+			content.GET("/glowsticks", handlers.ListGlowSticks)
+			content.POST("/glowsticks", handlers.CreateGlowStick)
+			content.PUT("/glowsticks/:id", handlers.UpdateGlowStick)
+			content.DELETE("/glowsticks/:id", handlers.DeleteGlowStick)
+		}
 
 		// Reset to Defaults
-		admin.POST("/dimensions/reset", handlers.ResetDimensionsHandler)
-		admin.POST("/questions/reset", handlers.ResetQuestionsHandler)
-		admin.POST("/glowtypes/reset", handlers.ResetGlowtypesHandler)
-		admin.POST("/rules/reset", handlers.ResetRulesHandler)
-		admin.POST("/prompts/reset-all", handlers.ResetPromptsHandler)
-		admin.POST("/glowpedia/reset", handlers.ResetGlowpediaHandler)
+		reset := admin.Group("/")
+		reset.Use(handlers.RequirePermission(handlers.PermResetData))
+		{
+			reset.POST("/dimensions/reset", handlers.ResetDimensionsHandler)
+			reset.POST("/questions/reset", handlers.ResetQuestionsHandler)
+			reset.POST("/glowtypes/reset", handlers.ResetGlowtypesHandler)
+			reset.POST("/rules/reset", handlers.ResetRulesHandler)
+			reset.POST("/prompts/reset-all", handlers.ResetPromptsHandler)
+			reset.POST("/glowpedia/reset", handlers.ResetGlowpediaHandler)
+		}
 	}
 
 	return r
