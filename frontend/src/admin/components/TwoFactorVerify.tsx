@@ -28,8 +28,15 @@ export const TwoFactorVerify: React.FC<TwoFactorVerifyProps> = ({
   };
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, useRecoveryCode ? 8 : 6);
-    setCode(value);
+    if (useRecoveryCode) {
+      // Recovery codes are alphanumeric (12 chars)
+      const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 12);
+      setCode(value);
+    } else {
+      // TOTP codes are 6 digits only
+      const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+      setCode(value);
+    }
   };
 
   return (
@@ -63,7 +70,7 @@ export const TwoFactorVerify: React.FC<TwoFactorVerifyProps> = ({
                   type="text"
                   value={code}
                   onChange={handleCodeChange}
-                  placeholder={useRecoveryCode ? 'XXXXXXXX' : '000000'}
+                  placeholder={useRecoveryCode ? 'XXXXXXXXXXXX' : '000000'}
                   className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-center text-2xl tracking-widest font-mono"
                   autoFocus
                   autoComplete="one-time-code"
@@ -107,7 +114,7 @@ export const TwoFactorVerify: React.FC<TwoFactorVerifyProps> = ({
 
             <button
               type="submit"
-              disabled={loading || code.length < (useRecoveryCode ? 8 : 6)}
+              disabled={loading || code.length < (useRecoveryCode ? 12 : 6)}
               className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center"
             >
               {loading ? (
