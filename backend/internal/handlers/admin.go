@@ -126,19 +126,27 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 		}
 
 		var user database.AdminUser
-		if err := database.GetDB().Where("id = ? AND is_active = ?", claims.AdminID, true).First(&user).Error; err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
-
-		// Ensure role is present even if legacy data is missing it
-		if user.Role == "" {
-			user.Role = database.AdminRoleStandard
-		}
-
-		c.Set("adminUser", user)
-		c.Next()
+	if err := database.GetDB().Where("id = ? AND is_active = ?", claims.AdminID, true).First(&user).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
 	}
+
+	// Ensure role is present even if legacy data is missing it
+	if user.Role == "" {
+		user.Role = database.AdminRoleStandard
+	}
+	if user.TokenVersion <= 0 {
+		user.TokenVersion = 1
+	}
+
+	if claims.Version != user.TokenVersion {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	c.Set("adminUser", user)
+	c.Next()
+}
 }
 
 // Require2FACompletionMiddleware blocks access to most admin endpoints until 2FA is enabled when required.

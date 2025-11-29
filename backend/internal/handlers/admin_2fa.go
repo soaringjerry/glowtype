@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"image/png"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,8 +34,69 @@ func Setup2FAHandler(c *gin.Context) {
 		return
 	}
 
+	var req struct {
+		CurrentCode string `json:"currentCode"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Reload user to get latest state
+	var user database.AdminUser
+	if err := database.GetDB().First(&user, admin.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load user"})
+		return
+	}
+
+	// Rate limit 2FA-sensitive actions
+	locked, unlockAt, err := services.IsLoginLocked(database.GetDB(), user.Username, c.ClientIP())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "2FA verification check failed"})
+		return
+	}
+	if locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":    "Too many attempts. Please try again later.",
+			"unlockAt": unlockAt,
+		})
+		return
+	}
+
+	// If user already has 2FA configured, require proof of possession before rotating secret
+	if user.TwoFactorEnabled || user.TwoFactorSecret != "" {
+		if strings.TrimSpace(req.CurrentCode) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Current 2FA code is required to change 2FA setup"})
+			return
+		}
+
+		secret, err := services.DecryptTOTPSecret(user.TwoFactorSecret)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify existing 2FA"})
+			return
+		}
+
+		valid := services.ValidateTOTP(secret, req.CurrentCode)
+		if !valid {
+			used, useErr := services.UseRecoveryCode(database.GetDB(), user.ID, req.CurrentCode)
+			if useErr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify existing 2FA"})
+				return
+			}
+			valid = used
+		}
+
+		if !valid {
+			_ = services.RegisterLoginFailure(database.GetDB(), user.Username, c.ClientIP())
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid current 2FA code"})
+			return
+		}
+
+		_ = services.RegisterLoginSuccess(database.GetDB(), user.Username, c.ClientIP())
+	}
+
 	// Generate new TOTP secret
-	key, err := services.GenerateTOTPSecret(admin.Username)
+	key, err := services.GenerateTOTPSecret(user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate 2FA secret"})
 		return
@@ -46,7 +110,7 @@ func Setup2FAHandler(c *gin.Context) {
 	}
 
 	// Store encrypted secret (but don't enable 2FA yet until verified)
-	if err := database.GetDB().Model(&admin).Update("two_factor_secret", encrypted).Error; err != nil {
+	if err := database.GetDB().Model(&user).Update("two_factor_secret", encrypted).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save 2FA secret"})
 		return
 	}
@@ -58,7 +122,7 @@ func Setup2FAHandler(c *gin.Context) {
 		"secret":  key.Secret(),
 		"qrCode":  qrURL,
 		"issuer":  key.Issuer(),
-		"account": admin.Username,
+		"account": user.Username,
 	})
 }
 
@@ -86,6 +150,19 @@ func Verify2FAHandler(c *gin.Context) {
 		return
 	}
 
+	locked, unlockAt, err := services.IsLoginLocked(database.GetDB(), user.Username, c.ClientIP())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "2FA verification check failed"})
+		return
+	}
+	if locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":    "Too many attempts. Please try again later.",
+			"unlockAt": unlockAt,
+		})
+		return
+	}
+
 	if user.TwoFactorSecret == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "2FA setup not started. Please call /2fa/setup first."})
 		return
@@ -100,9 +177,11 @@ func Verify2FAHandler(c *gin.Context) {
 
 	// Validate TOTP code
 	if !services.ValidateTOTP(secret, req.Code) {
+		_ = services.RegisterLoginFailure(database.GetDB(), user.Username, c.ClientIP())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code. Please try again."})
 		return
 	}
+	_ = services.RegisterLoginSuccess(database.GetDB(), user.Username, c.ClientIP())
 
 	// Generate recovery codes
 	plainCodes, hashedCodes, err := services.GenerateRecoveryCodes(10)
@@ -164,6 +243,19 @@ func Disable2FAHandler(c *gin.Context) {
 		return
 	}
 
+	locked, unlockAt, err := services.IsLoginLocked(database.GetDB(), user.Username, c.ClientIP())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "2FA verification check failed"})
+		return
+	}
+	if locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":    "Too many attempts. Please try again later.",
+			"unlockAt": unlockAt,
+		})
+		return
+	}
+
 	if !user.TwoFactorEnabled {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "2FA is not enabled"})
 		return
@@ -189,9 +281,11 @@ func Disable2FAHandler(c *gin.Context) {
 	}
 
 	if !valid {
+		_ = services.RegisterLoginFailure(database.GetDB(), user.Username, c.ClientIP())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code"})
 		return
 	}
+	_ = services.RegisterLoginSuccess(database.GetDB(), user.Username, c.ClientIP())
 
 	// Reset 2FA
 	if err := services.Reset2FA(database.GetDB(), user.ID); err != nil {
@@ -258,6 +352,19 @@ func RegenerateRecoveryCodesHandler(c *gin.Context) {
 		return
 	}
 
+	locked, unlockAt, err := services.IsLoginLocked(database.GetDB(), user.Username, c.ClientIP())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "2FA verification check failed"})
+		return
+	}
+	if locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":    "Too many attempts. Please try again later.",
+			"unlockAt": unlockAt,
+		})
+		return
+	}
+
 	if !user.TwoFactorEnabled {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "2FA is not enabled"})
 		return
@@ -271,9 +378,11 @@ func RegenerateRecoveryCodesHandler(c *gin.Context) {
 	}
 
 	if !services.ValidateTOTP(secret, req.Code) {
+		_ = services.RegisterLoginFailure(database.GetDB(), user.Username, c.ClientIP())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid verification code"})
 		return
 	}
+	_ = services.RegisterLoginSuccess(database.GetDB(), user.Username, c.ClientIP())
 
 	// Generate new recovery codes
 	plainCodes, hashedCodes, err := services.GenerateRecoveryCodes(10)
@@ -325,6 +434,19 @@ func Authenticate2FAHandler(c *gin.Context) {
 		return
 	}
 
+	locked, unlockAt, err := services.IsLoginLocked(database.GetDB(), user.Username, c.ClientIP())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "2FA verification check failed"})
+		return
+	}
+	if locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":    "Too many attempts. Please try again later.",
+			"unlockAt": unlockAt,
+		})
+		return
+	}
+
 	if !user.IsActive {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Account is disabled"})
 		return
@@ -352,6 +474,7 @@ func Authenticate2FAHandler(c *gin.Context) {
 	}
 
 	if !valid {
+		_ = services.RegisterLoginFailure(database.GetDB(), user.Username, c.ClientIP())
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid verification code"})
 		return
 	}

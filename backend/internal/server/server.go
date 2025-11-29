@@ -84,10 +84,10 @@ func New(cfg config.Config) *gin.Engine {
 	// 2FA authentication (no auth required, uses temporary 2FA token)
 	admin.POST("/2fa/authenticate", handlers.Authenticate2FAHandler)
 
-	admin.Use(handlers.AdminAuthMiddleware(), handlers.AdminAuditMiddleware())
+	admin.Use(handlers.AdminAuthMiddleware(), handlers.Require2FACompletionMiddleware(), handlers.AdminAuditMiddleware())
 	{
 		admin.GET("/me", handlers.GetAdminProfile)
-		admin.PUT("/me/password", handlers.ChangePasswordHandler) // Change password
+		admin.PUT("/me/password", handlers.ChangePasswordHandler)            // Change password
 		admin.GET("/permissions/templates", handlers.GetPermissionTemplates) // Available to all admins for UI
 
 		// 2FA management (requires auth)

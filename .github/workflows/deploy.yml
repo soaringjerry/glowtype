@@ -44,6 +44,47 @@ jobs:
           path: backend/coverage.out
           retention-days: 7
 
+  backend-security:
+    name: Backend Security Scan (${{ matrix.tool }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [gosec, govulncheck]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Install security tools
+        run: |
+          case "${{ matrix.tool }}" in
+            gosec)
+              go install github.com/securego/gosec/v2/cmd/gosec@latest
+              ;;
+            govulncheck)
+              go install golang.org/x/vuln/cmd/govulncheck@latest
+              ;;
+          esac
+
+      - name: Run ${{ matrix.tool }}
+        run: |
+          cd backend
+          case "${{ matrix.tool }}" in
+            gosec)
+              gosec ./...
+              ;;
+            govulncheck)
+              govulncheck ./...
+              ;;
+          esac
+
   frontend-lint:
     name: Frontend Lint & Type Check
     runs-on: ubuntu-latest
@@ -110,6 +151,30 @@ jobs:
           name: frontend-dist
           path: frontend/dist
           retention-days: 1
+
+  frontend-security:
+    name: Frontend Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: npm audit (high+ production)
+        run: |
+          cd frontend
+          npm audit --omit=dev --audit-level=high
 
   # ==================== DOCKER BUILD (Parallel, after CI) ====================
 
