@@ -124,6 +124,9 @@ export const TwoFactorVerify: React.FC<TwoFactorVerifyProps> = ({
               onClick={() => {
                 setUseRecoveryCode(!useRecoveryCode);
                 setCode('');
+                // Reset trust device state when switching modes
+                setTrustDevice(false);
+                setDeviceName('');
               }}
               className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
             >

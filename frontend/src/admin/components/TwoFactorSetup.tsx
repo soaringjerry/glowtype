@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   ShieldCheck,
   KeyRound,
@@ -43,11 +43,23 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
   const [codesRevealed, setCodesRevealed] = useState(false);
   const [codesSaved, setCodesSaved] = useState(false);
 
+  // Track timers for cleanup on unmount
+  const secretTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const codesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (secretTimerRef.current) clearTimeout(secretTimerRef.current);
+      if (codesTimerRef.current) clearTimeout(codesTimerRef.current);
+    };
+  }, []);
+
   const handleCopySecret = async () => {
     try {
       await navigator.clipboard.writeText(secret);
       setCopiedSecret(true);
-      setTimeout(() => setCopiedSecret(false), 2000);
+      if (secretTimerRef.current) clearTimeout(secretTimerRef.current);
+      secretTimerRef.current = setTimeout(() => setCopiedSecret(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
@@ -58,7 +70,8 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       const codesText = recoveryCodes.join('\n');
       await navigator.clipboard.writeText(codesText);
       setCopiedCodes(true);
-      setTimeout(() => setCopiedCodes(false), 2000);
+      if (codesTimerRef.current) clearTimeout(codesTimerRef.current);
+      codesTimerRef.current = setTimeout(() => setCopiedCodes(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
