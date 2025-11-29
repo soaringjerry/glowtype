@@ -281,6 +281,13 @@ export interface SegmentData {
   byGlowtype: SegmentItem[];
 }
 
+// Shared constants from backend for consistency
+export interface AnalyticsConstants {
+  minReliabilitySample: number;
+  minCorrelationSample: number;
+  minValiditySample: number;
+}
+
 export interface AnalyticsResponse {
   summary: AnalyticsSummary;
   dimensionStats: Record<string, DimensionStat>;
@@ -288,6 +295,7 @@ export interface AnalyticsResponse {
   trends: TrendData;
   segments: SegmentData;
   correlationMatrix: Record<string, number>;
+  constants: AnalyticsConstants;
 }
 
 export interface DeviceStat {

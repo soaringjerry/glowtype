@@ -522,3 +522,39 @@ func GetAISettings(db *gorm.DB) (*AISettings, error) {
 	}
 	return &settings, nil
 }
+
+// ============ Analytics Cache ============
+
+// AnalyticsCacheDB stores pre-computed analytics results for performance
+type AnalyticsCacheDB struct {
+	ID            uint           `gorm:"primaryKey" json:"id"`
+	TenantID      *uint          `gorm:"index" json:"tenantId"`
+	CacheKey      string         `gorm:"uniqueIndex;not null" json:"cacheKey"` // e.g., "analytics:30d:tenant_1"
+	DateRangeType string         `gorm:"index" json:"dateRangeType"`           // "30d", "90d", "all", "custom"
+	StartDate     string         `json:"startDate"`
+	EndDate       string         `json:"endDate"`
+
+	// Cached computation results (JSON)
+	SummaryData       datatypes.JSON `gorm:"type:json" json:"summaryData"`
+	DimensionStats    datatypes.JSON `gorm:"type:json" json:"dimensionStats"`
+	ReliabilityStats  datatypes.JSON `gorm:"type:json" json:"reliabilityStats"`
+	ValidityStats     datatypes.JSON `gorm:"type:json" json:"validityStats"`     // For future validity analysis
+	AdvancedStats     datatypes.JSON `gorm:"type:json" json:"advancedStats"`     // Skewness, kurtosis, etc.
+	TrendData         datatypes.JSON `gorm:"type:json" json:"trendData"`
+	SegmentData       datatypes.JSON `gorm:"type:json" json:"segmentData"`
+	CorrelationMatrix datatypes.JSON `gorm:"type:json" json:"correlationMatrix"`
+
+	// Cache metadata
+	SampleCount  int       `json:"sampleCount"`
+	LastResultID uint      `gorm:"index" json:"lastResultId"` // For incremental updates
+	ComputedAt   time.Time `gorm:"index" json:"computedAt"`
+	ExpiresAt    time.Time `gorm:"index" json:"expiresAt"`
+	IsStale      bool      `gorm:"default:false" json:"isStale"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (AnalyticsCacheDB) TableName() string {
+	return "analytics_cache"
+}

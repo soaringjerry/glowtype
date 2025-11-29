@@ -62,6 +62,7 @@ func InitDB(cfg config.Config) *gorm.DB {
 		&AdminRecoveryCode{},
 		&AdminTrustedDevice{},
 		&AISettings{},
+		&AnalyticsCacheDB{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)

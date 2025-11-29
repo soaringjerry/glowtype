@@ -195,6 +195,11 @@ func New(cfg config.Config) *gin.Engine {
 			stats.GET("/stats/glowtypes", handlers.GetGlowtypeDistribution)
 			stats.GET("/stats/enhanced", handlers.GetEnhancedStatsHandler)
 			stats.GET("/stats/analytics", handlers.GetAnalyticsHandler)
+
+			// Analytics AI Chat (uses same permission as stats)
+			analyticsChatHandler := handlers.NewAnalyticsChatHandler(chatService)
+			stats.POST("/analytics/chat", analyticsChatHandler.Chat)
+			stats.POST("/analytics/quick-question", analyticsChatHandler.QuickQuestion)
 		}
 
 		// Quiz Results

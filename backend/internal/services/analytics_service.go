@@ -13,17 +13,22 @@ import (
 
 // AnalyticsService handles advanced statistical analysis for quiz data
 type AnalyticsService struct {
-	db *gorm.DB
+	db           *gorm.DB
+	cacheService *AnalyticsCacheService
 }
 
 const (
 	minReliabilitySample = 30
 	minCorrelationSample = 15
+	minValiditySample    = 100 // Minimum sample for validity analysis
 )
 
 // NewAnalyticsService creates a new analytics service
 func NewAnalyticsService(db *gorm.DB) *AnalyticsService {
-	return &AnalyticsService{db: db}
+	return &AnalyticsService{
+		db:           db,
+		cacheService: NewAnalyticsCacheService(db),
+	}
 }
 
 // AnalyticsRequest contains parameters for analytics queries
@@ -34,6 +39,13 @@ type AnalyticsRequest struct {
 	TenantID  *uint
 }
 
+// AnalyticsConstants contains shared constants for frontend/backend consistency
+type AnalyticsConstants struct {
+	MinReliabilitySample int `json:"minReliabilitySample"`
+	MinCorrelationSample int `json:"minCorrelationSample"`
+	MinValiditySample    int `json:"minValiditySample"`
+}
+
 // AnalyticsResponse contains the full analytics data
 type AnalyticsResponse struct {
 	Summary           AnalyticsSummary         `json:"summary"`
@@ -42,6 +54,7 @@ type AnalyticsResponse struct {
 	Trends            TrendData                `json:"trends"`
 	Segments          SegmentData              `json:"segments"`
 	CorrelationMatrix map[string]float64       `json:"correlationMatrix"`
+	Constants         AnalyticsConstants       `json:"constants"`
 }
 
 // AnalyticsSummary provides overview metrics
@@ -125,8 +138,25 @@ type SegmentItem struct {
 	Percent float64 `json:"percent"`
 }
 
-// GetAnalytics calculates comprehensive analytics data
+// GetAnalytics calculates comprehensive analytics data with caching support
 func (s *AnalyticsService) GetAnalytics(req AnalyticsRequest) (*AnalyticsResponse, error) {
+	// Try to get from cache first
+	if cache, err := s.cacheService.GetCached(req); err == nil {
+		// Cache hit - unmarshal and return
+		return s.cacheService.UnmarshalCache(cache)
+	}
+
+	// Cache miss - compute analytics
+	return s.computeAndCacheAnalytics(req)
+}
+
+// GetAnalyticsForceRefresh bypasses cache and forces recomputation
+func (s *AnalyticsService) GetAnalyticsForceRefresh(req AnalyticsRequest) (*AnalyticsResponse, error) {
+	return s.computeAndCacheAnalytics(req)
+}
+
+// computeAndCacheAnalytics performs the actual computation and saves to cache
+func (s *AnalyticsService) computeAndCacheAnalytics(req AnalyticsRequest) (*AnalyticsResponse, error) {
 	startDate, endDate := s.resolveDateRange(req)
 
 	// Build base query
@@ -143,6 +173,12 @@ func (s *AnalyticsService) GetAnalytics(req AnalyticsRequest) (*AnalyticsRespons
 	var results []database.QuizResultDB
 	if err := query.Find(&results).Error; err != nil {
 		return nil, err
+	}
+
+	// Get last result ID for cache tracking
+	var lastResultID uint
+	if len(results) > 0 {
+		lastResultID = results[len(results)-1].ID
 	}
 
 	// Get question count
@@ -162,7 +198,7 @@ func (s *AnalyticsService) GetAnalytics(req AnalyticsRequest) (*AnalyticsRespons
 	segments := s.calculateSegments(results)
 	correlationMatrix := s.calculateCorrelationMatrix(results)
 
-	return &AnalyticsResponse{
+	response := &AnalyticsResponse{
 		Summary: AnalyticsSummary{
 			TotalResponses: len(results),
 			DateRange: DateRange{
@@ -176,7 +212,24 @@ func (s *AnalyticsService) GetAnalytics(req AnalyticsRequest) (*AnalyticsRespons
 		Trends:            trends,
 		Segments:          segments,
 		CorrelationMatrix: correlationMatrix,
-	}, nil
+		Constants: AnalyticsConstants{
+			MinReliabilitySample: minReliabilitySample,
+			MinCorrelationSample: minCorrelationSample,
+			MinValiditySample:    minValiditySample,
+		},
+	}
+
+	// Save to cache asynchronously
+	go func() {
+		_ = s.cacheService.SaveCache(req, response, lastResultID)
+	}()
+
+	return response, nil
+}
+
+// InvalidateCache marks cache as stale for a tenant
+func (s *AnalyticsService) InvalidateCache(tenantID *uint) error {
+	return s.cacheService.MarkStale(tenantID)
 }
 
 // resolveDateRange converts preset or custom dates to actual date strings
@@ -431,22 +484,30 @@ func (s *AnalyticsService) calculateSplitHalfReliability(itemScores map[string][
 		return 0, 0
 	}
 
-	// Sort question IDs for consistent ordering
-	qIDs := make([]string, 0, len(itemScores))
-	for qID := range itemScores {
-		qIDs = append(qIDs, qID)
+	// CRITICAL FIX: First, filter to only include questions with complete responses
+	validQIDs := make([]string, 0, len(itemScores))
+	for qID, scores := range itemScores {
+		if len(scores) == n {
+			validQIDs = append(validQIDs, qID)
+		}
 	}
-	sort.Strings(qIDs)
 
-	// Split into odd/even halves
+	// Need at least 2 valid questions for split-half
+	if len(validQIDs) < 2 {
+		return 0, 0
+	}
+
+	// Sort for consistent ordering
+	sort.Strings(validQIDs)
+
+	// Split into odd/even halves based on sorted order
 	oddScores := make([]float64, n)
 	evenScores := make([]float64, n)
+	oddCount := 0
+	evenCount := 0
 
-	for i, qID := range qIDs {
+	for i, qID := range validQIDs {
 		scores := itemScores[qID]
-		if len(scores) != n {
-			continue
-		}
 		for j, score := range scores {
 			if i%2 == 0 {
 				evenScores[j] += score
@@ -454,15 +515,30 @@ func (s *AnalyticsService) calculateSplitHalfReliability(itemScores map[string][
 				oddScores[j] += score
 			}
 		}
+		if i%2 == 0 {
+			evenCount++
+		} else {
+			oddCount++
+		}
+	}
+
+	// Ensure both halves have items (at least 1 each)
+	if oddCount == 0 || evenCount == 0 {
+		return 0, 0
 	}
 
 	// Calculate correlation between halves
 	r := calculatePearsonCorrelation(oddScores, evenScores)
 
-	// Spearman-Brown correction: r_sb = 2r / (1 + r)
+	// Spearman-Brown correction: r_sb = 2r / (1 + |r|)
+	// Use absolute value to handle negative correlations correctly
 	spearmanBrown := 0.0
-	if r > -1 {
-		spearmanBrown = (2 * r) / (1 + r)
+	if r > -1 && r < 1 {
+		spearmanBrown = (2 * r) / (1 + math.Abs(r))
+	} else if r >= 1 {
+		spearmanBrown = 1.0
+	} else if r <= -1 {
+		spearmanBrown = -1.0
 	}
 
 	return round3(r), round3(spearmanBrown)
@@ -752,62 +828,106 @@ func calculateMedian(values []float64) float64 {
 	return sorted[n/2]
 }
 
+// calculateDistribution computes histogram using Freedman-Diaconis rule for optimal bin width
 func calculateDistribution(values []float64) []Distribution {
 	if len(values) == 0 {
 		return []Distribution{}
 	}
 
-	// Create bins from -6 to 6 with width 1
-	bins := make(map[string]int)
-	binLabels := []string{}
-	for i := -6; i <= 5; i++ {
-		label := ""
-		if i == -6 {
-			label = "< -5"
-		} else if i == 5 {
-			label = "> 4"
-		} else {
-			label = formatBin(i, i+1)
-		}
-		binLabels = append(binLabels, label)
-		bins[label] = 0
+	// Sort values for percentile calculation
+	sorted := make([]float64, len(values))
+	copy(sorted, values)
+	sort.Float64s(sorted)
+
+	n := float64(len(sorted))
+	minVal := sorted[0]
+	maxVal := sorted[len(sorted)-1]
+
+	// Handle edge case where all values are the same
+	if minVal == maxVal {
+		return []Distribution{{Bin: fmt.Sprintf("%.1f", minVal), Count: len(values)}}
 	}
 
-	// Count values in each bin
-	for _, v := range values {
+	// Calculate IQR using percentiles
+	q1 := percentileFromSorted(sorted, 25)
+	q3 := percentileFromSorted(sorted, 75)
+	iqr := q3 - q1
+
+	// Freedman-Diaconis rule: binWidth = 2 * IQR / n^(1/3)
+	var binWidth float64
+	if iqr > 0 {
+		binWidth = 2.0 * iqr / math.Pow(n, 1.0/3.0)
+	} else {
+		// Fallback: use range / 10 if IQR is 0
+		binWidth = (maxVal - minVal) / 10.0
+	}
+
+	// Calculate number of bins, constrained to [5, 15]
+	numBins := int(math.Ceil((maxVal - minVal) / binWidth))
+	if numBins < 5 {
+		numBins = 5
+	}
+	if numBins > 15 {
+		numBins = 15
+	}
+
+	// Recalculate actual bin width based on constrained numBins
+	actualBinWidth := (maxVal - minVal) / float64(numBins)
+
+	// Create bins and count values
+	result := make([]Distribution, numBins)
+	for i := 0; i < numBins; i++ {
+		low := minVal + float64(i)*actualBinWidth
+		high := low + actualBinWidth
+
+		// Format bin label
 		var label string
-		if v < -5 {
-			label = "< -5"
-		} else if v >= 5 {
-			label = "> 4"
+		if i == 0 {
+			label = fmt.Sprintf("< %.1f", high)
+		} else if i == numBins-1 {
+			label = fmt.Sprintf("≥ %.1f", low)
 		} else {
-			binIdx := int(math.Floor(v)) + 5 // -5 -> 0, -4 -> 1, etc.
-			if binIdx < 0 {
-				binIdx = 0
-			}
-			if binIdx >= len(binLabels)-1 {
-				binIdx = len(binLabels) - 2
-			}
-			label = binLabels[binIdx+1]
+			label = fmt.Sprintf("%.1f ~ %.1f", low, high)
 		}
-		bins[label]++
+		result[i] = Distribution{Bin: label, Count: 0}
 	}
 
-	// Convert to array
-	result := make([]Distribution, 0, len(binLabels))
-	for _, label := range binLabels {
-		result = append(result, Distribution{
-			Bin:   label,
-			Count: bins[label],
-		})
+	// Assign values to bins
+	for _, v := range values {
+		idx := int((v - minVal) / actualBinWidth)
+		// Handle edge case: value equals maxVal
+		if idx >= numBins {
+			idx = numBins - 1
+		}
+		if idx < 0 {
+			idx = 0
+		}
+		result[idx].Count++
 	}
 
 	return result
 }
 
-func formatBin(low, high int) string {
-	return fmt.Sprintf("%d to %d", low, high)
+// percentileFromSorted calculates percentile from a pre-sorted slice
+func percentileFromSorted(sorted []float64, p float64) float64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+	if len(sorted) == 1 {
+		return sorted[0]
+	}
+
+	// Linear interpolation method
+	rank := (p / 100.0) * float64(len(sorted)-1)
+	lower := int(math.Floor(rank))
+	upper := int(math.Ceil(rank))
+	if lower == upper {
+		return sorted[lower]
+	}
+	frac := rank - float64(lower)
+	return sorted[lower] + frac*(sorted[upper]-sorted[lower])
 }
+
 
 func calculatePearsonCorrelation(x, y []float64) float64 {
 	if len(x) != len(y) || len(x) < 2 {

@@ -16,9 +16,12 @@ import {
   Languages,
   Filter,
   Brain,
+  MessageCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { useAdminApi, type AnalyticsResponse, type AnalyticsRequest } from '../hooks/useAdmin';
 import { getApiBaseUrl } from '../../api/baseUrl';
+import AnalyticsChatPanel from './analytics/AnalyticsChatPanel';
 
 type PresetRange = '30d' | '90d' | 'all' | 'custom';
 type TrendView = 'daily' | 'weekly' | 'monthly';
@@ -34,7 +37,29 @@ export default function Analytics() {
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [selectedDimIndex, setSelectedDimIndex] = useState(0); // Tab state for histogram
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInitialQuestion, setChatInitialQuestion] = useState<string | undefined>();
+  const [chatCurrentView, setChatCurrentView] = useState('overview');
   const api = useAdminApi();
+
+  // Handler for quick question buttons
+  const openChatWithQuestion = (question: string, view: string) => {
+    setChatInitialQuestion(question);
+    setChatCurrentView(view);
+    setChatOpen(true);
+  };
+
+  // Handler for chat suggestion actions
+  const handleChatAction = (action: string) => {
+    const [type, target] = action.split(':');
+    if (type === 'scrollTo') {
+      const element = document.getElementById(target);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -56,10 +81,16 @@ export default function Analytics() {
   }, [preset, customStart, customEnd]);
 
   const isZh = i18n.language.startsWith('zh');
-  const minReliabilitySample = data?.reliability.minSampleSize ?? 30;
+  // Use constants from backend for consistency
+  const constants = data?.constants ?? {
+    minReliabilitySample: 30,
+    minCorrelationSample: 15,
+    minValiditySample: 100,
+  };
+  const minReliabilitySample = constants.minReliabilitySample;
+  const correlationSampleMin = constants.minCorrelationSample;
   const reliabilitySampleSize = data?.reliability.sampleSize ?? 0;
   const reliabilityReady = !!data && (data.reliability.hasSufficientSample ?? reliabilitySampleSize >= minReliabilitySample);
-  const correlationSampleMin = 15;
   const totalSamples = data?.summary.totalResponses ?? 0;
   const correlationReady = totalSamples >= correlationSampleMin;
   const dimensionReliabilityEntries = Object.entries((data?.reliability as any)?.byDimension ?? {});
@@ -326,15 +357,27 @@ Please provide actionable specific recommendations.`,
       {/* Dimension Stats & Reliability */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Dimension Statistics */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white" />
+        <div id="dimensions" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">{isZh ? '维度统计' : 'Dimension Statistics'}</h3>
+                <p className="text-sm text-gray-500">{isZh ? '各维度得分分布' : 'Score distribution by dimension'}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">{isZh ? '维度统计' : 'Dimension Statistics'}</h3>
-              <p className="text-sm text-gray-500">{isZh ? '各维度得分分布' : 'Score distribution by dimension'}</p>
-            </div>
+            <button
+              onClick={() => openChatWithQuestion(
+                isZh ? '请分析各维度的统计数据，均值、标准差、分布有什么特点？' : 'Please analyze the dimension statistics. What are the characteristics of the mean, standard deviation, and distribution?',
+                'dimensions'
+              )}
+              className="p-2 hover:bg-purple-50 rounded-lg transition-colors group"
+              title={isZh ? '询问AI关于维度统计' : 'Ask AI about dimensions'}
+            >
+              <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-purple-500" />
+            </button>
           </div>
 
           {dimEntries.length === 0 ? (
@@ -366,48 +409,97 @@ Please provide actionable specific recommendations.`,
             </div>
           )}
 
-          {/* Distribution Histogram for first dimension */}
+          {/* Distribution Histogram with Tab switching */}
           {dimEntries.length > 0 && (
             <div className="mt-6">
-              <p className="text-xs text-gray-500 mb-2">
-                {isZh ? `${dimEntries[0][0]} 分布直方图` : `${dimEntries[0][0]} Distribution`}
-              </p>
-              <div className="flex items-end gap-1 h-20">
-                {dimEntries[0][1].distribution.map((d, i) => {
-                  const maxCount = Math.max(...dimEntries[0][1].distribution.map((x) => x.count), 1);
-                  const height = (d.count / maxCount) * 100;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center">
-                      <div className="w-full bg-gray-100 rounded-sm overflow-hidden" style={{ height: '60px' }}>
-                        <div
-                          className="w-full bg-gradient-to-t from-purple-500 to-pink-400"
-                          style={{ height: `${height}%`, marginTop: `${100 - height}%` }}
-                        />
-                      </div>
-                      <span className="text-[8px] text-gray-400 mt-1 truncate w-full text-center">{d.bin}</span>
-                    </div>
-                  );
-                })}
+              {/* Dimension Tabs */}
+              <div className="flex space-x-1 rounded-xl bg-gray-100 p-1 mb-3">
+                {dimEntries.map(([dim], idx) => (
+                  <button
+                    key={dim}
+                    onClick={() => setSelectedDimIndex(idx)}
+                    className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-all ${
+                      selectedDimIndex === idx
+                        ? 'bg-white text-purple-600 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                    }`}
+                  >
+                    {dim}
+                  </button>
+                ))}
               </div>
+              {/* Histogram for selected dimension */}
+              {dimEntries[selectedDimIndex] && (
+                <>
+                  <p className="text-xs text-gray-500 mb-2">
+                    {isZh
+                      ? `${dimEntries[selectedDimIndex][0]} 分布直方图`
+                      : `${dimEntries[selectedDimIndex][0]} Distribution`}
+                  </p>
+                  <div className="flex items-end gap-1 h-20">
+                    {dimEntries[selectedDimIndex][1].distribution.map((d, i) => {
+                      const maxCount = Math.max(
+                        ...dimEntries[selectedDimIndex][1].distribution.map((x) => x.count),
+                        1
+                      );
+                      const height = (d.count / maxCount) * 100;
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center group">
+                          <div
+                            className="w-full bg-gray-100 rounded-sm overflow-hidden relative"
+                            style={{ height: '60px' }}
+                          >
+                            <div
+                              className="w-full bg-gradient-to-t from-purple-500 to-pink-400 absolute bottom-0 transition-all"
+                              style={{ height: `${height}%` }}
+                            />
+                            {/* Hover tooltip */}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-xs font-bold bg-white/90 px-1 rounded shadow-sm">
+                                {d.count}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[8px] text-gray-400 mt-1 truncate w-full text-center">
+                            {d.bin}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
 
         {/* Reliability Analysis */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-              <Calculator className="w-5 h-5 text-white" />
+        <div id="reliability" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                <Calculator className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">{isZh ? '信度分析' : 'Reliability Analysis'}</h3>
+                <p className="text-sm text-gray-500">{isZh ? '测试内部一致性' : 'Test internal consistency'}</p>
+                <p className="text-xs text-gray-400">
+                  {isZh
+                    ? `样本量 N=${reliabilitySampleSize}（建议 N≥${minReliabilitySample} 后解读信度指标）`
+                    : `Sample size N=${reliabilitySampleSize} (interpret reliability only when N ≥ ${minReliabilitySample}).`}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">{isZh ? '信度分析' : 'Reliability Analysis'}</h3>
-              <p className="text-sm text-gray-500">{isZh ? '测试内部一致性' : 'Test internal consistency'}</p>
-              <p className="text-xs text-gray-400">
-                {isZh
-                  ? `样本量 N=${reliabilitySampleSize}（建议 N≥${minReliabilitySample} 后解读信度指标）`
-                  : `Sample size N=${reliabilitySampleSize} (interpret reliability only when N ≥ ${minReliabilitySample}).`}
-              </p>
-            </div>
+            <button
+              onClick={() => openChatWithQuestion(
+                isZh ? '请帮我解读当前的信度分析结果，Cronbach\'s Alpha和分半信度代表什么？' : 'Please help me interpret the reliability analysis results. What do Cronbach\'s Alpha and split-half reliability mean?',
+                'reliability'
+              )}
+              className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
+              title={isZh ? '询问AI关于信度分析' : 'Ask AI about reliability'}
+            >
+              <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-blue-500" />
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
@@ -427,10 +519,24 @@ Please provide actionable specific recommendations.`,
             </div>
           </div>
 
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">
-              {isZh ? '题目-总分相关系数' : 'Item-Total Correlations'}
-            </p>
+          <div id="itemCorrelations">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-700">
+                {isZh ? '题目-总分相关系数' : 'Item-Total Correlations'}
+              </p>
+              {reliabilityReady && itemCorrelations.length > 0 && (
+                <button
+                  onClick={() => openChatWithQuestion(
+                    isZh ? '请分析题目-总分相关系数，哪些题目可能需要修改？' : 'Please analyze the item-total correlations. Which items may need revision?',
+                    'reliability'
+                  )}
+                  className="p-1 hover:bg-blue-50 rounded transition-colors group"
+                  title={isZh ? '询问AI关于题目相关性' : 'Ask AI about item correlations'}
+                >
+                  <HelpCircle className="w-4 h-4 text-gray-400 group-hover:text-blue-500" />
+                </button>
+              )}
+            </div>
             {!reliabilityReady ? (
               <p className="text-sm text-gray-400">
                 {isZh ? `需要至少 ${minReliabilitySample} 份有效答卷后才显示题目诊断` : `Need at least ${minReliabilitySample} valid responses to diagnose items.`}
@@ -498,7 +604,7 @@ Please provide actionable specific recommendations.`,
       </div>
 
       {/* Time Trends */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <div id="trends" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
@@ -509,6 +615,17 @@ Please provide actionable specific recommendations.`,
               <p className="text-sm text-gray-500">{isZh ? '完成数量变化' : 'Completion volume changes'}</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openChatWithQuestion(
+                isZh ? '请分析最近的数据趋势，有什么值得关注的变化吗？' : 'Please analyze recent data trends. Are there any noteworthy changes?',
+                'trends'
+              )}
+              className="p-2 hover:bg-green-50 rounded-lg transition-colors group"
+              title={isZh ? '询问AI关于趋势' : 'Ask AI about trends'}
+            >
+              <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-green-500" />
+            </button>
           <div className="flex bg-gray-100 rounded-lg p-1">
             {(['daily', 'weekly', 'monthly'] as TrendView[]).map((v) => (
               <button
@@ -521,6 +638,7 @@ Please provide actionable specific recommendations.`,
                 {v === 'daily' ? (isZh ? '按日' : 'Daily') : v === 'weekly' ? (isZh ? '按周' : 'Weekly') : isZh ? '按月' : 'Monthly'}
               </button>
             ))}
+          </div>
           </div>
         </div>
 
@@ -560,15 +678,27 @@ Please provide actionable specific recommendations.`,
       {/* Segments & Correlation Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Segments */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
-              <Filter className="w-5 h-5 text-white" />
+        <div id="segments" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                <Filter className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">{isZh ? '群组分析' : 'Segment Analysis'}</h3>
+                <p className="text-sm text-gray-500">{isZh ? '按地区/设备/语言分组' : 'By region/device/language'}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">{isZh ? '群组分析' : 'Segment Analysis'}</h3>
-              <p className="text-sm text-gray-500">{isZh ? '按地区/设备/语言分组' : 'By region/device/language'}</p>
-            </div>
+            <button
+              onClick={() => openChatWithQuestion(
+                isZh ? '请分析用户群体特征，不同地区、设备、语言的用户有什么差异吗？' : 'Please analyze user demographics. Are there differences between users from different regions, devices, or languages?',
+                'segments'
+              )}
+              className="p-2 hover:bg-orange-50 rounded-lg transition-colors group"
+              title={isZh ? '询问AI关于群组' : 'Ask AI about segments'}
+            >
+              <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-orange-500" />
+            </button>
           </div>
 
           <div className="space-y-4">
@@ -626,15 +756,27 @@ Please provide actionable specific recommendations.`,
         </div>
 
         {/* Correlation Matrix */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white" />
+        <div id="correlations" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">{isZh ? '维度相关性' : 'Dimension Correlations'}</h3>
+                <p className="text-sm text-gray-500">{isZh ? '各维度之间的相关系数' : 'Correlations between dimensions'}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">{isZh ? '维度相关性' : 'Dimension Correlations'}</h3>
-              <p className="text-sm text-gray-500">{isZh ? '各维度之间的相关系数' : 'Correlations between dimensions'}</p>
-            </div>
+            <button
+              onClick={() => openChatWithQuestion(
+                isZh ? '请解读维度之间的相关性矩阵，这些相关性意味着什么？' : 'Please interpret the correlation matrix between dimensions. What do these correlations mean?',
+                'correlations'
+              )}
+              className="p-2 hover:bg-indigo-50 rounded-lg transition-colors group"
+              title={isZh ? '询问AI关于相关性' : 'Ask AI about correlations'}
+            >
+              <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-indigo-500" />
+            </button>
           </div>
 
           {correlationEntries.length === 0 ? (
@@ -743,6 +885,32 @@ Please provide actionable specific recommendations.`,
           ? '所有数据均为匿名聚合统计，不包含任何可识别个人身份的信息。'
           : 'All data is anonymized aggregate statistics with no personally identifiable information.'}
       </div>
+
+      {/* Floating AI Assistant Button */}
+      <button
+        onClick={() => {
+          setChatInitialQuestion(undefined);
+          setChatCurrentView('overview');
+          setChatOpen(true);
+        }}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform z-40"
+        title={isZh ? 'AI 数据分析助手' : 'AI Analytics Assistant'}
+      >
+        <MessageCircle className="w-6 h-6 text-white" />
+      </button>
+
+      {/* AI Chat Panel */}
+      <AnalyticsChatPanel
+        isOpen={chatOpen}
+        onClose={() => {
+          setChatOpen(false);
+          setChatInitialQuestion(undefined);
+        }}
+        analyticsData={data}
+        initialQuestion={chatInitialQuestion}
+        currentView={chatCurrentView}
+        onAction={handleChatAction}
+      />
     </div>
   );
 }
