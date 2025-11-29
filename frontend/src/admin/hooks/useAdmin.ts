@@ -891,7 +891,11 @@ export const useAdminApi = () => {
 
     // 2FA Management
     get2FAStatus: () => apiCall<TwoFactorStatus>('/admin/2fa/status'),
-    setup2FA: () => apiCall<Setup2FAResponse>('/admin/2fa/setup', { method: 'POST' }),
+    setup2FA: (currentCode?: string) =>
+      apiCall<Setup2FAResponse>('/admin/2fa/setup', {
+        method: 'POST',
+        body: currentCode ? JSON.stringify({ currentCode }) : undefined,
+      }),
     verify2FA: (code: string) =>
       apiCall<Verify2FAResponse>('/admin/2fa/verify', { method: 'POST', body: JSON.stringify({ code }) }),
     disable2FA: (code: string) =>

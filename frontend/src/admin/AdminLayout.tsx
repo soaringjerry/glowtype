@@ -124,7 +124,7 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-gray-50">
       {needs2FASetup && (
-        <div className="bg-yellow-50 border-b border-yellow-200 text-yellow-800 px-4 py-3 text-sm flex items-center justify-between">
+        <div className="bg-yellow-50 border-b border-yellow-200 text-yellow-800 px-4 py-3 text-sm flex items-center justify-between lg:ml-64 lg:pr-8 lg:pl-6">
           <span>{t('twoFactor.requiredNotice', '已被要求启用两步验证，请先在“个人设置”完成绑定后继续使用后台。')}</span>
           <button
             onClick={() => navigate('/admin/settings')}

@@ -34,6 +34,7 @@ export default function AdminSettings() {
   const [setupData, setSetupData] = useState<{ qrCode: string; secret: string } | null>(null);
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [setupCurrentCode, setSetupCurrentCode] = useState('');
   const [disabling2FA, setDisabling2FA] = useState(false);
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
   const [disableCode, setDisableCode] = useState('');
@@ -77,10 +78,11 @@ export default function AdminSettings() {
   const handleStart2FASetup = async () => {
     setSetupLoading(true);
     setSetupError(null);
-    const result = await api.setup2FA();
+    const result = await api.setup2FA(twoFAStatus?.enabled ? setupCurrentCode.trim() || undefined : undefined);
     if (result) {
       setSetupData({ qrCode: result.qrCode, secret: result.secret });
       setShowSetup(true);
+      setSetupCurrentCode('');
     } else {
       setSetupError(api.error || t('twoFactor.setupError', '设置失败，请重试'));
     }
@@ -127,6 +129,16 @@ export default function AdminSettings() {
       setRegenerateCode('');
     }
     setRegeneratingCodes(false);
+  };
+
+  // Superadmin self-reset 2FA
+  const [resettingSelf, setResettingSelf] = useState(false);
+  const handleSuperadminResetSelf = async () => {
+    if (!currentUser?.id) return;
+    setResettingSelf(true);
+    await api.manageUser2FA(currentUser.id, { reset: true, forceEnabled: false });
+    setResettingSelf(false);
+    await load2FAData();
   };
 
   // Revoke Trusted Device
@@ -408,6 +420,22 @@ export default function AdminSettings() {
                   <AlertTriangle className="w-4 h-4" />
                   {t('settings.twoFactorRequired', '您的账户要求启用两步验证，无法禁用')}
                 </p>
+                {currentUser?.role === 'superadmin' && (
+                  <div className="mt-3">
+                    <button
+                      onClick={handleSuperadminResetSelf}
+                      disabled={resettingSelf}
+                      className="text-sm text-red-500 hover:text-red-600 flex items-center gap-1"
+                    >
+                      {resettingSelf ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                      {t('settings.superResetSelf2FA', '超级管理员重置当前账号的 2FA')}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -475,9 +503,25 @@ export default function AdminSettings() {
               </div>
             )}
 
+            {/* For existing 2FA, require current code to rotate secret */}
+            {twoFAStatus?.enabled && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  {t('settings.current2FACode', '请输入当前 2FA 验证码以更新绑定')}
+                </label>
+                <input
+                  type="text"
+                  value={setupCurrentCode}
+                  onChange={(e) => setSetupCurrentCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-center text-lg tracking-widest font-mono"
+                />
+              </div>
+            )}
+
             <button
               onClick={handleStart2FASetup}
-              disabled={setupLoading}
+              disabled={setupLoading || (twoFAStatus?.enabled && setupCurrentCode.length !== 6)}
               className="w-full py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {setupLoading ? (
