@@ -97,7 +97,7 @@ export default function AdminLayout() {
       });
     }
     return filtered;
-  }, [currentUser]);
+  }, [currentUser, needs2FASetup]);
 
   if (initializing) {
     return (
