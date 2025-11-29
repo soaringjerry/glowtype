@@ -71,6 +71,18 @@ var rolePermissions = map[string]map[Permission]struct{}{
 		PermResultsView,
 		PermAuditView,
 	),
+	database.AdminRoleViewer: permissionSet(
+		PermManageAdmins,
+		PermAuditView,
+		PermDimensions,
+		PermQuestions,
+		PermRules,
+		PermGlowtypes,
+		PermPrompts,
+		PermContent,
+		PermStatsView,
+		PermResultsView,
+	),
 }
 
 func permissionSet(perms ...Permission) map[Permission]struct{} {
@@ -211,6 +223,10 @@ func RequirePermission(perms ...Permission) gin.HandlerFunc {
 		admin, ok := getAdminFromContext(c)
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+		if isReadOnlyRole(admin.Role) && !isReadOnlyMethod(c.Request.Method) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Read-only role cannot modify data"})
 			return
 		}
 		for _, p := range perms {
@@ -579,7 +595,21 @@ func isValidAdminRole(role string) bool {
 		database.AdminRoleStandard,
 		database.AdminRoleContent,
 		database.AdminRoleData,
-		database.AdminRoleAnalyst:
+		database.AdminRoleAnalyst,
+		database.AdminRoleViewer:
+		return true
+	default:
+		return false
+	}
+}
+
+func isReadOnlyRole(role string) bool {
+	return role == database.AdminRoleViewer
+}
+
+func isReadOnlyMethod(method string) bool {
+	switch strings.ToUpper(method) {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
 		return true
 	default:
 		return false

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getApiBaseUrl } from '../../api/baseUrl';
 
-export type AdminRole = 'superadmin' | 'admin' | 'content_admin' | 'data_admin' | 'analyst';
+export type AdminRole = 'superadmin' | 'admin' | 'content_admin' | 'data_admin' | 'analyst' | 'viewer';
 export type AdminPermission =
   | 'admin.manage'
   | 'audit.view'
@@ -50,6 +50,18 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'results.view',
   ],
   analyst: ['stats.view', 'results.view', 'audit.view'],
+  viewer: [
+    'admin.manage',
+    'audit.view',
+    'dimensions.write',
+    'questions.write',
+    'rules.write',
+    'glowtypes.write',
+    'prompts.write',
+    'content.write',
+    'stats.view',
+    'results.view',
+  ],
 };
 
 export const roleHasPermission = (role: AdminRole | undefined, perm: AdminPermission) => {
@@ -57,6 +69,8 @@ export const roleHasPermission = (role: AdminRole | undefined, perm: AdminPermis
   if (role === 'superadmin') return true;
   return ROLE_PERMISSIONS[role]?.includes(perm) ?? false;
 };
+
+export const isReadOnlyRole = (role: AdminRole | undefined) => role === 'viewer';
 
 export interface AdminUser {
   id: number;
@@ -85,6 +99,76 @@ export interface AdminAuditLog {
 export interface RegionStat {
   region: string;
   count: number;
+}
+
+// Analytics types
+export interface AnalyticsRequest {
+  startDate?: string;
+  endDate?: string;
+  preset?: '30d' | '90d' | 'all';
+}
+
+export interface AnalyticsSummary {
+  totalResponses: number;
+  dateRange: { start: string; end: string };
+  questionCount: number;
+}
+
+export interface Distribution {
+  bin: string;
+  count: number;
+}
+
+export interface DimensionStat {
+  mean: number;
+  stdDev: number;
+  min: number;
+  max: number;
+  median: number;
+  distribution: Distribution[];
+}
+
+export interface ReliabilityStats {
+  cronbachAlpha: number;
+  itemTotalCorrelations: Record<string, number>;
+  splitHalfReliability: number;
+  spearmanBrown: number;
+  sampleSize: number;
+}
+
+export interface TrendPoint {
+  date: string;
+  count: number;
+  change: number;
+}
+
+export interface TrendData {
+  daily: TrendPoint[];
+  weekly: TrendPoint[];
+  monthly: TrendPoint[];
+}
+
+export interface SegmentItem {
+  name: string;
+  count: number;
+  percent: number;
+}
+
+export interface SegmentData {
+  byRegion: SegmentItem[];
+  byLanguage: SegmentItem[];
+  byDevice: SegmentItem[];
+  byChannel: SegmentItem[];
+  byGlowtype: SegmentItem[];
+}
+
+export interface AnalyticsResponse {
+  summary: AnalyticsSummary;
+  dimensionStats: Record<string, DimensionStat>;
+  reliability: ReliabilityStats;
+  trends: TrendData;
+  segments: SegmentData;
+  correlationMatrix: Record<string, number>;
 }
 
 export interface DeviceStat {
@@ -207,6 +291,20 @@ const storage = {
   },
 };
 
+const READ_ONLY_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+const isReadOnlyMethod = (method?: string) => READ_ONLY_METHODS.has((method ?? 'GET').toUpperCase());
+
+const getCachedAdminUser = (): AdminUser | null => {
+  const raw = storage.get(ADMIN_USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
 export const useAdminAuth = () => {
   const [token, setToken] = useState<string | null>(() => storage.get(ADMIN_TOKEN_KEY));
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => {
@@ -323,6 +421,11 @@ export const useAdminApi = () => {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T | null> => {
+    const method = (options.method ?? 'GET').toString().toUpperCase();
+    if (isReadOnlyRole(getCachedAdminUser()?.role) && !isReadOnlyMethod(method)) {
+      setError('Read-only role cannot modify data.');
+      return null;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -412,6 +515,14 @@ export const useAdminApi = () => {
   const getDailyStats = (days?: number) => apiCall<any[]>(`/admin/stats/daily${days ? `?days=${days}` : ''}`);
   const getGlowtypeDistribution = () => apiCall<any[]>('/admin/stats/glowtypes');
   const getEnhancedStats = (days?: number) => apiCall<EnhancedStats>(`/admin/stats/enhanced${days ? `?days=${days}` : ''}`);
+  const getAnalytics = (params?: AnalyticsRequest) => {
+    const query = new URLSearchParams();
+    if (params?.startDate) query.set('start_date', params.startDate);
+    if (params?.endDate) query.set('end_date', params.endDate);
+    if (params?.preset) query.set('preset', params.preset);
+    const qs = query.toString();
+    return apiCall<AnalyticsResponse>(`/admin/stats/analytics${qs ? `?${qs}` : ''}`);
+  };
 
   // Quiz Results
   const listQuizResults = (params?: { limit?: number; typeCode?: string }) => {
@@ -480,6 +591,7 @@ export const useAdminApi = () => {
     getDailyStats,
     getGlowtypeDistribution,
     getEnhancedStats,
+    getAnalytics,
     // Results
     listQuizResults,
     // Glowpedia

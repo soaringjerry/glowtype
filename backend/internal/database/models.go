@@ -380,6 +380,7 @@ const (
 	AdminRoleContent  = "content_admin"
 	AdminRoleData     = "data_admin"
 	AdminRoleAnalyst  = "analyst"
+	AdminRoleViewer   = "viewer"
 )
 
 // AdminUser represents an authenticated admin account

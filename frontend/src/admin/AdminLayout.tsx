@@ -17,9 +17,10 @@ import {
   BarChart3,
   Shield,
   ScrollText,
+  Eye,
   Loader2
 } from 'lucide-react';
-import { roleHasPermission, useAdminAuth } from './hooks/useAdmin';
+import { isReadOnlyRole, roleHasPermission, useAdminAuth } from './hooks/useAdmin';
 import type { AdminPermission } from './hooks/useAdmin';
 import AdminLogin from './AdminLogin';
 import Dashboard from './pages/Dashboard';
@@ -82,6 +83,8 @@ export default function AdminLayout() {
   if (!isAuthenticated) {
     return <AdminLogin onLogin={() => window.location.reload()} />;
   }
+
+  const readOnly = isReadOnlyRole(currentUser?.role);
 
   const handleLogout = () => {
     logout();
@@ -169,6 +172,15 @@ export default function AdminLayout() {
       {/* Main content */}
       <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
         <div className="p-6">
+          {readOnly && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <Eye className="w-4 h-4" />
+              <div>
+                <div className="font-semibold text-sm">{t('common.readOnlyMode')}</div>
+                <div className="text-xs">{t('common.readOnlyHint')}</div>
+              </div>
+            </div>
+          )}
           <Routes>
             <Route path="/admin" element={<Protected perm="stats.view"><Dashboard /></Protected>} />
             <Route path="/admin/users" element={<Protected perm="admin.manage"><AdminUsers /></Protected>} />

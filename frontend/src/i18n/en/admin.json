@@ -19,7 +19,8 @@
     "admin": "Admin",
     "content_admin": "Content Admin",
     "data_admin": "Data Admin",
-    "analyst": "Analyst"
+    "analyst": "Analyst",
+    "viewer": "Read-only Admin"
   },
   "accessDenied": {
     "title": "Access denied",
@@ -464,6 +465,8 @@
     "resetToDefaults": "Reset to defaults",
     "confirmReset": "Are you sure you want to reset to defaults? This will delete all current data and restore the original settings.",
     "resetSuccess": "Reset to defaults successfully!",
-    "resetFailed": "Reset failed"
+    "resetFailed": "Reset failed",
+    "readOnlyMode": "Read-only mode",
+    "readOnlyHint": "You are using a read-only admin role. Viewing is allowed, but changes are blocked."
   }
 }

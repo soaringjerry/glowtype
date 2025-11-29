@@ -19,7 +19,8 @@
     "admin": "管理员",
     "content_admin": "内容管理员",
     "data_admin": "数据管理员",
-    "analyst": "分析员"
+    "analyst": "分析员",
+    "viewer": "只读管理员"
   },
   "accessDenied": {
     "title": "没有权限",
@@ -464,6 +465,8 @@
     "resetToDefaults": "恢复默认",
     "confirmReset": "确定要恢复默认设置吗？这将删除所有当前数据并还原为初始设置。",
     "resetSuccess": "已成功恢复默认设置！",
-    "resetFailed": "重置失败"
+    "resetFailed": "重置失败",
+    "readOnlyMode": "只读模式",
+    "readOnlyHint": "当前账号为只读角色，仅可查看，所有改动都会被阻止。"
   }
 }

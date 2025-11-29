@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Shield, PlusCircle, Loader2, AlertCircle, Users, ToggleLeft, ToggleRight, Save } from 'lucide-react';
 import type { AdminRole, AdminUser } from '../hooks/useAdmin';
-import { roleHasPermission, useAdminApi, useAdminAuth } from '../hooks/useAdmin';
+import { isReadOnlyRole, roleHasPermission, useAdminApi, useAdminAuth } from '../hooks/useAdmin';
 
 interface NewAdminForm {
   username: string;
@@ -21,9 +21,11 @@ export default function AdminUsers() {
   const [drafts, setDrafts] = useState<Record<number, { role: AdminRole; isActive: boolean }>>({});
 
   const canManage = useMemo(() => roleHasPermission(currentUser?.role, 'admin.manage'), [currentUser]);
+  const readOnly = isReadOnlyRole(currentUser?.role);
   const isSelf = (id: number) => currentUser?.id === id;
 
   const roleOptions: { value: AdminRole; label: string }[] = [
+    { value: 'viewer', label: t('roles.viewer') },
     { value: 'admin', label: t('roles.admin') },
     { value: 'content_admin', label: t('roles.content_admin') },
     { value: 'data_admin', label: t('roles.data_admin') },
@@ -102,6 +104,12 @@ export default function AdminUsers() {
         </div>
       </div>
 
+      {readOnly && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
+          {t('common.readOnlyHint')}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
@@ -118,6 +126,7 @@ export default function AdminUsers() {
               <input
                 value={form.username}
                 onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                disabled={readOnly}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
                 placeholder="admin@example"
                 required
@@ -129,6 +138,7 @@ export default function AdminUsers() {
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                disabled={readOnly}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
                 placeholder={t('adminUsers.passwordPlaceholder')}
                 required
@@ -139,6 +149,7 @@ export default function AdminUsers() {
               <select
                 value={form.role}
                 onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as AdminRole }))}
+                disabled={readOnly}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition bg-white"
               >
                 {roleOptions.map((opt) => (
@@ -162,7 +173,7 @@ export default function AdminUsers() {
 
             <button
               type="submit"
-              disabled={loading || !form.username || !form.password}
+              disabled={loading || !form.username || !form.password || readOnly}
               className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -222,7 +233,7 @@ export default function AdminUsers() {
                     const draft = getDraft(admin);
                     const hasChanges =
                       draft.role !== admin.role || (admin.isActive ?? true) !== draft.isActive;
-                    const disabled = isSelf(admin.id);
+                    const disabled = readOnly || isSelf(admin.id);
                     return (
                       <tr key={admin.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 font-medium text-gray-800">{admin.username}</td>

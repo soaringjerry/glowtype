@@ -173,6 +173,7 @@ backend/
 | `content_admin` | `content.write`, `stats.view` |
 | `data_admin` | `dimensions.write`, `questions.write`, `rules.write`, `glowtypes.write`, `prompts.write`, `stats.view`, `results.view` |
 | `analyst` | `stats.view`, `results.view`, `audit.view` |
+| `viewer` | 只读：`admin.manage`, `audit.view`, `dimensions.write`, `questions.write`, `rules.write`, `glowtypes.write`, `prompts.write`, `content.write`, `stats.view`, `results.view`（后台强制仅允许 GET/HEAD/OPTIONS） |
 
 - 路由权限绑定（节选）：账号管理 `admin.manage`；审计 `audit.view`；题库/规则/类型/文案 CRUD 分别绑定对应 `*.write`；统计 `stats.view`；结果 `results.view`；默认数据重置 `data.reset`（仅 superadmin）。
 - 如需拓展更细粒度权限，可扩展 `rolePermissions` 映射或迁移到数据库表（`admin_roles`, `admin_permissions`, `admin_role_permissions`, `admin_user_roles`）。
