@@ -395,6 +395,7 @@ type AdminUser struct {
 	IsActive     bool           `gorm:"default:true" json:"isActive"`
 	LastLoginAt  *time.Time     `json:"lastLoginAt"`
 	LastLoginIP  string         `json:"lastLoginIp"`
+	TokenVersion int            `gorm:"default:1" json:"-"`
 
 	// Two-Factor Authentication fields
 	TwoFactorEnabled    bool       `gorm:"default:false" json:"twoFactorEnabled"`

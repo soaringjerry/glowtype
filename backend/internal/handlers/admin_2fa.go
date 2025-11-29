@@ -16,6 +16,7 @@ import (
 	"github.com/pquerna/otp"
 	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/services"
+	"gorm.io/gorm"
 )
 
 // ============ 2FA Setup Handlers ============
@@ -110,7 +111,10 @@ func Setup2FAHandler(c *gin.Context) {
 	}
 
 	// Store encrypted secret (but don't enable 2FA yet until verified)
-	if err := database.GetDB().Model(&user).Update("two_factor_secret", encrypted).Error; err != nil {
+	if err := database.GetDB().Model(&user).Updates(map[string]any{
+		"two_factor_secret": encrypted,
+		"token_version":     gorm.Expr("token_version + 1"),
+	}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save 2FA secret"})
 		return
 	}
@@ -201,6 +205,7 @@ func Verify2FAHandler(c *gin.Context) {
 	if err := database.GetDB().Model(&user).Updates(map[string]interface{}{
 		"two_factor_enabled":     true,
 		"two_factor_verified_at": now,
+		"token_version":          gorm.Expr("token_version + 1"),
 	}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enable 2FA"})
 		return
@@ -292,6 +297,7 @@ func Disable2FAHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to disable 2FA"})
 		return
 	}
+	_ = database.GetDB().Model(&user).Update("token_version", gorm.Expr("token_version + 1"))
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -748,7 +754,10 @@ func ChangePasswordHandler(c *gin.Context) {
 	}
 
 	// Update password
-	if err := database.GetDB().Model(&user).Update("password_hash", newHash).Error; err != nil {
+	if err := database.GetDB().Model(&user).Updates(map[string]any{
+		"password_hash": newHash,
+		"token_version": gorm.Expr("token_version + 1"),
+	}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
 		return
 	}

@@ -37,6 +37,7 @@ type AdminTokenClaims struct {
 	AdminID   uint   `json:"adminId"`
 	Username  string `json:"username"`
 	Role      string `json:"role"`
+	Version   int    `json:"ver"`
 	IssuedAt  int64  `json:"iat"`
 	ExpiresAt int64  `json:"exp"`
 }
@@ -52,10 +53,15 @@ func CheckPassword(hash, password string) bool {
 
 func GenerateAdminToken(user database.AdminUser) (string, time.Time, error) {
 	exp := time.Now().Add(adminTokenTTL)
+	version := user.TokenVersion
+	if version <= 0 {
+		version = 1
+	}
 	claims := AdminTokenClaims{
 		AdminID:   user.ID,
 		Username:  user.Username,
 		Role:      user.Role,
+		Version:   version,
 		IssuedAt:  time.Now().Unix(),
 		ExpiresAt: exp.Unix(),
 	}
@@ -102,6 +108,10 @@ func ValidateAdminToken(token string) (*AdminTokenClaims, error) {
 	var claims AdminTokenClaims
 	if err := json.Unmarshal(payload, &claims); err != nil {
 		return nil, errors.New("invalid token payload")
+	}
+
+	if claims.Version <= 0 {
+		claims.Version = 1
 	}
 
 	if time.Unix(claims.ExpiresAt, 0).Before(time.Now()) {

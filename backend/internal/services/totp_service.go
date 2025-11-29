@@ -27,16 +27,16 @@ import (
 )
 
 const (
-	totpIssuer                 = "Glowtype Admin"
-	totpPeriod                 = 30 // seconds
-	totpDigits                 = 6
-	recoveryCodeLength         = 8
-	defaultRecoveryCodeCount   = 10
-	defaultTrustedDeviceDays   = 7
-	twoFATokenTTL              = 5 * time.Minute
-	totpEncryptionKeyEnvHint   = "TOTP_ENCRYPTION_KEY"
-	forceAdmin2FAEnvHint       = "FORCE_ADMIN_2FA"
-	trustedDeviceDaysEnvHint   = "TRUSTED_DEVICE_DAYS"
+	totpIssuer               = "Glowtype Admin"
+	totpPeriod               = 30 // seconds
+	totpDigits               = 6
+	recoveryCodeLength       = 8
+	defaultRecoveryCodeCount = 10
+	defaultTrustedDeviceDays = 7
+	twoFATokenTTL            = 5 * time.Minute
+	totpEncryptionKeyEnvHint = "TOTP_ENCRYPTION_KEY"
+	forceAdmin2FAEnvHint     = "FORCE_ADMIN_2FA"
+	trustedDeviceDaysEnvHint = "TRUSTED_DEVICE_DAYS"
 )
 
 var (
@@ -429,6 +429,7 @@ func Reset2FA(db *gorm.DB, adminID uint) error {
 		"two_factor_enabled":     false,
 		"two_factor_secret":      "",
 		"two_factor_verified_at": nil,
+		"token_version":          gorm.Expr("token_version + 1"),
 	}).Error; err != nil {
 		return fmt.Errorf("failed to reset 2FA: %w", err)
 	}
