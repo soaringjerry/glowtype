@@ -56,11 +56,27 @@ export default function Analytics() {
   }, [preset, customStart, customEnd]);
 
   const isZh = i18n.language.startsWith('zh');
+  const minReliabilitySample = data?.reliability.minSampleSize ?? 30;
+  const reliabilitySampleSize = data?.reliability.sampleSize ?? 0;
+  const reliabilityReady = !!data && (data.reliability.hasSufficientSample ?? reliabilitySampleSize >= minReliabilitySample);
+  const correlationSampleMin = 15;
+  const totalSamples = data?.summary.totalResponses ?? 0;
+  const correlationReady = totalSamples >= correlationSampleMin;
 
   const generateAIAnalysis = async (type: 'report' | 'suggestions') => {
     if (!data) return;
+    if (type === 'suggestions' && !reliabilityReady) {
+      setAiError(isZh ? `题目改进建议需要至少 ${minReliabilitySample} 份有效答卷。` : `At least ${minReliabilitySample} valid responses are required before suggesting item revisions.`);
+      return;
+    }
     setAiLoading(true);
     setAiError(null);
+
+    const alphaText = reliabilityReady
+      ? data.reliability.cronbachAlpha.toFixed(3)
+      : isZh
+        ? '样本不足'
+        : 'insufficient sample';
 
     const systemPrompts = {
       report: isZh
@@ -82,14 +98,14 @@ export default function Analytics() {
 Please output in clear structured format.`,
       suggestions: isZh
         ? `你是一位心理测量学专家，请根据以下测试数据给出题目改进建议。包括：
-1. 基于信度分析（Alpha=${data.reliability.cronbachAlpha.toFixed(3)}）的整体评估
+1. 基于信度分析（Alpha=${alphaText}）的整体评估
 2. 根据题目-总分相关系数识别需要修改的题目（低于0.3的题目需重点关注）
 3. 根据维度得分分布分析题目难度是否合适
 4. 具体的题目改进建议
 5. 提高测试信度的方法建议
 请给出可操作的具体建议。`
         : `You are a psychometrics expert. Based on the following test data, provide suggestions for question improvement. Include:
-1. Overall assessment based on reliability analysis (Alpha=${data.reliability.cronbachAlpha.toFixed(3)})
+1. Overall assessment based on reliability analysis (Alpha=${alphaText})
 2. Identify questions needing modification based on item-total correlations (focus on items below 0.3)
 3. Analyze if question difficulty is appropriate based on dimension score distributions
 4. Specific question improvement suggestions
@@ -100,6 +116,11 @@ Please provide actionable specific recommendations.`,
     const dataForAI = {
       summary: data.summary,
       reliability: data.reliability,
+      reliabilityMeta: {
+        sampleSize: reliabilitySampleSize,
+        minSampleSize: minReliabilitySample,
+        hasSufficientSample: reliabilityReady,
+      },
       dimensionStats: Object.fromEntries(
         Object.entries(data.dimensionStats).map(([k, v]) => [k, { mean: v.mean, stdDev: v.stdDev, min: v.min, max: v.max }])
       ),
@@ -138,13 +159,14 @@ Please provide actionable specific recommendations.`,
 
   const reliabilityLevel = useMemo(() => {
     if (!data) return { level: 'unknown', color: 'gray' };
+    if (!reliabilityReady) return { level: isZh ? '样本不足' : 'Insufficient sample', color: 'gray' };
     const alpha = data.reliability.cronbachAlpha;
     if (alpha >= 0.9) return { level: isZh ? '优秀' : 'Excellent', color: 'green' };
     if (alpha >= 0.8) return { level: isZh ? '良好' : 'Good', color: 'blue' };
     if (alpha >= 0.7) return { level: isZh ? '可接受' : 'Acceptable', color: 'yellow' };
     if (alpha >= 0.6) return { level: isZh ? '存疑' : 'Questionable', color: 'orange' };
     return { level: isZh ? '较差' : 'Poor', color: 'red' };
-  }, [data, isZh]);
+  }, [data, isZh, reliabilityReady]);
 
   const trendData = useMemo(() => {
     if (!data) return [];
@@ -177,6 +199,7 @@ Please provide actionable specific recommendations.`,
   const dimEntries = Object.entries(data.dimensionStats);
   const correlationEntries = Object.entries(data.correlationMatrix);
   const itemCorrelations = Object.entries(data.reliability.itemTotalCorrelations).sort((a, b) => b[1] - a[1]);
+  const suggestionsDisabled = aiLoading || !reliabilityReady || itemCorrelations.length === 0;
 
   return (
     <div className="space-y-6">
@@ -274,8 +297,15 @@ Please provide actionable specific recommendations.`,
             </div>
             <span className="text-sm text-gray-500">Cronbach's Alpha</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{data.reliability.cronbachAlpha.toFixed(3)}</p>
-          <p className={`text-xs mt-1 text-${reliabilityLevel.color}-600 font-medium`}>{reliabilityLevel.level}</p>
+          <p className="text-3xl font-bold text-gray-900">{reliabilityReady ? data.reliability.cronbachAlpha.toFixed(3) : '--'}</p>
+          <p className={`text-xs mt-1 ${reliabilityReady ? `text-${reliabilityLevel.color}-600` : 'text-gray-500'} font-medium`}>
+            {reliabilityLevel.level}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {isZh
+              ? `样本量 N=${reliabilitySampleSize}（需≥${minReliabilitySample} 才具有统计意义）`
+              : `Sample N=${reliabilitySampleSize} (need ≥${minReliabilitySample} for meaningful reliability)`}
+          </p>
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -285,8 +315,10 @@ Please provide actionable specific recommendations.`,
             </div>
             <span className="text-sm text-gray-500">{isZh ? '分半信度' : 'Split-Half'}</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{data.reliability.spearmanBrown.toFixed(3)}</p>
-          <p className="text-xs text-gray-400 mt-1">Spearman-Brown</p>
+          <p className="text-3xl font-bold text-gray-900">{reliabilityReady ? data.reliability.spearmanBrown.toFixed(3) : '--'}</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {isZh ? 'Spearman-Brown（样本达标后计算）' : 'Spearman-Brown (shown when sample adequate)'}
+          </p>
         </div>
       </div>
 
@@ -369,17 +401,28 @@ Please provide actionable specific recommendations.`,
             <div>
               <h3 className="font-semibold text-gray-800">{isZh ? '信度分析' : 'Reliability Analysis'}</h3>
               <p className="text-sm text-gray-500">{isZh ? '测试内部一致性' : 'Test internal consistency'}</p>
+              <p className="text-xs text-gray-400">
+                {isZh
+                  ? `样本量 N=${reliabilitySampleSize}（建议 N≥${minReliabilitySample} 后解读信度指标）`
+                  : `Sample size N=${reliabilitySampleSize} (interpret reliability only when N ≥ ${minReliabilitySample}).`}
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="p-4 bg-blue-50 rounded-xl">
               <p className="text-xs text-blue-600 mb-1">Cronbach's Alpha</p>
-              <p className="text-2xl font-bold text-blue-700">{data.reliability.cronbachAlpha.toFixed(3)}</p>
+              <p className="text-2xl font-bold text-blue-700">{reliabilityReady ? data.reliability.cronbachAlpha.toFixed(3) : '--'}</p>
+              <p className="text-[11px] text-blue-600 mt-1">
+                {reliabilityReady ? (isZh ? '样本达标，可解读' : 'Sample adequate for interpretation') : isZh ? '样本不足，等待更多数据' : 'Need more data for reliable alpha'}
+              </p>
             </div>
             <div className="p-4 bg-cyan-50 rounded-xl">
               <p className="text-xs text-cyan-600 mb-1">Spearman-Brown</p>
-              <p className="text-2xl font-bold text-cyan-700">{data.reliability.spearmanBrown.toFixed(3)}</p>
+              <p className="text-2xl font-bold text-cyan-700">{reliabilityReady ? data.reliability.spearmanBrown.toFixed(3) : '--'}</p>
+              <p className="text-[11px] text-cyan-600 mt-1">
+                {reliabilityReady ? (isZh ? '分半信度校正' : 'Split-half adjusted') : isZh ? '样本不足' : 'Sample too small'}
+              </p>
             </div>
           </div>
 
@@ -387,32 +430,38 @@ Please provide actionable specific recommendations.`,
             <p className="text-sm font-medium text-gray-700 mb-2">
               {isZh ? '题目-总分相关系数' : 'Item-Total Correlations'}
             </p>
-            {itemCorrelations.length === 0 ? (
+            {!reliabilityReady ? (
+              <p className="text-sm text-gray-400">
+                {isZh ? `需要至少 ${minReliabilitySample} 份有效答卷后才显示题目诊断` : `Need at least ${minReliabilitySample} valid responses to diagnose items.`}
+              </p>
+            ) : itemCorrelations.length === 0 ? (
               <p className="text-sm text-gray-400">{isZh ? '需要更多数据' : 'Need more data'}</p>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {itemCorrelations.map(([qId, corr]) => {
-                  const isLow = corr < 0.3;
-                  return (
-                    <div key={qId} className="flex items-center gap-2">
-                      <span className="w-16 text-xs font-mono text-gray-600 truncate">{qId}</span>
-                      <div className="flex-1 h-4 bg-gray-100 rounded overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${isLow ? 'bg-red-400' : 'bg-blue-400'}`}
-                          style={{ width: `${Math.max(0, corr) * 100}%` }}
-                        />
+              <>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {itemCorrelations.map(([qId, corr]) => {
+                    const isLow = corr < 0.3;
+                    return (
+                      <div key={qId} className="flex items-center gap-2">
+                        <span className="w-16 text-xs font-mono text-gray-600 truncate">{qId}</span>
+                        <div className="flex-1 h-4 bg-gray-100 rounded overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${isLow ? 'bg-red-400' : 'bg-blue-400'}`}
+                            style={{ width: `${Math.max(0, corr) * 100}%` }}
+                          />
+                        </div>
+                        <span className={`w-12 text-xs text-right ${isLow ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                          {corr.toFixed(3)}
+                        </span>
                       </div>
-                      <span className={`w-12 text-xs text-right ${isLow ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                        {corr.toFixed(3)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  {isZh ? '* 低于 0.3 的题目可能需要修改' : '* Items below 0.3 may need revision'}
+                </p>
+              </>
             )}
-            <p className="text-xs text-gray-400 mt-2">
-              {isZh ? '* 低于 0.3 的题目可能需要修改' : '* Items below 0.3 may need revision'}
-            </p>
           </div>
         </div>
       </div>
@@ -558,7 +607,15 @@ Please provide actionable specific recommendations.`,
           </div>
 
           {correlationEntries.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">{isZh ? '需要更多数据' : 'Need more data'}</div>
+            <div className="text-center py-8 text-gray-400">
+              {correlationReady
+                ? isZh
+                  ? '需要更多数据'
+                  : 'Need more data'
+                : isZh
+                ? `至少 ${correlationSampleMin} 份有效答卷后才计算维度相关性`
+                : `At least ${correlationSampleMin} valid responses are required to compute correlations.`}
+            </div>
           ) : (
             <div className="space-y-2">
               {correlationEntries.map(([key, corr]) => {
@@ -613,13 +670,20 @@ Please provide actionable specific recommendations.`,
             </button>
             <button
               onClick={() => generateAIAnalysis('suggestions')}
-              disabled={aiLoading}
+              disabled={suggestionsDisabled}
               className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition disabled:opacity-50"
             >
               {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {isZh ? '题目改进建议' : 'Improvement Tips'}
             </button>
           </div>
+          {!reliabilityReady && (
+            <p className="text-xs text-gray-400 mt-2">
+              {isZh
+                ? `需至少 ${minReliabilitySample} 份有效答卷才能生成题目改进建议`
+                : `Need at least ${minReliabilitySample} valid responses before generating item suggestions.`}
+            </p>
+          )}
         </div>
 
         {aiError && (

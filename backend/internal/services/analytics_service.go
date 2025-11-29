@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -14,6 +15,11 @@ import (
 type AnalyticsService struct {
 	db *gorm.DB
 }
+
+const (
+	minReliabilitySample = 30
+	minCorrelationSample = 15
+)
 
 // NewAnalyticsService creates a new analytics service
 func NewAnalyticsService(db *gorm.DB) *AnalyticsService {
@@ -30,12 +36,12 @@ type AnalyticsRequest struct {
 
 // AnalyticsResponse contains the full analytics data
 type AnalyticsResponse struct {
-	Summary           AnalyticsSummary              `json:"summary"`
-	DimensionStats    map[string]DimensionStat      `json:"dimensionStats"`
-	Reliability       ReliabilityStats              `json:"reliability"`
-	Trends            TrendData                     `json:"trends"`
-	Segments          SegmentData                   `json:"segments"`
-	CorrelationMatrix map[string]float64            `json:"correlationMatrix"`
+	Summary           AnalyticsSummary         `json:"summary"`
+	DimensionStats    map[string]DimensionStat `json:"dimensionStats"`
+	Reliability       ReliabilityStats         `json:"reliability"`
+	Trends            TrendData                `json:"trends"`
+	Segments          SegmentData              `json:"segments"`
+	CorrelationMatrix map[string]float64       `json:"correlationMatrix"`
 }
 
 // AnalyticsSummary provides overview metrics
@@ -63,7 +69,7 @@ type DimensionStat struct {
 
 // Distribution represents a histogram bin
 type Distribution struct {
-	Bin   string `json:"bin"`   // e.g., "-5 to -4", "-4 to -3"
+	Bin   string `json:"bin"` // e.g., "-5 to -4", "-4 to -3"
 	Count int    `json:"count"`
 }
 
@@ -74,6 +80,8 @@ type ReliabilityStats struct {
 	SplitHalfReliability  float64            `json:"splitHalfReliability"`
 	SpearmanBrown         float64            `json:"spearmanBrown"`
 	SampleSize            int                `json:"sampleSize"`
+	MinSampleSize         int                `json:"minSampleSize"`
+	HasSufficientSample   bool               `json:"hasSufficientSample"`
 }
 
 // TrendData contains time-based trend information
@@ -231,16 +239,13 @@ func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB)
 	stats := ReliabilityStats{
 		ItemTotalCorrelations: make(map[string]float64),
 		SampleSize:            len(results),
-	}
-
-	if len(results) < 10 {
-		// Not enough data for reliable analysis
-		return stats
+		MinSampleSize:         minReliabilitySample,
 	}
 
 	// Parse answers to build item-level data
 	itemScores := make(map[string][]float64) // questionId -> scores
 	totalScores := make([]float64, 0, len(results))
+	validResponses := 0
 
 	for _, r := range results {
 		var answers []database.AnswerRecord
@@ -253,6 +258,7 @@ func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB)
 		if err := json.Unmarshal(r.DimensionScores, &dimScores); err != nil {
 			continue
 		}
+		validResponses++
 		total := 0.0
 		for _, v := range dimScores {
 			total += v
@@ -265,9 +271,13 @@ func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB)
 		}
 	}
 
-	if len(itemScores) == 0 {
+	stats.SampleSize = validResponses
+
+	if len(itemScores) == 0 || stats.SampleSize < minReliabilitySample {
 		return stats
 	}
+
+	stats.HasSufficientSample = true
 
 	// Calculate Cronbach's Alpha
 	stats.CronbachAlpha = s.calculateCronbachAlpha(itemScores, totalScores)
@@ -525,25 +535,34 @@ func (s *AnalyticsService) calculateSegments(results []database.QuizResultDB) Se
 func (s *AnalyticsService) calculateCorrelationMatrix(results []database.QuizResultDB) map[string]float64 {
 	matrix := make(map[string]float64)
 
-	if len(results) < 10 {
+	if len(results) < minCorrelationSample {
 		return matrix
 	}
 
-	// Collect scores by dimension
-	dimScores := make(map[string][]float64)
+	// Collect dimension scores for each response and track dimension set
+	dimSet := make(map[string]struct{})
+	parsed := make([]map[string]float64, 0, len(results))
 	for _, r := range results {
 		var scores map[string]float64
 		if err := json.Unmarshal(r.DimensionScores, &scores); err != nil {
 			continue
 		}
-		for dim, score := range scores {
-			dimScores[dim] = append(dimScores[dim], score)
+		if len(scores) == 0 {
+			continue
+		}
+		parsed = append(parsed, scores)
+		for dim := range scores {
+			dimSet[dim] = struct{}{}
 		}
 	}
 
+	if len(parsed) < minCorrelationSample {
+		return matrix
+	}
+
 	// Get dimension names
-	dims := make([]string, 0, len(dimScores))
-	for dim := range dimScores {
+	dims := make([]string, 0, len(dimSet))
+	for dim := range dimSet {
 		dims = append(dims, dim)
 	}
 	sort.Strings(dims)
@@ -552,12 +571,21 @@ func (s *AnalyticsService) calculateCorrelationMatrix(results []database.QuizRes
 	for i := 0; i < len(dims); i++ {
 		for j := i + 1; j < len(dims); j++ {
 			dim1, dim2 := dims[i], dims[j]
-			scores1, scores2 := dimScores[dim1], dimScores[dim2]
 
-			if len(scores1) == len(scores2) && len(scores1) > 1 {
-				corr := calculatePearsonCorrelation(scores1, scores2)
-				key := dim1 + "_" + dim2
-				matrix[key] = round3(corr)
+			// Build paired values only where both dimensions are present
+			xs, ys := make([]float64, 0, len(parsed)), make([]float64, 0, len(parsed))
+			for _, scores := range parsed {
+				v1, ok1 := scores[dim1]
+				v2, ok2 := scores[dim2]
+				if ok1 && ok2 {
+					xs = append(xs, v1)
+					ys = append(ys, v2)
+				}
+			}
+
+			if len(xs) >= minCorrelationSample {
+				corr := calculatePearsonCorrelation(xs, ys)
+				matrix[dim1+"_"+dim2] = round3(corr)
 			}
 		}
 	}
@@ -679,7 +707,7 @@ func calculateDistribution(values []float64) []Distribution {
 }
 
 func formatBin(low, high int) string {
-	return string(rune(low+'0'+48)) + " to " + string(rune(high+'0'+48))
+	return fmt.Sprintf("%d to %d", low, high)
 }
 
 func calculatePearsonCorrelation(x, y []float64) float64 {

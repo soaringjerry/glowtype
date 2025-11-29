@@ -189,6 +189,8 @@ export interface ReliabilityStats {
   splitHalfReliability: number;
   spearmanBrown: number;
   sampleSize: number;
+  minSampleSize?: number;
+  hasSufficientSample?: boolean;
 }
 
 export interface TrendPoint {
