@@ -19,7 +19,8 @@ import {
   ScrollText,
   Eye,
   Loader2,
-  TrendingUp
+  TrendingUp,
+  Cpu
 } from 'lucide-react';
 import { isReadOnlyRole, userHasPermission, useAdminAuth } from './hooks/useAdmin';
 import type { AdminPermission } from './hooks/useAdmin';
@@ -36,6 +37,7 @@ import Glowpedia from './pages/Glowpedia';
 import AdminUsers from './pages/AdminUsers';
 import AuditLogs from './pages/AuditLogs';
 import Analytics from './pages/Analytics';
+import AISettings from './pages/AISettings';
 
 export default function AdminLayout() {
   const { t, i18n } = useTranslation('admin');
@@ -69,7 +71,20 @@ export default function AdminLayout() {
       { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles, perm: 'content.write' },
       { path: '/admin/audit', labelKey: 'nav.audit', icon: ScrollText, perm: 'audit.view' },
     ];
-    return items.filter((item) => userHasPermission(currentUser, item.perm));
+    // Filter by permission, then add superadmin-only items
+    const filtered = items.filter((item) => userHasPermission(currentUser, item.perm));
+    // AI Settings is superadmin-only (no permission, just role check)
+    if (currentUser?.role === 'superadmin') {
+      // Insert after prompts
+      const promptsIdx = filtered.findIndex((item) => item.path === '/admin/prompts');
+      filtered.splice(promptsIdx + 1, 0, {
+        path: '/admin/ai-settings',
+        labelKey: 'nav.aiSettings',
+        icon: Cpu,
+        perm: 'admin.manage' as AdminPermission, // Just for type, not used for filtering
+      });
+    }
+    return filtered;
   }, [currentUser]);
 
   if (initializing) {
@@ -195,6 +210,7 @@ export default function AdminLayout() {
             <Route path="/admin/debugger" element={<Protected perm="rules.write"><RuleDebugger /></Protected>} />
             <Route path="/admin/results" element={<Protected perm="results.view"><Results /></Protected>} />
             <Route path="/admin/prompts" element={<Protected perm="prompts.write"><Prompts /></Protected>} />
+            <Route path="/admin/ai-settings" element={<SuperadminOnly><AISettings /></SuperadminOnly>} />
             <Route path="/admin/glowpedia" element={<Protected perm="content.write"><Glowpedia /></Protected>} />
             <Route path="/admin/audit" element={<Protected perm="audit.view"><AuditLogs /></Protected>} />
           </Routes>
@@ -217,6 +233,20 @@ function Protected({ perm, children }: ProtectedProps) {
       <div className="bg-white rounded-2xl shadow-sm p-6 border border-amber-100">
         <h2 className="text-lg font-semibold text-gray-800 mb-1">{t('accessDenied.title')}</h2>
         <p className="text-sm text-gray-600">{t('accessDenied.desc')}</p>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
+function SuperadminOnly({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('admin');
+  const { currentUser } = useAdminAuth();
+  if (currentUser?.role !== 'superadmin') {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-amber-100">
+        <h2 className="text-lg font-semibold text-gray-800 mb-1">{t('accessDenied.title')}</h2>
+        <p className="text-sm text-gray-600">{t('accessDenied.superadminOnly', 'This feature requires superadmin access.')}</p>
       </div>
     );
   }

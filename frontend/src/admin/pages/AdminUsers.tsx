@@ -229,7 +229,7 @@ export default function AdminUsers() {
 
   const handleUpdate = async (admin: AdminUser) => {
     const draft = getDraft(admin);
-    const payload: { role?: AdminRole; isActive?: boolean; permissions?: string[] | null } = {};
+    const payload: { role?: AdminRole; isActive?: boolean; permissions?: string[] } = {};
 
     if (draft.role !== admin.role) payload.role = draft.role;
     if ((admin.isActive ?? true) !== draft.isActive) payload.isActive = draft.isActive;
@@ -246,8 +246,8 @@ export default function AdminUsers() {
         payload.permissions = draft.permissions;
       }
     } else if (hasCustom) {
-      // Clear custom permissions (use role defaults)
-      payload.permissions = null;
+      // Clear custom permissions (use role defaults) - send empty array
+      payload.permissions = [];
     }
 
     if (Object.keys(payload).length === 0) return;

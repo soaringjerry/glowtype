@@ -46,7 +46,7 @@ func New(cfg config.Config) *gin.Engine {
 	scoringService := services.NewScoringService(db)
 	quizService := services.NewQuizService(db, scoringService)
 	glowtypeService := services.NewGlowtypeService(db, glowtypesCfg)
-	chatService := services.NewChatService(cfg)
+	chatService := services.NewChatService(cfg, db)
 	helpService := services.NewHelpService()
 
 	quizHandler := handlers.NewQuizHandler(quizService)
@@ -160,6 +160,14 @@ func New(cfg config.Config) *gin.Engine {
 			prompts.GET("/prompts", handlers.ListPrompts)
 			prompts.PUT("/prompts/:id", handlers.UpdatePrompt)
 			prompts.POST("/prompts/:key/reset", handlers.ResetPrompt)
+		}
+
+		// AI Settings (API key, model config - superadmin only)
+		aiSettings := admin.Group("/")
+		aiSettings.Use(handlers.RequireSuperAdmin())
+		{
+			aiSettings.GET("/ai/settings", handlers.GetAISettings)
+			aiSettings.PUT("/ai/settings", handlers.UpdateAISettings)
 		}
 
 		// Statistics

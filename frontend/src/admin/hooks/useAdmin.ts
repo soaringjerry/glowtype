@@ -274,6 +274,26 @@ export interface PromptSlot {
   id?: number;
 }
 
+// AI Settings (provider, model, API key)
+export interface AISettings {
+  id: number;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  isActive: boolean;
+  hasApiKey: boolean;
+  apiKey?: string; // Masked key for display
+  updatedAt: string;
+}
+
+export interface AISettingsUpdate {
+  provider?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  isActive?: boolean;
+}
+
 // Import/Export types
 export type ImportMode = 'merge' | 'replace';
 
@@ -603,7 +623,7 @@ export const useAdminApi = () => {
     [apiCall],
   );
   const updateAdmin = useCallback(
-    (id: number, data: { role?: AdminRole; isActive?: boolean; permissions?: string[] | null }) =>
+    (id: number, data: { role?: AdminRole; isActive?: boolean; permissions?: string[] }) =>
       apiCall<AdminUser>(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     [apiCall],
   );
@@ -678,5 +698,9 @@ export const useAdminApi = () => {
     createAdmin,
     updateAdmin,
     listAuditLogs,
+    // AI Settings (superadmin only)
+    getAISettings: () => apiCall<AISettings>('/admin/ai/settings'),
+    updateAISettings: (data: AISettingsUpdate) =>
+      apiCall<AISettings>('/admin/ai/settings', { method: 'PUT', body: JSON.stringify(data) }),
   };
 };

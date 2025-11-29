@@ -11,6 +11,7 @@
     "debugger": "Rule Debugger",
     "results": "Quiz Results",
     "prompts": "AI Prompts",
+    "aiSettings": "AI Settings",
     "glowpedia": "Glowpedia",
     "audit": "Audit Log",
     "logout": "Logout"
@@ -407,6 +408,27 @@
       "chat": "AI Chat",
       "other": "Other"
     }
+  },
+  "aiSettings": {
+    "title": "AI Settings",
+    "subtitle": "Configure the AI provider for chat and insights",
+    "infoTitle": "Database-based AI Configuration",
+    "infoDesc": "Settings saved here take priority over environment variables. Leave fields empty to use environment defaults.",
+    "provider": "Provider",
+    "providerHint": "Select \"OpenAI / OpenAI Compatible\" for OpenAI, Azure, or any OpenAI-compatible API",
+    "baseUrl": "API Base URL",
+    "baseUrlHint": "Leave empty for default OpenAI endpoint. For Azure or other providers, enter the full base URL.",
+    "model": "Model",
+    "modelHint": "e.g., gpt-4o-mini, gpt-4o, gpt-4-turbo, etc.",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter new key to update...",
+    "apiKeyEmpty": "Enter API key...",
+    "currentKey": "Current key",
+    "noKey": "No API key configured. AI features will use environment variable or be disabled.",
+    "enableDb": "Enable Database Configuration",
+    "enableDbHint": "When enabled, these settings override environment variables",
+    "saveSuccess": "Settings saved successfully!",
+    "lastUpdated": "Last updated"
   },
   "glowpedia": {
     "title": "Glowpedia",

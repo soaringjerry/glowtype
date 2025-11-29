@@ -1721,6 +1721,121 @@ func GetPublicPrompts(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// ============ AI Settings ============
+
+// GetAISettings returns the current AI configuration
+func GetAISettings(c *gin.Context) {
+	settings, err := database.GetAISettings(database.GetDB())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return settings with masked API key
+	hasKey := settings.APIKey != ""
+	maskedKey := ""
+	if hasKey && len(settings.APIKey) > 8 {
+		maskedKey = settings.APIKey[:4] + "****" + settings.APIKey[len(settings.APIKey)-4:]
+	} else if hasKey {
+		maskedKey = "****"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":        settings.ID,
+		"provider":  settings.Provider,
+		"baseUrl":   settings.BaseURL,
+		"model":     settings.Model,
+		"isActive":  settings.IsActive,
+		"hasApiKey": hasKey,
+		"apiKey":    maskedKey,
+		"updatedAt": settings.UpdatedAt,
+	})
+}
+
+// UpdateAISettings updates the AI configuration
+func UpdateAISettings(c *gin.Context) {
+	var req struct {
+		Provider *string `json:"provider"`
+		APIKey   *string `json:"apiKey"`
+		BaseURL  *string `json:"baseUrl"`
+		Model    *string `json:"model"`
+		IsActive *bool   `json:"isActive"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	settings, err := database.GetAISettings(database.GetDB())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	updates := map[string]any{}
+
+	if req.Provider != nil {
+		provider := strings.TrimSpace(*req.Provider)
+		if provider != "openai" && provider != "mock" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid provider, must be 'openai' or 'mock'"})
+			return
+		}
+		updates["provider"] = provider
+	}
+
+	if req.APIKey != nil {
+		// Only update if not the masked placeholder
+		key := strings.TrimSpace(*req.APIKey)
+		if !strings.Contains(key, "****") {
+			updates["api_key"] = key
+		}
+	}
+
+	if req.BaseURL != nil {
+		updates["base_url"] = strings.TrimRight(strings.TrimSpace(*req.BaseURL), "/")
+	}
+
+	if req.Model != nil {
+		updates["model"] = strings.TrimSpace(*req.Model)
+	}
+
+	if req.IsActive != nil {
+		updates["is_active"] = *req.IsActive
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No changes provided"})
+		return
+	}
+
+	if err := database.GetDB().Model(settings).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Reload settings
+	settings, _ = database.GetAISettings(database.GetDB())
+
+	hasKey := settings.APIKey != ""
+	maskedKey := ""
+	if hasKey && len(settings.APIKey) > 8 {
+		maskedKey = settings.APIKey[:4] + "****" + settings.APIKey[len(settings.APIKey)-4:]
+	} else if hasKey {
+		maskedKey = "****"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":        settings.ID,
+		"provider":  settings.Provider,
+		"baseUrl":   settings.BaseURL,
+		"model":     settings.Model,
+		"isActive":  settings.IsActive,
+		"hasApiKey": hasKey,
+		"apiKey":    maskedKey,
+		"updatedAt": settings.UpdatedAt,
+	})
+}
+
 // ============ Statistics ============
 
 func GetStatsOverview(c *gin.Context) {

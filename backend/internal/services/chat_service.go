@@ -12,7 +12,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/soaringjerry/glowtype/internal/config"
+	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/models"
+	"gorm.io/gorm"
 )
 
 type ChatService struct {
@@ -20,15 +22,25 @@ type ChatService struct {
 	mu       sync.Mutex
 	provider string
 
-	openAIKey   string
-	openAIBase  string
-	openAIModel string
+	// Fallback config from environment (used when DB config not available)
+	envAPIKey   string
+	envBaseURL  string
+	envModel    string
 	client      *http.Client
+	db          *gorm.DB
+}
+
+// aiConfig holds the effective AI configuration
+type aiConfig struct {
+	provider string
+	apiKey   string
+	baseURL  string
+	model    string
 }
 
 const defaultOpenAIBase = "https://api.openai.com/v1"
 
-func NewChatService(cfg config.Config) *ChatService {
+func NewChatService(cfg config.Config, db *gorm.DB) *ChatService {
 	provider := strings.ToLower(strings.TrimSpace(cfg.ChatProvider))
 	apiKey := strings.TrimSpace(cfg.OpenAIAPIKey)
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.OpenAIBaseURL), "/")
@@ -60,19 +72,53 @@ func NewChatService(cfg config.Config) *ChatService {
 	} else if apiKey != "" {
 		keyPreview = "***"
 	}
-	log.Printf("[ChatService] provider=%q, baseURL=%q, model=%q, apiKey=%q", provider, baseURL, model, keyPreview)
+	log.Printf("[ChatService] provider=%q, baseURL=%q, model=%q, apiKey=%q (env fallback)", provider, baseURL, model, keyPreview)
 
 	if provider == "openai" && apiKey == "" {
 		log.Printf("[ChatService] WARNING: provider=openai but OPENAI_API_KEY is empty!")
 	}
 
 	return &ChatService{
-		sessions:    make(map[string]time.Time),
-		provider:    provider,
-		openAIKey:   apiKey,
-		openAIBase:  baseURL,
-		openAIModel: model,
-		client:      &http.Client{Timeout: 30 * time.Second},
+		sessions:   make(map[string]time.Time),
+		provider:   provider,
+		envAPIKey:  apiKey,
+		envBaseURL: baseURL,
+		envModel:   model,
+		client:     &http.Client{Timeout: 30 * time.Second},
+		db:         db,
+	}
+}
+
+// getEffectiveConfig returns AI configuration, prioritizing DB settings over environment variables
+func (s *ChatService) getEffectiveConfig() aiConfig {
+	// Try to get config from database first
+	if s.db != nil {
+		dbSettings, err := database.GetAISettings(s.db)
+		if err == nil && dbSettings != nil && dbSettings.IsActive && dbSettings.APIKey != "" {
+			baseURL := strings.TrimRight(strings.TrimSpace(dbSettings.BaseURL), "/")
+			if baseURL == "" {
+				baseURL = defaultOpenAIBase
+			}
+			model := strings.TrimSpace(dbSettings.Model)
+			if model == "" {
+				model = "gpt-4o-mini"
+			}
+			log.Printf("[ChatService] Using DB AI config: provider=%q, model=%q", dbSettings.Provider, model)
+			return aiConfig{
+				provider: dbSettings.Provider,
+				apiKey:   dbSettings.APIKey,
+				baseURL:  baseURL,
+				model:    model,
+			}
+		}
+	}
+
+	// Fall back to environment config
+	return aiConfig{
+		provider: s.provider,
+		apiKey:   s.envAPIKey,
+		baseURL:  s.envBaseURL,
+		model:    s.envModel,
 	}
 }
 
@@ -100,9 +146,12 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 		}
 	}
 
+	// Get effective AI config (DB first, then env fallback)
+	cfg := s.getEffectiveConfig()
+
 	// Provider-backed AI reply
-	if s.provider == "openai" && s.openAIKey != "" {
-		aiReply, err := s.callOpenAIChat(req.Message, req.Language)
+	if cfg.provider == "openai" && cfg.apiKey != "" {
+		aiReply, err := s.callOpenAIChat(cfg, req.Message, req.Language)
 		if err != nil {
 			log.Printf("[ChatService] Reply: OpenAI call failed: %v", err)
 		} else if aiReply != "" {
@@ -112,7 +161,7 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 			}
 		}
 	} else {
-		log.Printf("[ChatService] Reply: skipping AI (provider=%q, hasKey=%v)", s.provider, s.openAIKey != "")
+		log.Printf("[ChatService] Reply: skipping AI (provider=%q, hasKey=%v)", cfg.provider, cfg.apiKey != "")
 	}
 
 	reply := fmt.Sprintf("%sI hear that you are going through something difficult. This space is for gentle reflection, not diagnosis.", prefix)
@@ -128,8 +177,11 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 
 // GenerateInsight returns a concise insight via provider (OpenAI) if configured, otherwise a static fallback.
 func (s *ChatService) GenerateInsight(systemPrompt, userPrompt, lang string) string {
-	if s.provider == "openai" && s.openAIKey != "" {
-		aiReply, err := s.callOpenAI([]openAIMessage{
+	// Get effective AI config (DB first, then env fallback)
+	cfg := s.getEffectiveConfig()
+
+	if cfg.provider == "openai" && cfg.apiKey != "" {
+		aiReply, err := s.callOpenAI(cfg, []openAIMessage{
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
 		})
@@ -139,7 +191,7 @@ func (s *ChatService) GenerateInsight(systemPrompt, userPrompt, lang string) str
 			return aiReply
 		}
 	} else {
-		log.Printf("[ChatService] GenerateInsight: skipping AI (provider=%q, hasKey=%v)", s.provider, s.openAIKey != "")
+		log.Printf("[ChatService] GenerateInsight: skipping AI (provider=%q, hasKey=%v)", cfg.provider, cfg.apiKey != "")
 	}
 
 	if lang == "zh" || lang == "zh-CN" {
@@ -153,7 +205,7 @@ type openAIMessage struct {
 	Content string `json:"content"`
 }
 
-func (s *ChatService) callOpenAIChat(message, lang string) (string, error) {
+func (s *ChatService) callOpenAIChat(cfg aiConfig, message, lang string) (string, error) {
 	system := `You are Glowtype AI, a warm and supportive companion. You listen with empathy and respond gently.
 Guidelines:
 - Keep responses short (2-3 sentences max)
@@ -169,27 +221,27 @@ Guidelines:
 - 如果有人提到自我伤害或危机，温柔地鼓励他们寻求本地危机支持。`
 	}
 
-	return s.callOpenAI([]openAIMessage{
+	return s.callOpenAI(cfg, []openAIMessage{
 		{Role: "system", Content: system},
 		{Role: "user", Content: message},
 	})
 }
 
-func (s *ChatService) callOpenAI(messages []openAIMessage) (string, error) {
+func (s *ChatService) callOpenAI(cfg aiConfig, messages []openAIMessage) (string, error) {
 	body := map[string]any{
-		"model":    s.openAIModel,
+		"model":    cfg.model,
 		"messages": messages,
 	}
 
 	payload, _ := json.Marshal(body)
-	url := s.openAIBase + "/chat/completions"
+	url := cfg.baseURL + "/chat/completions"
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.openAIKey)
+	req.Header.Set("Authorization", "Bearer "+cfg.apiKey)
 
 	resp, err := s.client.Do(req)
 	if err != nil {

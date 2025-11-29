@@ -1,9 +1,11 @@
 package database
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // ============ Multi-tenant Support ============
@@ -393,12 +395,49 @@ type AdminUser struct {
 	IsActive     bool           `gorm:"default:true" json:"isActive"`
 	LastLoginAt  *time.Time     `json:"lastLoginAt"`
 	LastLoginIP  string         `json:"lastLoginIp"`
-	CreatedAt    time.Time      `json:"createdAt"`
-	UpdatedAt    time.Time      `json:"updatedAt"`
+
+	// Two-Factor Authentication fields
+	TwoFactorEnabled    bool       `gorm:"default:false" json:"twoFactorEnabled"`
+	TwoFactorSecret     string     `json:"-"`                                      // AES-encrypted TOTP secret, never exposed
+	TwoFactorVerifiedAt *time.Time `json:"twoFactorVerifiedAt"`                    // When 2FA was first verified/enabled
+	TwoFactorRequired   bool       `gorm:"default:false" json:"twoFactorRequired"` // Per-user force 2FA (set by superadmin)
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (AdminUser) TableName() string {
 	return "admin_users"
+}
+
+// AdminRecoveryCode stores one-time recovery codes for 2FA bypass
+type AdminRecoveryCode struct {
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	AdminID   uint       `gorm:"index;not null" json:"adminId"`
+	CodeHash  string     `gorm:"not null" json:"-"` // bcrypt hash of the code
+	UsedAt    *time.Time `json:"usedAt"`            // null = unused
+	CreatedAt time.Time  `json:"createdAt"`
+}
+
+func (AdminRecoveryCode) TableName() string {
+	return "admin_recovery_codes"
+}
+
+// AdminTrustedDevice allows skipping 2FA for trusted devices
+type AdminTrustedDevice struct {
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	AdminID     uint       `gorm:"index;not null" json:"adminId"`
+	DeviceToken string     `gorm:"uniqueIndex;not null" json:"-"` // Hashed device token
+	DeviceName  string     `json:"deviceName"`                    // User-friendly name (e.g., "Chrome on MacBook")
+	UserAgent   string     `json:"userAgent"`
+	IP          string     `json:"ip"` // IP when device was trusted
+	LastUsedAt  *time.Time `json:"lastUsedAt"`
+	ExpiresAt   time.Time  `gorm:"index" json:"expiresAt"` // Trust expires after N days (default 7)
+	CreatedAt   time.Time  `json:"createdAt"`
+}
+
+func (AdminTrustedDevice) TableName() string {
+	return "admin_trusted_devices"
 }
 
 // AdminLoginAttempt tracks login failures for brute-force protection
@@ -433,4 +472,45 @@ type AdminAuditLog struct {
 
 func (AdminAuditLog) TableName() string {
 	return "admin_audit_logs"
+}
+
+// ============ AI Settings ============
+
+// AISettings stores AI provider configuration (singleton record with id=1)
+type AISettings struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Provider  string    `gorm:"default:openai" json:"provider"` // openai, mock
+	APIKey    string    `json:"-"`                              // Never expose in JSON
+	BaseURL   string    `json:"baseUrl"`
+	Model     string    `json:"model"`
+	IsActive  bool      `gorm:"default:true" json:"isActive"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (AISettings) TableName() string {
+	return "ai_settings"
+}
+
+// GetAISettings returns the singleton AI settings record, creating default if not exists
+func GetAISettings(db *gorm.DB) (*AISettings, error) {
+	var settings AISettings
+	err := db.First(&settings, 1).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Create default settings
+			settings = AISettings{
+				ID:       1,
+				Provider: "openai",
+				BaseURL:  "https://api.openai.com/v1",
+				Model:    "gpt-4o-mini",
+				IsActive: false, // Disabled by default until configured
+			}
+			if err := db.Create(&settings).Error; err != nil {
+				return nil, err
+			}
+			return &settings, nil
+		}
+		return nil, err
+	}
+	return &settings, nil
 }
