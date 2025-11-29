@@ -184,6 +184,11 @@ func (s *AnalyticsService) resolveDateRange(req AnalyticsRequest) (string, strin
 	now := time.Now()
 	endDate := now.Format("2006-01-02")
 
+	// Highest priority: explicit custom range
+	if req.StartDate != "" && req.EndDate != "" {
+		return req.StartDate, req.EndDate
+	}
+
 	switch req.Preset {
 	case "30d":
 		return now.AddDate(0, 0, -30).Format("2006-01-02"), endDate
@@ -192,10 +197,6 @@ func (s *AnalyticsService) resolveDateRange(req AnalyticsRequest) (string, strin
 	case "all":
 		return "2000-01-01", endDate
 	default:
-		// Custom dates
-		if req.StartDate != "" && req.EndDate != "" {
-			return req.StartDate, req.EndDate
-		}
 		// Default to 30 days
 		return now.AddDate(0, 0, -30).Format("2006-01-02"), endDate
 	}
