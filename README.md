@@ -1,98 +1,155 @@
-## Glowtype.me
+# Glowtype.me
 
-Glowtype.me is a bilingual (English / Simplified Chinese) emotional type quiz site designed for young people.  
-It offers a light, non-diagnostic way to reflect on feelings, plus optional anonymous chat and help resources.
+Glowtype.me is a bilingual (English / Simplified Chinese) emotional type quiz site designed for young people. It offers a light, non-diagnostic way to reflect on feelings, plus optional anonymous chat and help resources.
 
-This repository contains:
+## Repository Structure
 
-- `frontend/`: React + TypeScript + Vite SPA with react-i18next for i18n.
-- `backend/`: Go (Gin) REST API providing quiz questions, scoring endpoint, glowtype content, chat placeholder APIs, and help resources.
+- `frontend/`: React + TypeScript + Vite SPA with react-i18next for i18n
+- `backend/`: Go (Gin) REST API providing quiz, scoring, glowtype content, AI chat, and admin panel
+- `docs/`: Comprehensive documentation
 
-### Quick start
+## Documentation
 
-#### One‑liner remote setup (recommended)
+**[📚 Full Documentation Index →](./docs/README.md)**
 
-On a fresh Linux server with Docker + docker-compose available:
+| Document | Description |
+|----------|-------------|
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Deployment guide, Docker setup, CI/CD |
+| [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) | Architecture, data models, API overview |
+| [docs/SECURITY.md](./docs/SECURITY.md) | Authentication, 2FA, RBAC, audit logging |
+| [docs/ADMIN_GUIDE.md](./docs/ADMIN_GUIDE.md) | Admin panel user guide |
+| [docs/API_REFERENCE.md](./docs/API_REFERENCE.md) | Complete REST API reference |
+| [docs/AI_INTEGRATION.md](./docs/AI_INTEGRATION.md) | AI provider setup and configuration |
+| [docs/SCORING_RULES.md](./docs/SCORING_RULES.md) | Quiz scoring system guide |
+| [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Common issues and solutions |
+
+## Quick Start
+
+### One-liner Remote Setup (Recommended)
+
+On a fresh Linux server with Docker available:
 
 ```bash
-GEMINI_API_KEY=your_key_here curl -fsSL https://raw.githubusercontent.com/soaringjerry/glowtype/main/scripts/remote_setup.sh | bash
+AI_API_KEY=your_key curl -fsSL https://raw.githubusercontent.com/soaringjerry/glowtype/main/scripts/remote_setup.sh | bash
 ```
 
 The script will:
+- Clone the repository to `~/glowtype`
+- Create and configure environment files
+- Auto-generate admin credentials and security keys
+- Start Docker containers with Watchtower for auto-updates
 
-- clone (or update) this repository to `~/glowtype` by default;
-- ensure `.env` and `backend/.env` exist;
-- pull/build and start the Dockerized backend + frontend via `docker-compose`;
-- start a small Watchtower container that automatically pulls new backend/frontend images from GHCR and restarts them;
-- auto-generate admin secrets into `backend/.env` (`ADMIN_JWT_SECRET`, `ADMIN_SUPER_PASSWORD`, default username `ADMIN_SUPER_USERNAME=superadmin`). Check that file after首次启动获取超管口令，然后尽快更换并创建独立管理员。
-- 如果忘记超管密码或被登录锁定，可设置 `ADMIN_SUPER_PASSWORD=<新密码>` + `ADMIN_SUPER_PASSWORD_ROTATE=true` 后重启；想暂时关闭登录锁定则设置 `ADMIN_LOGIN_RATE_LIMIT_DISABLE=1`（排障后请恢复）。
+**After first start**:
+1. Check `backend/.env` for the generated `ADMIN_SUPER_PASSWORD`
+2. Login at `http://your-server:18081/admin`
+3. Change password and enable 2FA immediately
 
-You can override defaults with environment variables:
+### Environment Variables
 
-- `GLOWTYPE_INSTALL_DIR` – installation directory (default `~/glowtype`);
-- `GLOWTYPE_BRANCH` – git branch to use (default `main`);
-- `GLOWTYPE_REPO_URL` – repository URL (default GitHub repo).
+Override defaults with environment variables:
 
-#### Ports and how to change them
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AI_API_KEY` | OpenAI-compatible API key | - |
+| `AI_API_URL` | AI provider base URL | `https://api.openai.com/v1` |
+| `AI_MODEL` | AI model name | `gpt-4o-mini` |
+| `GLOWTYPE_INSTALL_DIR` | Installation directory | `~/glowtype` |
+| `GLOWTYPE_BRANCH` | Git branch | `main` |
 
-For the Docker setup, the default host ports are:
+## Ports
 
-- Backend: `18080` (host) → `8080` (inside container)
-- Frontend: `18081` (host) → `80` (inside container)
+| Service | Host Port | Container Port |
+|---------|-----------|----------------|
+| Backend | 18080 | 8080 |
+| Frontend | 18081 | 80 |
 
-You can change these by editing the root `.env`:
-
+Change in root `.env`:
 ```env
 GLOWTYPE_BACKEND_PORT_HOST=18080
 GLOWTYPE_FRONTEND_PORT_HOST=18081
 ```
 
-And update the frontend API base URL accordingly:
+## Local Development
 
-```bash
-cd frontend
-VITE_API_BASE_URL=http://localhost:19080/api/v1 npm run dev
-```
-
-#### Manual backend start (development)
+### Backend
 
 ```bash
 cd backend
+cp .env.example .env
 go run ./cmd/glowtype-api
 ```
 
-If `PORT` is not set, the backend listens on `:18080` by default with the main prefix `/api/v1`.
+Default: `http://localhost:18080/api/v1`
 
-#### Manual frontend start (development)
+### Frontend
 
 ```bash
 cd frontend
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-In development, the frontend uses `VITE_API_BASE_URL` (default `http://localhost:18080/api/v1`) to talk to the backend.
+Default: `http://localhost:5173`
 
-### Database backups
+Configure `VITE_API_BASE_URL` in `.env.local` to point to the backend.
 
-- Backend takes hourly SQLite snapshots by default into `/data/backup` with rolling cleanup; backups are not exposed over HTTP.
-- Configure via `backend/.env`: `BACKUP_MAX_TOTAL_BYTES=5GB` (总容量上限), `BACKUP_INTERVAL_MINUTES=60`，`BACKUP_DIR=/data/backup`，`BACKUP_ENABLED=1`，`BACKUP_MIN_FREE_BYTES=1GB`（备份前保留的最小剩余空间）。
-- Files are named `glowtype_<timestamp>.db`; restore by stopping the backend and replacing `DB_PATH` (default `/data/glowtype.db`) with a chosen snapshot.
+## Admin Panel Features
 
-### Directory overview (goal structure)
+- **Dashboard**: Usage statistics, trends, geographic distribution
+- **Content Management**: Quiz questions, glowtypes, scoring rules, AI prompts
+- **Glowpedia**: Manage supportive content library
+- **User Management**: Multiple admin roles with RBAC permissions
+- **Security**: Two-factor authentication, audit logging
+- **AI Settings**: Configure AI provider and rate limits (superadmin)
 
-- Backend:
-  - `cmd/glowtype-api/` – entrypoint `main.go`
-  - `internal/server/` – Gin bootstrap, routing and middleware
-  - `internal/handlers/` – HTTP handlers (quiz, glowtype, chat, health, help)
-  - `internal/services/` – business logic (scoring, chat mock, help)
-  - `internal/models/` – data structures
-  - `internal/storage/` – quiz + glowtype config loading from JSON
-  - `internal/config/` – configuration and environment variables
-  - `internal/middleware/` – logging, CORS, recovery
+## Database Backups
 
-- Frontend:
-  - `src/pages/` – page-level components (`/`, `/quiz`, `/result/:typeId`, `/chat`, `/help`, `/safety`)
-  - `src/components/` – Navbar, Footer and shared UI pieces
-  - `src/i18n/` – English / Chinese JSON translation files
-  - `src/api/` – small fetch helpers for the backend API
+Automatic hourly backups are enabled by default:
+
+```env
+BACKUP_ENABLED=1
+BACKUP_INTERVAL_MINUTES=60
+BACKUP_MAX_TOTAL_BYTES=5368709120  # 5GB
+BACKUP_DIR=/data/backup
+```
+
+Files are named `glowtype_<timestamp>.db`. Restore by stopping the backend and replacing the database file.
+
+## Security
+
+- **Two-Factor Authentication**: TOTP with SHA-256, recovery codes, trusted devices
+- **RBAC**: 6 roles with granular permissions
+- **Audit Logging**: All admin operations recorded
+- **Privacy First**: No PII collected, IP anonymized to region codes
+
+See [docs/SECURITY.md](./docs/SECURITY.md) for details.
+
+## Troubleshooting
+
+### Forgot Admin Password
+
+Set in `backend/.env`:
+```env
+ADMIN_SUPER_PASSWORD=new_password
+ADMIN_SUPER_PASSWORD_ROTATE=true
+```
+Then restart the backend.
+
+### Account Locked
+
+Set in `backend/.env`:
+```env
+ADMIN_LOGIN_RATE_LIMIT_DISABLE=1
+```
+Restart, login, then re-enable rate limiting.
+
+### Lost 2FA Device
+
+Superadmin can reset user 2FA in Admin Accounts page. If superadmin lost 2FA, directly update the database.
+
+See [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for more.
+
+## License
+
+MIT

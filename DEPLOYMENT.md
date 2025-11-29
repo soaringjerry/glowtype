@@ -1,28 +1,54 @@
-## Glowtype.me – 部署与自动化运维说明
+# Glowtype.me Deployment Guide
 
-本说明基于以下约定实现：
+This guide covers deployment and automated operations.
 
-- 使用 Docker + docker-compose 管理前后端服务；
-- 使用 GitHub Actions + GHCR 完成 CI/CD；
-- 通过 SSH 从 GitHub Actions 触发服务器上的更新（方案 B）。
-
-### 目录结构新增内容
-
-- `Dockerfile.backend` – Go 后端镜像构建（多阶段，最终 distroless 非 root）。
-- `Dockerfile.frontend` – 前端构建（Node 构建 + Nginx 提供静态资源）。
-- `docker-compose.yml` – 定义 `backend` 与 `frontend` 两个服务。
-- `.env.example` – 根目录环境变量示例（端口 + Vite API base）。
-- `scripts/setup_and_run.sh` – 一键安装与启动脚本。
-- `frontend/nginx.conf` – 前端容器内 Nginx 配置（SPA fallback，隐私友好的日志格式）。
-- `.github/workflows/deploy.yml` – CI & 部署工作流。
+**Architecture**:
+- Docker + docker-compose for frontend/backend services
+- GitHub Actions + GHCR for CI/CD
+- Watchtower for automatic image updates
 
 ---
 
-## 一键安装 / 启动脚本
+## Table of Contents
 
-### 使用步骤
+1. [Quick Start](#1-quick-start)
+2. [Docker Architecture](#2-docker-architecture)
+3. [CI/CD Pipeline](#3-cicd-pipeline)
+4. [Environment Variables](#4-environment-variables)
+5. [Backup & Recovery](#5-backup--recovery)
+6. [Security Configuration](#6-security-configuration)
+7. [AI Provider Setup](#7-ai-provider-setup)
+8. [Troubleshooting](#8-troubleshooting)
 
-在目标服务器上（以 Ubuntu 为例）：
+---
+
+## 1. Quick Start
+
+### 1.1 One-Line Remote Setup (Recommended)
+
+On a fresh Linux server with Docker available:
+
+```bash
+AI_API_KEY=your_key curl -fsSL https://raw.githubusercontent.com/soaringjerry/glowtype/main/scripts/remote_setup.sh | bash
+```
+
+The script will:
+1. Clone the repository to `~/glowtype`
+2. Create `.env` and `backend/.env` files
+3. Auto-generate security secrets:
+   - `ADMIN_JWT_SECRET` (JWT signing key)
+   - `ADMIN_SUPER_PASSWORD` (initial superadmin password)
+   - `TOTP_ENCRYPTION_KEY` (2FA secret encryption)
+4. Pull/build and start Docker containers
+5. Start Watchtower for automatic updates
+
+**After first start**:
+1. Check `backend/.env` for the generated `ADMIN_SUPER_PASSWORD`
+2. Login to admin panel at `http://your-server:18081/admin`
+3. Change the superadmin password immediately
+4. Enable 2FA for the superadmin account
+
+### 1.2 Manual Setup
 
 ```bash
 git clone https://github.com/soaringjerry/glowtype.git
@@ -31,156 +57,405 @@ chmod +x scripts/setup_and_run.sh
 ./scripts/setup_and_run.sh
 ```
 
-脚本会执行：
+### 1.3 Default Ports
 
-1. 检查 `docker` 与 `docker compose` / `docker-compose` 是否可用；
-2. 确认根目录 `.env` 是否存在，不存在则从 `.env.example` 复制或创建默认值；
-3. 确认 `backend/.env` 是否存在，不存在则从 `.env.example` 复制或创建默认值；
-4. 执行 `docker compose pull`（如有远端镜像则拉取）；
-5. 执行 `docker compose build` 构建本地镜像（首次会稍慢）；
-6. 执行 `docker compose up -d` 后台启动服务。
+| Service | Host Port | Container Port |
+|---------|-----------|----------------|
+| Backend | 18080 | 8080 |
+| Frontend | 18081 | 80 |
+| Share Render | 19080 | 3000 |
 
-完成后脚本会打印访问地址，例如：
-
-- Frontend: `http://localhost:${GLOWTYPE_FRONTEND_PORT_HOST}`
-- Backend API: `http://localhost:${GLOWTYPE_BACKEND_PORT_HOST}/api/v1`
-
-重复运行脚本会再次执行 pull/build/up，可用于更新到最新配置或镜像。
-
-### 关键环境变量
-
-根目录 `.env`（示例见 `.env.example`）：
-
-- `GLOWTYPE_BACKEND_PORT_HOST` – 宿主机暴露的后端端口（默认 8080）。
-- `GLOWTYPE_FRONTEND_PORT_HOST` – 宿主机暴露的前端端口（默认 5173）。
-- `VITE_API_BASE_URL` – 前端构建时使用的 API 地址（docker-compose 下默认 `http://backend:8080/api/v1`）。
-
-后端 `backend/.env`（示例见 `backend/.env.example`）：
-
-- `PORT` – 容器内后端监听端口（默认 8080；本地直接运行时默认使用 18080）。
-- `ENV` – `development` / `production`。
-- `ALLOWED_ORIGINS` – CORS 允许的前端来源（生产环境请设置为你的前端域名）。
-- `LOG_LEVEL` – 日志级别。
-- `CHAT_PROVIDER` – 当前为 `mock`。
-
-docker-compose 使用根目录 `.env` 做变量替换；后端容器使用 `backend/.env`。
-
----
-
-## Docker 与 docker-compose 架构
-
-### 后端镜像（Dockerfile.backend）
-
-- 基于 `golang:1.24` 构建阶段，编译 `glowtype-api` 二进制；
-- 使用轻量的 `alpine:3.20` 作为运行阶段镜像，并创建非 root 用户；
-- 将 `backend/config` 一并复制到容器中；
-- 默认暴露 `8080` 端口。
-
-### 前端镜像（Dockerfile.frontend）
-
-- 基于 `node:22-alpine` 构建阶段：
-  - `npm ci`；
-  - 使用构建参数 `VITE_API_BASE_URL`（默认 `http://backend:8080/api/v1`）；
-  - `npm run build` 生成静态资源。
-- 基于 `nginx:1.27-alpine` 运行阶段：
-  - 使用 `frontend/nginx.conf` 作为默认站点配置；
-  - SPA 模式下所有路径回退到 `index.html`；
-  - 使用精简日志格式，不记录客户端 IP。
-
-### docker-compose.yml + Watchtower 自动更新
-
-服务：
-
-- `backend`：
-  - 构建自 `Dockerfile.backend`；
-  - 使用 `backend/.env` 作为环境变量；
-  - 暴露 `${GLOWTYPE_BACKEND_PORT_HOST:-18080}:8080`；
-  - 重启策略 `unless-stopped`；
-  - 带有标签 `com.centurylinklabs.watchtower.enable=true`，供 Watchtower 识别。
-
-- `frontend`：
-  - 构建自 `Dockerfile.frontend`；
-  - 构建参数 `VITE_API_BASE_URL` 默认 `http://backend:8080/api/v1`，可通过根 `.env` 覆盖；
-  - 依赖 `backend`；
-  - 暴露 `${GLOWTYPE_FRONTEND_PORT_HOST:-18081}:80`；
-  - 重启策略 `unless-stopped`；
-  - 同样带有 `com.centurylinklabs.watchtower.enable=true` 标签。
-
-- `watchtower`：
-  - 镜像：`containrrr/watchtower:latest`；
-  - 通过挂载 `/var/run/docker.sock` 访问 Docker 守护进程；
-  - 启动参数：
-    - `--label-enable`：只监控带 Watchtower 标签的容器（即后端和前端）；
-    - `--interval=300`：每 300 秒检查一次镜像更新；
-    - `--cleanup`：更新后清理旧镜像。
-
-说明：
-
-- 生产环境推荐依赖 CI/CD 推送到 GHCR 的 `:latest` 镜像；Watchtower 会自动拉取新镜像并重启对应容器，实现全自动滚动更新。
-- 如需从源码本机构建镜像，可设置环境变量 `GLOWTYPE_LOCAL_BUILD=1` 再运行 `scripts/setup_and_run.sh`，此时 docker-compose 会执行本地 `build`。
-
----
-
-## CI/CD（GitHub Actions）
-
-工作流：`.github/workflows/deploy.yml`
-
-触发条件：
-
-```yaml
-on:
-  push:
-    branches:
-      - main
+Change ports in root `.env`:
+```env
+GLOWTYPE_BACKEND_PORT_HOST=18080
+GLOWTYPE_FRONTEND_PORT_HOST=18081
+GLOWTYPE_RENDER_PORT_HOST=19080
 ```
 
-### Job 1：test-and-build
+---
 
-- 后端：
-  - 使用 Go 1.24；
-  - 执行 `cd backend && go test ./...`。
-- 前端：
-  - 使用 Node 22；
-  - 执行 `cd frontend && npm ci && npm run build`。
+## 2. Docker Architecture
 
-### Job 2：docker-build-and-push（仅构建 & 推送镜像）
+### 2.1 Directory Structure
 
-- 使用 Docker Buildx；
-- 登录 GHCR（`ghcr.io`），镜像命名：
-  - 后端：`ghcr.io/<owner>/glowtype-backend:latest`
-  - 前端：`ghcr.io/<owner>/glowtype-frontend:latest`
-- 构建并推送镜像：
-  - `Dockerfile.backend`
-  - `Dockerfile.frontend`（传入 `VITE_API_BASE_URL` 构建参数，默认 `https://api.glowtype.me/api/v1`，可在 workflow 中修改）。
+```
+glowtype/
+├── Dockerfile.backend        # Go backend (multi-stage, distroless)
+├── Dockerfile.frontend       # React frontend (Node build + Nginx)
+├── Dockerfile.frontend.prod  # Production frontend (smaller)
+├── docker-compose.yml        # Service orchestration
+├── .env                      # Root environment variables
+├── .env.example              # Root env template
+├── backend/
+│   ├── .env                  # Backend environment variables
+│   └── .env.example          # Backend env template
+├── frontend/
+│   └── nginx.conf            # Nginx config (SPA fallback)
+└── scripts/
+    ├── setup_and_run.sh      # One-click setup
+    └── remote_setup.sh       # Remote installation
+```
 
-> CI/CD 只负责把最新镜像推送到 GHCR，不再通过 SSH 直接登录服务器做部署。  
-> 服务器端可以通过以下方式自动更新：
->
-> - 使用 watchtower 等工具监测 GHCR 镜像更新并自动 `pull + restart`；
-> - 或由运维周期性执行 `docker compose pull && docker compose up -d`。
+### 2.2 Backend Image (Dockerfile.backend)
+
+- Build stage: `golang:1.24`
+- Runtime stage: `alpine:3.20` (non-root user)
+- Exposes port 8080
+- Includes `backend/config` directory
+
+### 2.3 Frontend Image (Dockerfile.frontend)
+
+- Build stage: `node:22-alpine`
+  - Runs `npm ci && npm run build`
+  - Uses `VITE_API_BASE_URL` build argument
+- Runtime stage: `nginx:1.27-alpine`
+  - SPA routing (all paths → index.html)
+  - Privacy-friendly logging (no client IP)
+
+### 2.4 Services (docker-compose.yml)
+
+| Service | Description |
+|---------|-------------|
+| `backend` | Go API server |
+| `frontend` | Nginx serving React app |
+| `watchtower` | Auto-updates from GHCR |
+
+Watchtower configuration:
+- `--label-enable`: Only monitors labeled containers
+- `--interval=300`: Checks every 5 minutes
+- `--cleanup`: Removes old images after update
 
 ---
 
-## 全新 Ubuntu 服务器部署步骤（概览）
+## 3. CI/CD Pipeline
 
-1. 安装 Docker（含 docker compose 插件）：
-   - 参考官方文档或 `apt` 仓库；
-   - 确保 `docker --version` 与 `docker compose version` 可用。
-2. 创建部署用户并配置 SSH 公钥（与 GitHub Secrets 中私钥对应）。
-3. 登录服务器，克隆仓库：
-   ```bash
-   git clone https://github.com/soaringjerry/glowtype.git /opt/glowtype
-   cd /opt/glowtype
-   ```
-4. 根据需要调整：
-   - 根目录 `.env`（端口、`VITE_API_BASE_URL`）；
-   - `backend/.env`（`ALLOWED_ORIGINS` 设置为前端域名）。
-5. 运行一键脚本：
-   ```bash
-   chmod +x scripts/setup_and_run.sh
-   ./scripts/setup_and_run.sh
-   ```
-6. 之后每次 push 到 `main`：
-   - 自动跑测试与构建；
-   - 自动构建并推送 Docker 镜像到 GHCR；
-   - 服务器可由 watchtower 或人工执行 `docker compose pull && docker compose up -d` 完成更新。
+### 3.1 Workflow: `.github/workflows/deploy.yml`
+
+**Trigger**: Push to `main` branch
+
+### 3.2 Job 1: test-and-build
+
+- Backend: Go 1.24, runs `go test ./...`
+- Frontend: Node 22, runs `npm ci && npm run build`
+
+### 3.3 Job 2: docker-build-and-push
+
+- Uses Docker Buildx
+- Pushes to GHCR:
+  - `ghcr.io/<owner>/glowtype-backend:latest`
+  - `ghcr.io/<owner>/glowtype-frontend:latest`
+
+### 3.4 Automatic Updates
+
+With Watchtower running:
+1. CI pushes new images to GHCR
+2. Watchtower detects updates
+3. Watchtower pulls and restarts containers
+
+Manual update:
+```bash
+docker compose pull && docker compose up -d
+```
+
+---
+
+## 4. Environment Variables
+
+### 4.1 Root `.env`
+
+```env
+# Port configuration
+GLOWTYPE_BACKEND_PORT_HOST=18080
+GLOWTYPE_FRONTEND_PORT_HOST=18081
+GLOWTYPE_RENDER_PORT_HOST=19080
+
+# API URL for frontend build
+VITE_API_BASE_URL=http://backend:8080/api/v1
+VITE_SHARE_RENDER_URL=http://localhost:19080
+
+# AI configuration (client-side)
+VITE_AI_API_KEY=sk-xxx
+VITE_AI_API_URL=https://api.openai.com/v1
+VITE_AI_MODEL=gpt-4o-mini
+```
+
+### 4.2 Backend `backend/.env`
+
+```env
+# Server
+PORT=8080
+ENV=production
+ALLOWED_ORIGINS=https://glowtype.me
+LOG_LEVEL=info
+
+# Database
+DB_PATH=/data/glowtype.db
+SEED_DB=true
+
+# Admin authentication
+ADMIN_JWT_SECRET=your_strong_secret_here
+ADMIN_SUPER_USERNAME=superadmin
+ADMIN_SUPER_PASSWORD=your_secure_password
+
+# Two-factor authentication
+TOTP_ENCRYPTION_KEY=your_32_char_key_here
+FORCE_ADMIN_2FA=false
+
+# Proxy configuration (for real IP detection)
+TRUSTED_PROXIES=auto,cloudflare
+
+# Database backup
+BACKUP_ENABLED=1
+BACKUP_INTERVAL_MINUTES=60
+BACKUP_MAX_TOTAL_BYTES=5368709120
+BACKUP_MIN_FREE_BYTES=1073741824
+BACKUP_DIR=/data/backup
+```
+
+### 4.3 Production Checklist
+
+| Variable | Requirement |
+|----------|-------------|
+| `ADMIN_JWT_SECRET` | Strong random string (32+ chars) |
+| `ADMIN_SUPER_PASSWORD` | Strong password, change after first login |
+| `TOTP_ENCRYPTION_KEY` | Exactly 32 characters |
+| `ALLOWED_ORIGINS` | Your actual domain(s) |
+| `FORCE_ADMIN_2FA` | Set to `true` for security |
+
+---
+
+## 5. Backup & Recovery
+
+### 5.1 Automatic Backups
+
+Enabled by default:
+```env
+BACKUP_ENABLED=1
+BACKUP_INTERVAL_MINUTES=60
+BACKUP_DIR=/data/backup
+```
+
+Backup files: `glowtype_<timestamp>.db`
+
+### 5.2 Manual Backup
+
+```bash
+# Stop backend for consistency
+docker compose stop backend
+
+# Copy database
+cp backend/data/glowtype.db backup/glowtype_$(date +%Y%m%d_%H%M%S).db
+
+# Restart
+docker compose start backend
+```
+
+### 5.3 Recovery
+
+```bash
+# Stop backend
+docker compose stop backend
+
+# Replace database
+cp backup/glowtype_YYYYMMDD_HHMMSS.db backend/data/glowtype.db
+
+# Restart
+docker compose start backend
+```
+
+### 5.4 Backup Retention
+
+- `BACKUP_MAX_TOTAL_BYTES`: Maximum total backup size (default 5GB)
+- `BACKUP_MIN_FREE_BYTES`: Minimum free space required (default 1GB)
+- Older backups are automatically cleaned up
+
+---
+
+## 6. Security Configuration
+
+### 6.1 Two-Factor Authentication
+
+**Enable globally** (recommended for production):
+```env
+FORCE_ADMIN_2FA=true
+```
+
+**TOTP encryption key** (auto-generated on first start):
+```env
+TOTP_ENCRYPTION_KEY=your_32_character_key_here
+```
+
+### 6.2 Password Reset
+
+If locked out of superadmin:
+
+```env
+# Set new password
+ADMIN_SUPER_PASSWORD=new_secure_password
+ADMIN_SUPER_PASSWORD_ROTATE=true
+```
+
+Then restart the backend. The password will be updated.
+
+### 6.3 Disable Rate Limiting (Emergency)
+
+If account is locked:
+```env
+ADMIN_LOGIN_RATE_LIMIT_DISABLE=1
+```
+
+**Important**: Re-enable after resolving the issue.
+
+### 6.4 HTTPS Configuration
+
+Always deploy behind HTTPS. Options:
+
+1. **Cloudflare** (recommended): Free SSL, DDoS protection
+2. **nginx reverse proxy**: Use Let's Encrypt for certificates
+3. **Traefik**: Automatic certificate management
+
+Example nginx config:
+```nginx
+server {
+    listen 443 ssl;
+    server_name glowtype.me;
+
+    ssl_certificate /etc/letsencrypt/live/glowtype.me/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/glowtype.me/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:18081;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:18080;
+    }
+}
+```
+
+---
+
+## 7. AI Provider Setup
+
+### 7.1 Supported Providers
+
+| Provider | Base URL | Notes |
+|----------|----------|-------|
+| OpenAI | `https://api.openai.com/v1` | Default |
+| DeepSeek | `https://api.deepseek.com/v1` | Cost-effective |
+| Groq | `https://api.groq.com/openai/v1` | Fast |
+| Local LLM | `http://localhost:11434/v1` | Ollama |
+
+### 7.2 Configuration
+
+**Option 1: Environment variables** (frontend direct call)
+```env
+VITE_AI_API_KEY=sk-xxx
+VITE_AI_API_URL=https://api.openai.com/v1
+VITE_AI_MODEL=gpt-4o-mini
+```
+
+**Option 2: Admin panel** (runtime configuration)
+1. Login as superadmin
+2. Go to AI Settings
+3. Configure provider, API key, model, rate limits
+
+### 7.3 Rate Limiting
+
+Configure in admin panel:
+- Enable/disable rate limiting
+- Requests per minute (default: 60)
+- Burst allowance (default: 10)
+
+---
+
+## 8. Troubleshooting
+
+### 8.1 Container Won't Start
+
+```bash
+# Check logs
+docker compose logs backend
+docker compose logs frontend
+
+# Rebuild images
+docker compose build --no-cache
+docker compose up -d
+```
+
+### 8.2 Database Issues
+
+```bash
+# Check database file permissions
+ls -la backend/data/
+
+# Restore from backup
+docker compose stop backend
+cp backup/latest.db backend/data/glowtype.db
+docker compose start backend
+```
+
+### 8.3 Can't Login to Admin
+
+1. Check `ADMIN_SUPER_PASSWORD` in `backend/.env`
+2. If locked out, set `ADMIN_LOGIN_RATE_LIMIT_DISABLE=1` and restart
+3. For password reset, set `ADMIN_SUPER_PASSWORD_ROTATE=true` and restart
+
+### 8.4 2FA Issues
+
+If user lost 2FA device:
+1. Login as superadmin
+2. Go to Admin Accounts
+3. Click "Reset 2FA" for the affected user
+
+If superadmin lost 2FA:
+1. Access database directly
+2. Set `two_factor_enabled=0` for the superadmin user
+3. Restart backend
+
+### 8.5 AI Not Working
+
+1. Check API key is set correctly
+2. Verify base URL for your provider
+3. Check rate limits in admin panel
+4. Review backend logs for errors
+
+---
+
+## Appendix: Full Environment Variable Reference
+
+### Root `.env`
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GLOWTYPE_BACKEND_PORT_HOST` | 18080 | Backend host port |
+| `GLOWTYPE_FRONTEND_PORT_HOST` | 18081 | Frontend host port |
+| `GLOWTYPE_RENDER_PORT_HOST` | 19080 | Share render host port |
+| `VITE_API_BASE_URL` | `http://backend:8080/api/v1` | API URL for frontend |
+| `VITE_AI_API_KEY` | - | AI API key |
+| `VITE_AI_API_URL` | `https://api.openai.com/v1` | AI API base URL |
+| `VITE_AI_MODEL` | `gpt-4o-mini` | AI model name |
+
+### Backend `backend/.env`
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 8080 | Server port |
+| `ENV` | development | Environment mode |
+| `ALLOWED_ORIGINS` | - | CORS allowed origins |
+| `LOG_LEVEL` | info | Logging level |
+| `DB_PATH` | `/data/glowtype.db` | Database file path |
+| `SEED_DB` | true | Seed database on start |
+| `ADMIN_JWT_SECRET` | - | JWT signing secret |
+| `ADMIN_SUPER_USERNAME` | superadmin | Initial admin username |
+| `ADMIN_SUPER_PASSWORD` | - | Initial admin password |
+| `ADMIN_SUPER_PASSWORD_ROTATE` | false | Force password update |
+| `ADMIN_LOGIN_RATE_LIMIT_DISABLE` | false | Disable login rate limiting |
+| `TOTP_ENCRYPTION_KEY` | - | 2FA secret encryption key |
+| `FORCE_ADMIN_2FA` | false | Require 2FA for all admins |
+| `TRUSTED_PROXIES` | - | Proxy config for real IP |
+| `BACKUP_ENABLED` | 1 | Enable auto backups |
+| `BACKUP_INTERVAL_MINUTES` | 60 | Backup frequency |
+| `BACKUP_DIR` | `/data/backup` | Backup directory |
+| `BACKUP_MAX_TOTAL_BYTES` | 5GB | Max backup storage |
+| `BACKUP_MIN_FREE_BYTES` | 1GB | Min free space |

@@ -1,11 +1,11 @@
-## Glowtype.me 开发文档
+# Glowtype.me Development Documentation
 
-> 本文档描述当前已落地的架构、代码结构、部署方式以及关键设计决策。
-> 最后更新：2025-11
+> This document describes the current architecture, code structure, deployment methods, and key design decisions.
+> Last updated: 2025-11
 
 ---
 
-## 1. 总体架构概览
+## 1. Architecture Overview
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -13,7 +13,7 @@
 │   React + Vite  │     │   Go + Gin      │     │   (GORM)        │
 └────────┬────────┘     └─────────────────┘     └─────────────────┘
          │
-         │ (直接调用)
+         │ (direct call)
          ▼
 ┌─────────────────┐
 │   OpenAI API    │
@@ -21,123 +21,134 @@
 └─────────────────┘
 ```
 
-- **前后端分离**：
-  - 前端：`frontend/` – React + TypeScript + Vite SPA，负责 UI、测试流程、AI 对话
-  - 后端：`backend/` – Go + Gin REST API，负责数据管理、评分逻辑、统计分析
-- **数据库**：SQLite + GORM（支持多租户扩展）
-- **AI 集成**：前端直接调用 OpenAI-compatible API（可配置其他兼容服务）
-- **域名**：
-  - `https://glowtype.me` – 前端
-  - `https://api.glowtype.me` – 后端 API
+- **Frontend-Backend Separation**:
+  - Frontend: `frontend/` – React + TypeScript + Vite SPA, handles UI, quiz flow, AI chat
+  - Backend: `backend/` – Go + Gin REST API, handles data management, scoring logic, analytics
+- **Database**: SQLite + GORM (supports multi-tenant expansion)
+- **AI Integration**: Frontend directly calls OpenAI-compatible API (configurable for other compatible services)
+- **Domains**:
+  - `https://glowtype.me` – Frontend
+  - `https://api.glowtype.me` – Backend API
 
 ---
 
-## 2. 后端（backend/）
+## 2. Backend (`backend/`)
 
-### 2.1 技术栈
+### 2.1 Tech Stack
 
-- Go 1.23+，Gin HTTP 框架
-- GORM + SQLite（数据持久化）
-- JWT（管理员认证）
-- 模块名：`github.com/soaringjerry/glowtype`
+- Go 1.23+, Gin HTTP framework
+- GORM + SQLite (data persistence)
+- JWT (admin authentication)
+- TOTP (two-factor authentication)
+- Module name: `github.com/soaringjerry/glowtype`
 
-### 2.2 目录结构
+### 2.2 Directory Structure
 
 ```
 backend/
-├── cmd/glowtype-api/main.go    # 服务入口
+├── cmd/glowtype-api/main.go    # Service entry point
 ├── internal/
-│   ├── config/                 # 环境变量配置
-│   ├── database/               # GORM 模型、数据库初始化、种子数据
+│   ├── config/                 # Environment variable config
+│   ├── database/               # GORM models, DB init, seed data
 │   ├── handlers/               # HTTP handlers
-│   │   ├── quiz.go             # 测试题目 API
-│   │   ├── glowtype.go         # 类型结果 API
-│   │   ├── chat.go             # 对话 API + 分析追踪
-│   │   ├── admin.go            # 管理后台 CRUD + 认证
-│   │   ├── stats.go            # 统计分析 API
+│   │   ├── quiz.go             # Quiz API
+│   │   ├── glowtype.go         # Result type API
+│   │   ├── chat.go             # Chat API + analytics tracking
+│   │   ├── admin.go            # Admin backend CRUD + auth
+│   │   ├── admin_2fa.go        # Two-factor authentication handlers
+│   │   ├── stats.go            # Statistics API
 │   │   └── ...
-│   ├── services/               # 业务逻辑
-│   │   ├── scoring_service.go  # 评分引擎（规则匹配）
-│   │   ├── quiz_service.go     # 测试服务
-│   │   ├── admin_auth.go       # 管理员认证服务
+│   ├── services/               # Business logic
+│   │   ├── scoring_service.go  # Scoring engine (rule matching)
+│   │   ├── quiz_service.go     # Quiz service
+│   │   ├── admin_auth.go       # Admin authentication service
+│   │   ├── totp_service.go     # 2FA TOTP service
+│   │   ├── analytics_service.go # Advanced analytics
 │   │   └── ...
-│   ├── models/                 # 请求/响应结构体
-│   ├── middleware/             # 日志、CORS、认证
-│   ├── utils/                  # 工具函数（GeoIP、匿名化等）
-│   └── server/                 # Gin 初始化、路由注册
-├── config/                     # 静态配置文件（旧版兼容）
-└── data/                       # SQLite 数据库文件
+│   ├── models/                 # Request/response structs
+│   ├── middleware/             # Logging, CORS, auth
+│   ├── utils/                  # Utility functions (GeoIP, anonymization)
+│   └── server/                 # Gin initialization, route registration
+├── config/                     # Static config files (legacy)
+└── data/                       # SQLite database files
 ```
 
-### 2.3 数据模型
+### 2.3 Data Models
 
-主要数据表（通过 GORM 自动迁移）：
+Main data tables (auto-migrated via GORM):
 
-| 表名 | 用途 |
-|------|------|
-| `trait_dimensions` | 人格维度定义（energy, expression 等） |
-| `quiz_questions` | 测试题目及选项（多语言） |
-| `scoring_rules` | 评分规则（维度范围 → Glowtype 映射） |
-| `glowtypes` | 类型基础信息（code, 颜色等） |
-| `glowtype_i18n` | 类型多语言文案 |
-| `quiz_results` | 匿名测试结果记录 |
-| `chat_sessions` | 匿名对话会话统计 |
-| `usage_stats` | 每日使用统计 |
-| `glowtype_stats` | 类型分布统计 |
-| `ai_prompts` | AI 提示词配置 |
-| `chapters` / `glow_sticks` | 光签内容（Glowpedia） |
-| `admin_users` | 管理员账户 |
-| `admin_audit_logs` | 操作审计日志 |
-| `admin_recovery_codes` | 管理员 2FA 恢复码 |
-| `admin_trusted_devices` | 管理员 2FA 受信任设备 |
+| Table | Purpose |
+|-------|---------|
+| `trait_dimensions` | Personality dimension definitions (energy, expression, etc.) |
+| `quiz_questions` | Quiz questions and options (multilingual) |
+| `scoring_rules` | Scoring rules (dimension range → Glowtype mapping) |
+| `glowtypes` | Type base info (code, colors, etc.) |
+| `glowtype_i18n` | Type multilingual content |
+| `quiz_results` | Anonymous quiz result records |
+| `chat_sessions` | Anonymous chat session statistics |
+| `usage_stats` | Daily usage statistics |
+| `glowtype_stats` | Type distribution statistics |
+| `ai_prompts` | AI prompt configurations |
+| `ai_settings` | AI provider configuration (API key, model, rate limits) |
+| `book_chapters` / `glow_sticks` | Glowpedia content |
+| `admin_users` | Admin accounts |
+| `admin_audit_logs` | Operation audit logs |
+| `admin_recovery_codes` | Admin 2FA recovery codes |
+| `admin_trusted_devices` | Admin 2FA trusted devices |
+| `admin_login_attempts` | Login attempt tracking (brute-force protection) |
 
-### 2.4 API 端点
+### 2.4 API Endpoints
 
-#### 公开 API（`/api/v1`）
+#### Public API (`/api/v1`)
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/health` | 健康检查 |
-| GET | `/quiz?lang=` | 获取测试题目 |
-| POST | `/quiz/score` | 提交答案、计算结果 |
-| POST | `/quiz/result` | 保存详细测试结果（匿名） |
-| GET | `/glowtypes/:id?lang=` | 获取类型文案 |
-| POST | `/chat/session` | 创建对话会话 |
-| POST | `/chat/message` | 发送对话消息 |
-| POST | `/chat/analytics` | 追踪对话统计 |
-| GET | `/help?lang=` | 获取帮助热线 |
-| POST | `/stats/event` | 记录使用事件 |
-| GET | `/prompts` | 获取公开 AI 提示词 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/quiz?lang=` | Get quiz questions |
+| POST | `/quiz/score` | Submit answers, calculate result |
+| POST | `/quiz/result` | Save detailed quiz result (anonymous) |
+| GET | `/glowtypes/:id?lang=` | Get type content |
+| POST | `/chat/session` | Create chat session |
+| POST | `/chat/message` | Send chat message |
+| POST | `/chat/insight` | Generate AI insight |
+| POST | `/chat/analytics` | Track chat statistics |
+| GET | `/help?lang=` | Get help hotlines |
+| POST | `/stats/event` | Record usage event |
+| GET | `/prompts` | Get public AI prompts |
+| GET | `/glowpedia` | Get Glowpedia content |
 
-#### 管理 API（`/api/v1/admin`）
+#### Admin API (`/api/v1/admin`)
 
-需要 JWT 认证（除 2FA 验证端点）。
+Requires JWT authentication (except 2FA verification endpoint).
 
-| 分类 | 端点 |
-|------|------|
-| 认证 | `POST /login`, `GET /me`, `PUT /me/password` |
-| 2FA | `POST /2fa/authenticate`（无需认证）, `GET /2fa/status`, `POST /2fa/setup`, `POST /2fa/verify`, `DELETE /2fa`, `POST /2fa/recovery/regenerate` |
-| 2FA 设备 | `GET /2fa/devices`, `DELETE /2fa/devices/:id`, `DELETE /2fa/devices` |
-| 账户管理 | `GET /users`, `POST /users`, `PUT /users/:id`, `PUT /users/:id/2fa` |
-| 审计日志 | `GET /audit` |
-| 维度 CRUD | `/dimensions` |
-| 题目 CRUD | `/questions` |
-| 类型 CRUD | `/glowtypes`, `/glowtypes/i18n` |
-| 规则 CRUD | `/rules`, `/rules/debug`, `/rules/validate` |
-| 提示词 | `/prompts` |
-| 统计 | `/stats/overview`, `/stats/daily`, `/stats/glowtypes`, `/stats/enhanced` |
-| 结果查询 | `/results` |
-| 光签 | `/chapters`, `/glowsticks` |
+| Category | Endpoints |
+|----------|-----------|
+| Auth | `POST /login`, `GET /me`, `PUT /me/password` |
+| 2FA | `POST /2fa/authenticate` (no auth), `GET /2fa/status`, `POST /2fa/setup`, `POST /2fa/verify`, `DELETE /2fa`, `POST /2fa/recovery/regenerate` |
+| 2FA Devices | `GET /2fa/devices`, `DELETE /2fa/devices/:id`, `DELETE /2fa/devices` |
+| Permissions | `GET /permissions/templates` |
+| Account Mgmt | `GET /users`, `POST /users`, `PUT /users/:id`, `PUT /users/:id/2fa` |
+| Audit | `GET /audit` |
+| Dimensions | `GET /dimensions`, `POST /dimensions`, `PUT /dimensions/:id`, `DELETE /dimensions/:id`, `POST /dimensions/import`, `GET /dimensions/export` |
+| Questions | `GET /questions`, `POST /questions`, `PUT /questions/:id`, `DELETE /questions/:id`, `POST /questions/import` |
+| Glowtypes | `GET /glowtypes`, `GET /glowtypes/:id`, `POST /glowtypes`, `PUT /glowtypes/:id`, `DELETE /glowtypes/:id`, `POST /glowtypes/i18n`, `PUT /glowtypes/i18n/:id` |
+| Rules | `GET /rules`, `POST /rules`, `PUT /rules/:id`, `DELETE /rules/:id`, `POST /rules/import`, `GET /rules/export`, `POST /rules/debug`, `GET /rules/validate` |
+| Prompts | `GET /prompts`, `PUT /prompts/:id`, `POST /prompts/:key/reset` |
+| AI Settings | `GET /ai/settings`, `PUT /ai/settings` (superadmin only) |
+| Statistics | `GET /stats/overview`, `GET /stats/daily`, `GET /stats/glowtypes`, `GET /stats/enhanced`, `GET /stats/analytics` |
+| Results | `GET /results` |
+| Glowpedia | `GET /chapters`, `POST /chapters`, `PUT /chapters/:id`, `DELETE /chapters/:id`, `GET /glowsticks`, `POST /glowsticks`, `PUT /glowsticks/:id`, `DELETE /glowsticks/:id` |
+| Reset | `POST /dimensions/reset`, `POST /questions/reset`, `POST /glowtypes/reset`, `POST /rules/reset`, `POST /prompts/reset-all`, `POST /glowpedia/reset` |
 
-### 2.5 评分引擎
+### 2.5 Scoring Engine
 
-评分流程：
-1. 用户提交答案 → 根据选项的 `scores` 字段累加各维度分数
-2. 按规则优先级（高→低）匹配，第一个满足条件的规则胜出
-3. 无匹配则使用 fallback 规则
-4. 返回 Glowtype code + 维度分数
+Scoring flow:
+1. User submits answers → Accumulate dimension scores based on option `scores` fields
+2. Match rules by priority (highest first), first matching rule wins
+3. If no match, use fallback rule
+4. Return Glowtype code + dimension scores
 
-规则条件示例：
+Rule condition example:
 ```json
 {
   "dimensions": {
@@ -147,88 +158,102 @@ backend/
 }
 ```
 
-### 2.6 匿名化与隐私
+### 2.6 Anonymization & Privacy
 
-- **不存储 IP 地址**：仅转换为地区代码后丢弃
-- **GeoIP 查询**：优先使用 Cloudflare `CF-IPCountry` 头，备用 ip-api.com
-- **设备识别**：从 User-Agent 提取设备类型（mobile/desktop/tablet）
-- **时间粒度**：仅记录小时级别（0-23）
+- **No IP storage**: IP is only converted to region code then discarded
+- **GeoIP lookup**: Prefers Cloudflare `CF-IPCountry` header, fallback to ip-api.com
+- **Device identification**: Extracts device type (mobile/desktop/tablet) from User-Agent
+- **Time granularity**: Only records hour level (0-23)
 
-### 2.7 管理操作审计 & 权限建议
+### 2.7 Admin Audit & RBAC
 
-#### 审计日志（`admin_audit_logs`）
-- 记录字段：`adminId`, `username`, `action`（如 `PUT /api/v1/admin/chapters/:id`）、`method`, `path`, `statusCode`, `ip`, `metadata`（JSON）、`createdAt`
-- `metadata` 现包含：
+#### Audit Logs (`admin_audit_logs`)
+
+- Fields: `adminId`, `username`, `action` (e.g., `PUT /api/v1/admin/chapters/:id`), `method`, `path`, `statusCode`, `ip`, `metadata` (JSON), `createdAt`
+- `metadata` includes:
   - `requestedAt`, `durationMs`, `adminRole`, `ip`, `userAgent`
-  - `pathParams`, `query`（敏感键如 password/token/secret 会被 `[redacted]`）
-  - `requestBody`（JSON 自动脱敏 + 8KB 截断；>2MB 直接跳过并标记 `requestBodyTruncated`）
-  - `responseSample`（截取前 4KB，超限标记 `responseSampleTruncated`）
-  - 业务 handler 可附加 `auditMetadata`（同名键不会覆盖上述核心字段）
-- 作用：明确“谁、在什么时间、从哪里、对哪个资源、做了什么、结果怎样”，方便溯源误操作。
+  - `pathParams`, `query` (sensitive keys like password/token/secret are `[redacted]`)
+  - `requestBody` (JSON auto-sanitized + 8KB truncation; >2MB skipped with `requestBodyTruncated` flag)
+  - `responseSample` (first 4KB, `responseSampleTruncated` if exceeded)
+  - Handlers can add `auditMetadata` (won't override core fields)
+- Purpose: Clear accountability for "who, when, from where, on what resource, did what, with what result"
 
-#### RBAC 细化（建议）
-- 现状：仅区分 `superadmin` 与 `admin` 两级；越权与误操作风险仍存在。
-- 已落地的 RBAC 中间件（代码：`handlers.RequirePermission` + `rolePermissions`），角色 → 权限矩阵：
+#### RBAC Permission System
 
-| 角色 | 权限 |
-| ---- | ---- |
-| `superadmin` | 全部 |
+Available roles and their permissions:
+
+| Role | Permissions |
+|------|-------------|
+| `superadmin` | All permissions |
 | `admin` | `dimensions.write`, `questions.write`, `rules.write`, `glowtypes.write`, `prompts.write`, `content.write`, `stats.view`, `results.view` |
 | `content_admin` | `content.write`, `stats.view` |
 | `data_admin` | `dimensions.write`, `questions.write`, `rules.write`, `glowtypes.write`, `prompts.write`, `stats.view`, `results.view` |
 | `analyst` | `stats.view`, `results.view`, `audit.view` |
-| `viewer` | 只读：`admin.manage`, `audit.view`, `dimensions.write`, `questions.write`, `rules.write`, `glowtypes.write`, `prompts.write`, `content.write`, `stats.view`, `results.view`（后台强制仅允许 GET/HEAD/OPTIONS） |
+| `viewer` | Read-only access to all areas (backend enforces GET/HEAD/OPTIONS only) |
 
-- 路由权限绑定（节选）：账号管理 `admin.manage`；审计 `audit.view`；题库/规则/类型/文案 CRUD 分别绑定对应 `*.write`；统计 `stats.view`；结果 `results.view`；默认数据重置 `data.reset`（仅 superadmin）。
-- 如需拓展更细粒度权限，可扩展 `rolePermissions` 映射或迁移到数据库表（`admin_roles`, `admin_permissions`, `admin_role_permissions`, `admin_user_roles`）。
-- 配合 UI：在管理后台新增“仅查看”模式和危险操作二次确认；表单提交时将当前角色写入 `auditMetadata` 便于审计。
+Permission list:
+- `admin.manage` - Admin account management
+- `audit.view` - View audit logs
+- `dimensions.write` - Manage dimensions
+- `questions.write` - Manage questions
+- `rules.write` - Manage scoring rules
+- `glowtypes.write` - Manage glowtypes
+- `prompts.write` - Manage AI prompts
+- `content.write` - Manage Glowpedia content
+- `stats.view` - View statistics
+- `results.view` - View quiz results
+- `data.reset` - Reset data to defaults (superadmin only)
+
+Custom permissions can be set per-user in the `permissions` JSON field to override role defaults.
 
 ---
 
-## 3. 前端（frontend/）
+## 3. Frontend (`frontend/`)
 
-### 3.1 技术栈
+### 3.1 Tech Stack
 
-- React 18 + TypeScript + Vite
-- react-router-dom（路由）
-- react-i18next（国际化）
-- Tailwind CSS（样式）
-- Lucide React（图标）
+- React 19 + TypeScript + Vite
+- react-router-dom (routing)
+- react-i18next (internationalization)
+- Tailwind CSS (styling)
+- Lucide React (icons)
+- Framer Motion (animations)
 
-### 3.2 目录结构
+### 3.2 Directory Structure
 
 ```
 frontend/src/
-├── main.tsx                # 入口
-├── App.tsx                 # 路由配置
-├── api/                    # API 客户端
+├── main.tsx                # Entry point
+├── App.tsx                 # Route configuration
+├── api/                    # API client
 ├── utils/
-│   └── ai.ts               # OpenAI 调用封装
-├── i18n/                   # 多语言资源
+│   └── ai.ts               # OpenAI call wrapper
+├── i18n/                   # Multilingual resources
 │   ├── en/
 │   └── zh-CN/
-├── pages/                  # 页面组件（旧）
-├── views/                  # 视图组件（新）
-├── components/             # 通用组件
-└── admin/                  # 管理后台
+├── pages/                  # Page components (legacy)
+├── views/                  # View components (new)
+├── components/             # Common components
+└── admin/                  # Admin panel
     ├── AdminLayout.tsx
     ├── AdminLogin.tsx
     ├── hooks/useAdmin.ts   # API hooks
-    └── pages/              # 各管理页面
+    ├── components/         # Admin components (TwoFactorSetup, etc.)
+    └── pages/              # Admin pages
 ```
 
-### 3.3 Tailwind CSS 动态类名问题
+### 3.3 Tailwind CSS Dynamic Class Issue
 
-⚠️ **重要：Glowtype 样式配置的坑**
+⚠️ **Important: Glowtype Styling Pitfall**
 
-Tailwind CSS 会在构建时 purge 掉未在源代码中静态出现的 class。这意味着如果你在数据库中配置了动态的 Tailwind class（如 `from-purple-50`），但代码里没有静态引用这个 class，它会被删除，导致样式不生效。
+Tailwind CSS purges classes not statically present in source code during build. If you configure dynamic Tailwind classes in the database (like `from-purple-50`), but the code doesn't statically reference this class, it gets deleted, causing styles to not apply.
 
-**症状**：
-- 某些 Glowtype 卡片样式正常，其他的样式异常（背景色、文字颜色不对）
-- 新建的 Glowtype 样式不生效
+**Symptoms**:
+- Some Glowtype cards style correctly, others have wrong background/text colors
+- Newly created Glowtype styles don't apply
 
-**解决方案**：
-在 `frontend/tailwind.config.js` 中配置了 safelist，预先保留所有可能用到的动态 class：
+**Solution**:
+Configure `safelist` in `frontend/tailwind.config.js` to preserve all potentially used dynamic classes:
 
 ```javascript
 safelist: [
@@ -240,39 +265,20 @@ safelist: [
 ]
 ```
 
-**新建 Glowtype 时可用的样式值**：
+**Available style values for new Glowtypes**:
 
-| 字段 | 格式 | 示例 |
-|------|------|------|
-| cardAccent | `from-{颜色}-{深度} to-{颜色}-{深度}` | `from-purple-50 to-violet-100` |
-| textColor | `text-{颜色}-{深度}` | `text-purple-900` |
+| Field | Format | Example |
+|-------|--------|---------|
+| cardAccent | `from-{color}-{depth} to-{color}-{depth}` | `from-purple-50 to-violet-100` |
+| textColor | `text-{color}-{depth}` | `text-purple-900` |
 
-- 颜色：slate, gray, zinc, neutral, stone, red, orange, amber, yellow, lime, green, emerald, teal, cyan, sky, blue, indigo, violet, purple, fuchsia, pink, rose
-- cardAccent 深度：50, 100, 200
-- textColor 深度：700, 800, 900, 950
+- Colors: slate, gray, zinc, neutral, stone, red, orange, amber, yellow, lime, green, emerald, teal, cyan, sky, blue, indigo, violet, purple, fuchsia, pink, rose
+- cardAccent depths: 50, 100, 200
+- textColor depths: 700, 800, 900, 950
 
-**如需使用其他深度**，需在 `tailwind.config.js` 的 pattern 中添加。
+### 3.4 AI Integration
 
-**更激进的方案**（会增加 CSS 体积）：
-如果想覆盖所有可能的颜色组合，可以用更宽泛的正则：
-
-```javascript
-safelist: [
-  // 覆盖所有颜色的所有深度
-  { pattern: /^from-.+-\d+$/ },
-  { pattern: /^to-.+-\d+$/ },
-  { pattern: /^text-.+-\d+$/ },
-  { pattern: /^bg-.+-\d+$/ },
-]
-```
-
-但这会显著增加 CSS 文件大小，建议仅在确实需要极大灵活性时使用。
-
----
-
-### 3.4 AI 集成
-
-前端直接调用 OpenAI-compatible API：
+Frontend directly calls OpenAI-compatible API:
 
 ```typescript
 // utils/ai.ts
@@ -283,77 +289,94 @@ const config = {
 };
 ```
 
-功能：
-- **宇宙洞察**：根据 Glowtype 生成诗意短句
-- **AI 对话**：支持多轮对话，带上下文
+Features:
+- **Cosmic Insight**: Generate poetic short phrases based on Glowtype
+- **AI Chat**: Multi-turn conversation with context
 
-提示词可通过管理后台配置，存储在数据库中。
+Prompts can be configured via admin panel and stored in database.
 
-### 3.5 管理后台
+### 3.5 Admin Panel
 
-路径：`/admin`
+Path: `/admin`
 
-功能模块：
-- **仪表盘**：使用统计、每日趋势、类型分布、地区/设备/时段分析
-- **维度管理**：定义人格维度（两极标签、阈值）
-- **题目管理**：CRUD 测试题目和选项
-- **类型管理**：CRUD Glowtype 及多语言文案
-- **评分规则**：配置规则条件、优先级、调试工具
-- **AI 提示词**：配置系统提示词
-- **光签管理**：Glowpedia 章节和内容
-- **结果记录**：查看匿名测试结果
-- **管理员账户**：多账户管理 + 2FA 强制/重置（仅超级管理员）
-- **操作审计**：查看所有管理操作日志
-- **个人设置**：修改密码、启用/禁用 2FA、管理受信任设备
+Feature modules:
+- **Dashboard**: Usage stats, daily trends, type distribution, region/device/time analysis
+- **Dimensions**: Define personality dimensions (bipolar labels, thresholds)
+- **Questions**: CRUD quiz questions and options
+- **Glowtypes**: CRUD Glowtypes and multilingual content
+- **Scoring Rules**: Configure rule conditions, priorities, debugging tools
+- **AI Prompts**: Configure system prompts
+- **AI Settings**: Configure AI provider, API key, model, rate limits (superadmin only)
+- **Glowpedia**: Manage chapters and glow stick content
+- **Results**: View anonymous quiz results
+- **Analytics**: Advanced data analytics with custom date ranges
+- **Admin Accounts**: Multi-account management + 2FA force/reset (superadmin only)
+- **Audit Logs**: View all admin operation logs
+- **Personal Settings**: Change password, enable/disable 2FA, manage trusted devices
 
 ---
 
-## 4. 部署
+## 4. Deployment
 
-### 4.1 Docker 部署（推荐）
+### 4.1 Docker Deployment (Recommended)
 
 ```bash
-# 一键部署
-GEMINI_API_KEY=your_key curl -fsSL https://raw.githubusercontent.com/soaringjerry/glowtype/main/scripts/remote_setup.sh | bash
+# One-click deployment
+AI_API_KEY=your_key curl -fsSL https://raw.githubusercontent.com/soaringjerry/glowtype/main/scripts/remote_setup.sh | bash
 ```
 
-端口配置（`.env`）：
+Port configuration (`.env`):
 ```env
 GLOWTYPE_BACKEND_PORT_HOST=18080
 GLOWTYPE_FRONTEND_PORT_HOST=18081
 ```
 
-### 4.2 本地开发
+### 4.2 Local Development
 
-后端：
+Backend:
 ```bash
 cd backend
 cp .env.example .env
 go run ./cmd/glowtype-api
 ```
 
-前端：
+Frontend:
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local  # 配置 VITE_AI_API_KEY
+cp .env.example .env.local  # Configure VITE_AI_API_KEY
 npm run dev
 ```
 
-### 4.3 环境变量
+### 4.3 Environment Variables
 
-后端（`backend/.env`）：
+Backend (`backend/.env`):
 ```env
 PORT=8080
 ENV=development
 ALLOWED_ORIGINS=http://localhost:5173
-ADMIN_PASSWORD=your_secure_password
-JWT_SECRET=your_jwt_secret
-# 获取真实 IP：Cloudflare 前置时设置为 auto,cloudflare（同时信任容器内网与 CF 边缘）
+
+# Admin authentication
+ADMIN_JWT_SECRET=your_jwt_secret
+ADMIN_SUPER_PASSWORD=your_secure_password
+ADMIN_SUPER_USERNAME=superadmin
+
+# 2FA configuration
+TOTP_ENCRYPTION_KEY=your_32_char_key  # Auto-generated on first start
+FORCE_ADMIN_2FA=false
+
+# Trusted proxies for real IP: Cloudflare setup use auto,cloudflare
 TRUSTED_PROXIES=auto,cloudflare
+
+# Database backup
+BACKUP_ENABLED=1
+BACKUP_INTERVAL_MINUTES=60
+BACKUP_MAX_TOTAL_BYTES=5368709120
+BACKUP_MIN_FREE_BYTES=1073741824
+BACKUP_DIR=/data/backup
 ```
 
-前端（`frontend/.env.local`）：
+Frontend (`frontend/.env.local`):
 ```env
 VITE_API_BASE_URL=http://localhost:18080/api/v1
 VITE_AI_API_KEY=sk-xxx
@@ -363,9 +386,9 @@ VITE_AI_MODEL=gpt-4o-mini
 
 ---
 
-## 5. CLI 工具
+## 5. CLI Tools
 
-### 数据导出
+### Data Export
 
 ```bash
 cd backend
@@ -373,85 +396,165 @@ go run ./cmd/export-data/main.go -format json -output export.json
 go run ./cmd/export-data/main.go -format csv -output export.csv
 ```
 
-导出内容（全部匿名）：
-- 测试结果：维度分数、类型、语言、地区、设备、时段
-- 对话统计：消息数、时长、地区、设备
+Export content (all anonymous):
+- Quiz results: dimension scores, type, language, region, device, time
+- Chat statistics: message count, duration, region, device
 
 ---
 
-## 6. 安全设计
+## 6. Security Design
 
-- **隐私优先**：不收集 PII，IP 仅用于地区推断后立即丢弃
-- **JWT 认证**：管理 API 需要有效 token
-- **多管理员**：支持 superadmin / admin 角色区分
-- **审计日志**：所有管理操作记录 IP、时间、操作内容
-- **登录保护**：失败次数限制 + 账户锁定
-- **两步验证（2FA）**：
-  - TOTP 验证：使用 SHA-256 算法，兼容 Google Authenticator 等标准应用
-  - 恢复码：10 个一次性恢复码（48 位熵），用于设备丢失时登录
-  - 信任设备：可选 7 天免验证
-  - 强制 2FA：超管可强制特定用户或全局启用（通过 `FORCE_ADMIN_2FA=true`）
-  - AES-256-GCM 加密存储 TOTP 密钥
-  - 安全审计：所有 2FA 操作记录详细审计日志
+- **Privacy First**: No PII collected, IP only used for region inference then immediately discarded
+- **JWT Authentication**: Admin API requires valid token
+- **Multi-admin**: Supports superadmin/admin/viewer role distinction
+- **Audit Logs**: All admin operations record IP, time, operation content
+- **Login Protection**: Failure count limit + account lockout (5 attempts → 15 min lock)
+- **Two-Factor Authentication (2FA)**:
+  - TOTP verification: SHA-256 algorithm, compatible with Google Authenticator and standard apps
+  - Recovery codes: 10 one-time codes (48-bit entropy), for device loss scenarios
+  - Trusted devices: Optional 7-day skip verification
+  - Force 2FA: Superadmin can force specific users or globally (via `FORCE_ADMIN_2FA=true`)
+  - AES-256-GCM encrypted TOTP secret storage
+  - Security audit: All 2FA operations logged with detailed audit metadata
 
-### 6.1 2FA 配置
+### 6.1 2FA Configuration
 
-环境变量（`backend/.env`）：
+Environment variables (`backend/.env`):
 ```env
-# 2FA TOTP 密钥加密（32字符，首次启动自动生成）
+# 2FA TOTP key encryption (32 characters, auto-generated on first start)
 TOTP_ENCRYPTION_KEY=
 
-# 强制所有管理员启用 2FA（可选，默认 false）
+# Force all admins to enable 2FA (optional, default false)
 FORCE_ADMIN_2FA=false
 ```
 
-2FA 流程：
-1. 用户在「个人设置」页面启用 2FA，扫描 QR 码并输入验证码确认
-2. 系统生成 10 个恢复码，用户需安全保存（初始隐藏，需点击显示）
-3. 下次登录时，输入密码后需输入 TOTP 验证码
-4. 可选择「信任此设备」跳过 7 天内的 2FA 验证
-5. 超管可在「管理员账户」页面强制/重置用户的 2FA
+2FA flow:
+1. User enables 2FA in "Personal Settings", scans QR code and enters verification code
+2. System generates 10 recovery codes, user must save securely (initially hidden, click to reveal)
+3. Next login requires TOTP verification code after password
+4. Can choose "Trust this device" to skip 2FA for 7 days
+5. Superadmin can force/reset user 2FA in "Admin Accounts" page
 
-### 6.2 2FA 升级说明（v2.0+）
+### 6.2 2FA Upgrade Notes (v2.0+)
 
-**⚠️ 重要升级通知**
+**⚠️ Important Upgrade Notice**
 
-从 v2.0 版本开始，2FA 实现有以下破坏性变更：
+From v2.0, 2FA implementation has these breaking changes:
 
-1. **TOTP 算法升级**：从 SHA-1 改为 SHA-256
-   - 影响：已启用 2FA 的用户验证码将无法通过验证
-   - 解决方案：用户需使用恢复码登录，然后重新设置 2FA
+1. **TOTP Algorithm Upgrade**: Changed from SHA-1 to SHA-256
+   - Impact: Users with 2FA enabled will fail verification
+   - Solution: Users must use recovery codes to login, then re-setup 2FA
 
-2. **恢复码格式变更**：从 8 位增加到 12 位（48 位熵）
-   - 影响：新生成的恢复码更长更安全
-   - 向后兼容：旧格式恢复码仍可使用
+2. **Recovery Code Format Change**: Increased from 8 to 12 characters (48-bit entropy)
+   - Impact: New recovery codes are longer and more secure
+   - Backward compatible: Old format recovery codes still work
 
-**升级步骤**（针对已部署的系统）：
+**Upgrade Steps** (for deployed systems):
 
 ```bash
-# 1. 备份数据库
+# 1. Backup database
 cp backend/data/glowtype.db backend/data/glowtype.db.backup
 
-# 2. 拉取最新代码/镜像
+# 2. Pull latest code/images
 git pull && ./scripts/setup_and_run.sh
-# 或
+# or
 docker compose pull && docker compose up -d
 
-# 3. 通知已启用 2FA 的管理员
-#    - 使用恢复码登录
-#    - 在「个人设置」中重新设置 2FA
+# 3. Notify admins with 2FA enabled
+#    - Use recovery code to login
+#    - Re-setup 2FA in "Personal Settings"
 ```
 
-**超管重置用户 2FA**（如用户无法登录）：
-1. 登录管理后台
-2. 进入「管理员账户」
-3. 找到目标用户，点击「重置 2FA」
+**Superadmin reset user 2FA** (if user cannot login):
+1. Login to admin panel
+2. Go to "Admin Accounts"
+3. Find target user, click "Reset 2FA"
 
 ---
 
-## 7. 扩展计划
+## 7. AI Provider Configuration
 
-- [ ] 多租户完整支持
-- [ ] 更多 AI 模型选项
-- [ ] 导出报告 PDF
-- [ ] 数据可视化增强
+The system supports multiple OpenAI-compatible AI providers:
+
+### 7.1 Supported Providers
+
+| Provider | Base URL | Notes |
+|----------|----------|-------|
+| OpenAI | `https://api.openai.com/v1` | Default, requires API key |
+| DeepSeek | `https://api.deepseek.com/v1` | Cost-effective alternative |
+| Groq | `https://api.groq.com/openai/v1` | Fast inference |
+| Local LLM | `http://localhost:11434/v1` | Ollama, vLLM, etc. |
+
+### 7.2 Configuration
+
+Via admin panel (AI Settings page) or environment variables:
+
+```env
+# Frontend direct call (client-side)
+VITE_AI_API_KEY=sk-xxx
+VITE_AI_API_URL=https://api.openai.com/v1
+VITE_AI_MODEL=gpt-4o-mini
+
+# Backend AI (for future server-side features)
+AI_API_KEY=sk-xxx
+AI_API_URL=https://api.openai.com/v1
+AI_MODEL=gpt-4o-mini
+```
+
+### 7.3 Rate Limiting
+
+Configure via admin panel to prevent abuse:
+- `rateLimitEnabled`: Enable/disable rate limiting
+- `rateLimitRequestsPerMin`: Max requests per minute (default: 60)
+- `rateLimitBurst`: Burst allowance (default: 10)
+
+---
+
+## 8. Database Backup & Recovery
+
+### 8.1 Automatic Backups
+
+Enabled by default with these settings:
+```env
+BACKUP_ENABLED=1
+BACKUP_INTERVAL_MINUTES=60          # Hourly snapshots
+BACKUP_MAX_TOTAL_BYTES=5368709120   # 5GB max total
+BACKUP_MIN_FREE_BYTES=1073741824    # 1GB min free space
+BACKUP_DIR=/data/backup
+```
+
+### 8.2 Manual Backup
+
+```bash
+# Stop the backend first for consistency
+docker compose stop backend
+
+# Copy the database
+cp backend/data/glowtype.db backup/glowtype_$(date +%Y%m%d_%H%M%S).db
+
+# Restart
+docker compose start backend
+```
+
+### 8.3 Recovery
+
+```bash
+# Stop the backend
+docker compose stop backend
+
+# Replace database with backup
+cp backup/glowtype_YYYYMMDD_HHMMSS.db backend/data/glowtype.db
+
+# Restart
+docker compose start backend
+```
+
+---
+
+## 9. Extension Plans
+
+- [ ] Full multi-tenant support
+- [ ] More AI model options
+- [ ] PDF report export
+- [ ] Enhanced data visualization
+- [ ] WebSocket real-time updates
