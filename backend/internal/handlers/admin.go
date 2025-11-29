@@ -308,6 +308,39 @@ func AdminLoginHandler(c *gin.Context) {
 		return
 	}
 
+	// Check if 2FA is required
+	requires2FA := user.TwoFactorEnabled
+	if !requires2FA && (user.TwoFactorRequired || services.IsForceAdmin2FAEnabled()) {
+		// User needs to setup 2FA but hasn't yet - allow login but flag it
+		requires2FA = false
+	}
+
+	// Check for trusted device
+	deviceToken := c.GetHeader("X-Device-Token")
+	if requires2FA && deviceToken != "" {
+		trusted, _ := services.ValidateTrustedDevice(database.GetDB(), user.ID, deviceToken)
+		if trusted {
+			requires2FA = false
+		}
+	}
+
+	// If 2FA is required, return a temporary token for 2FA step
+	if requires2FA {
+		twoFAToken, exp, err := services.Generate2FAToken(user)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate 2FA token"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success":       true,
+			"requiresTwoFA": true,
+			"twoFAToken":    twoFAToken,
+			"expiresAt":     exp.Unix(),
+		})
+		return
+	}
+
 	token, exp, err := services.GenerateAdminToken(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
@@ -335,6 +368,9 @@ func AdminLoginHandler(c *gin.Context) {
 		_ = json.Unmarshal(user.Permissions, &customPerms)
 	}
 
+	// Check if user needs to setup 2FA (forced but not enabled)
+	needs2FASetup := !user.TwoFactorEnabled && (user.TwoFactorRequired || services.IsForceAdmin2FAEnabled())
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":   true,
 		"token":     token,
@@ -347,7 +383,10 @@ func AdminLoginHandler(c *gin.Context) {
 			"effectivePermissions": getUserPermissions(user),
 			"lastLoginAt":          user.LastLoginAt,
 			"lastLoginIp":          user.LastLoginIP,
+			"twoFactorEnabled":     user.TwoFactorEnabled,
+			"twoFactorRequired":    user.TwoFactorRequired,
 		},
+		"needs2FASetup": needs2FASetup,
 	})
 }
 
@@ -364,6 +403,9 @@ func GetAdminProfile(c *gin.Context) {
 		_ = json.Unmarshal(admin.Permissions, &customPerms)
 	}
 
+	// Check if user needs to setup 2FA (forced but not enabled)
+	needs2FASetup := !admin.TwoFactorEnabled && (admin.TwoFactorRequired || services.IsForceAdmin2FAEnabled())
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":                   admin.ID,
 		"username":             admin.Username,
@@ -373,6 +415,9 @@ func GetAdminProfile(c *gin.Context) {
 		"lastLoginAt":          admin.LastLoginAt,
 		"lastLoginIp":          admin.LastLoginIP,
 		"createdAt":            admin.CreatedAt,
+		"twoFactorEnabled":     admin.TwoFactorEnabled,
+		"twoFactorRequired":    admin.TwoFactorRequired,
+		"needs2FASetup":        needs2FASetup,
 	})
 }
 
@@ -402,6 +447,9 @@ func ListAdminUsers(c *gin.Context) {
 			"lastLoginIp":          admin.LastLoginIP,
 			"createdAt":            admin.CreatedAt,
 			"updatedAt":            admin.UpdatedAt,
+			"twoFactorEnabled":     admin.TwoFactorEnabled,
+			"twoFactorRequired":    admin.TwoFactorRequired,
+			"twoFactorVerifiedAt":  admin.TwoFactorVerifiedAt,
 		}
 	}
 

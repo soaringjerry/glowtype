@@ -469,7 +469,8 @@ Please provide actionable specific recommendations.`,
             <div className="mt-6">
               <p className="text-sm font-medium text-gray-700 mb-2">{isZh ? '分维度信度' : 'Reliability by dimension'}</p>
               <div className="space-y-2">
-                {dimensionReliabilityEntries.map(([dimKey, rel]) => {
+                {dimensionReliabilityEntries.map(([dimKey, relData]) => {
+                  const rel = relData as { hasSufficientSample?: boolean; sampleSize: number; cronbachAlpha: number; spearmanBrown: number };
                   const dimReady = rel.hasSufficientSample ?? rel.sampleSize >= minReliabilitySample;
                   return (
                     <div key={dimKey} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100">

@@ -1,7 +1,7 @@
 ## Glowtype.me 开发文档
 
 > 本文档描述当前已落地的架构、代码结构、部署方式以及关键设计决策。
-> 最后更新：2024-11
+> 最后更新：2025-11
 
 ---
 
@@ -88,6 +88,8 @@ backend/
 | `chapters` / `glow_sticks` | 光签内容（Glowpedia） |
 | `admin_users` | 管理员账户 |
 | `admin_audit_logs` | 操作审计日志 |
+| `admin_recovery_codes` | 管理员 2FA 恢复码 |
+| `admin_trusted_devices` | 管理员 2FA 受信任设备 |
 
 ### 2.4 API 端点
 
@@ -109,12 +111,14 @@ backend/
 
 #### 管理 API（`/api/v1/admin`）
 
-需要 JWT 认证。
+需要 JWT 认证（除 2FA 验证端点）。
 
 | 分类 | 端点 |
 |------|------|
-| 认证 | `POST /login`, `GET /me` |
-| 账户管理 | `GET /users`, `POST /users` |
+| 认证 | `POST /login`, `GET /me`, `PUT /me/password` |
+| 2FA | `POST /2fa/authenticate`（无需认证）, `GET /2fa/status`, `POST /2fa/setup`, `POST /2fa/verify`, `DELETE /2fa`, `POST /2fa/recovery/regenerate` |
+| 2FA 设备 | `GET /2fa/devices`, `DELETE /2fa/devices/:id`, `DELETE /2fa/devices` |
+| 账户管理 | `GET /users`, `POST /users`, `PUT /users/:id`, `PUT /users/:id/2fa` |
 | 审计日志 | `GET /audit` |
 | 维度 CRUD | `/dimensions` |
 | 题目 CRUD | `/questions` |
@@ -298,8 +302,9 @@ const config = {
 - **AI 提示词**：配置系统提示词
 - **光签管理**：Glowpedia 章节和内容
 - **结果记录**：查看匿名测试结果
-- **管理员账户**：多账户管理（仅超级管理员）
+- **管理员账户**：多账户管理 + 2FA 强制/重置（仅超级管理员）
 - **操作审计**：查看所有管理操作日志
+- **个人设置**：修改密码、启用/禁用 2FA、管理受信任设备
 
 ---
 
@@ -381,6 +386,30 @@ go run ./cmd/export-data/main.go -format csv -output export.csv
 - **多管理员**：支持 superadmin / admin 角色区分
 - **审计日志**：所有管理操作记录 IP、时间、操作内容
 - **登录保护**：失败次数限制 + 账户锁定
+- **两步验证（2FA）**：
+  - TOTP 验证：兼容 Google Authenticator 等标准应用
+  - 恢复码：10 个一次性恢复码，用于设备丢失时登录
+  - 信任设备：可选 7 天免验证
+  - 强制 2FA：超管可强制特定用户或全局启用（通过 `FORCE_ADMIN_2FA=true`）
+  - AES-256-GCM 加密存储 TOTP 密钥
+
+### 6.1 2FA 配置
+
+环境变量（`backend/.env`）：
+```env
+# 2FA TOTP 密钥加密（32字节 base64，首次启动自动生成）
+TOTP_ENCRYPTION_KEY=
+
+# 强制所有管理员启用 2FA（可选，默认 false）
+FORCE_ADMIN_2FA=false
+```
+
+2FA 流程：
+1. 用户在「个人设置」页面启用 2FA，扫描 QR 码并输入验证码确认
+2. 系统生成 10 个恢复码，用户需安全保存
+3. 下次登录时，输入密码后需输入 TOTP 验证码
+4. 可选择「信任此设备」跳过 7 天内的 2FA 验证
+5. 超管可在「管理员账户」页面强制/重置用户的 2FA
 
 ---
 

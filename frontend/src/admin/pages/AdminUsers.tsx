@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Shield,
+  ShieldCheck,
+  ShieldOff,
   PlusCircle,
   Loader2,
   AlertCircle,
@@ -13,6 +15,8 @@ import {
   ChevronUp,
   Settings2,
   RotateCcw,
+  KeyRound,
+  RefreshCw,
 } from 'lucide-react';
 import type { AdminRole, AdminUser, AdminPermission } from '../hooks/useAdmin';
 import {
@@ -39,6 +43,7 @@ interface AdminDraft {
   isActive: boolean;
   permissions: string[];
   useCustomPermissions: boolean;
+  twoFactorRequired?: boolean;
 }
 
 // Permission checkbox component
@@ -129,7 +134,7 @@ function PermissionSelector({
 export default function AdminUsers() {
   const { t } = useTranslation('admin');
   const { currentUser } = useAdminAuth();
-  const { listAdmins, createAdmin, updateAdmin, loading, error } = useAdminApi();
+  const { listAdmins, createAdmin, updateAdmin, manageUser2FA, loading, error } = useAdminApi();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [form, setForm] = useState<NewAdminForm>({
     username: '',
@@ -143,6 +148,7 @@ export default function AdminUsers() {
   const [drafts, setDrafts] = useState<Record<number, AdminDraft>>({});
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [showCreatePermissions, setShowCreatePermissions] = useState(false);
+  const [managing2FAId, setManaging2FAId] = useState<number | null>(null);
 
   const canManage = useMemo(() => userHasPermission(currentUser, 'admin.manage'), [currentUser]);
   const readOnly = isReadOnlyRole(currentUser?.role);
@@ -212,7 +218,37 @@ export default function AdminUsers() {
       isActive: admin.isActive ?? true,
       permissions: admin.effectivePermissions ?? getRoleDefaultPermissions(admin.role),
       useCustomPermissions: hasCustom ?? false,
+      twoFactorRequired: admin.twoFactorRequired ?? false,
     };
+  };
+
+  // Handle 2FA management for a user
+  const handleManage2FA = async (adminId: number, action: 'require' | 'unrequire' | 'reset') => {
+    setManaging2FAId(adminId);
+    const data = action === 'reset' ? { reset: true } : { forceEnabled: action === 'require' };
+    const result = await manageUser2FA(adminId, data);
+    if (result) {
+      // Update the admin in the list
+      setAdmins((prev) =>
+        prev.map((a) =>
+          a.id === adminId
+            ? {
+                ...a,
+                twoFactorRequired: action === 'require' ? true : action === 'unrequire' ? false : a.twoFactorRequired,
+                twoFactorEnabled: action === 'reset' ? false : a.twoFactorEnabled,
+              }
+            : a
+        )
+      );
+      setSuccess(
+        action === 'reset'
+          ? t('adminUsers.2faReset', { user: admins.find((a) => a.id === adminId)?.username })
+          : action === 'require'
+            ? t('adminUsers.2faRequired', { user: admins.find((a) => a.id === adminId)?.username })
+            : t('adminUsers.2faUnrequired', { user: admins.find((a) => a.id === adminId)?.username })
+      );
+    }
+    setManaging2FAId(null);
   };
 
   const handleDraftRoleChange = (admin: AdminUser, role: AdminRole) => {
@@ -483,6 +519,33 @@ export default function AdminUsers() {
                         </div>
                       </div>
 
+                      {/* 2FA Status Indicator */}
+                      <div
+                        className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${
+                          admin.twoFactorEnabled
+                            ? 'bg-green-100 text-green-700'
+                            : admin.twoFactorRequired
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-gray-100 text-gray-500'
+                        }`}
+                        title={
+                          admin.twoFactorEnabled
+                            ? t('adminUsers.2faEnabled', '2FA 已启用')
+                            : admin.twoFactorRequired
+                              ? t('adminUsers.2faRequiredNotSet', '要求2FA但未设置')
+                              : t('adminUsers.2faDisabled', '2FA 未启用')
+                        }
+                      >
+                        {admin.twoFactorEnabled ? (
+                          <ShieldCheck className="w-3 h-3" />
+                        ) : (
+                          <ShieldOff className="w-3 h-3" />
+                        )}
+                        <span className="hidden sm:inline">
+                          {admin.twoFactorEnabled ? '2FA' : admin.twoFactorRequired ? '要求' : '无'}
+                        </span>
+                      </div>
+
                       <select
                         value={draft.role}
                         disabled={disabled || !canAssignSuper}
@@ -614,6 +677,80 @@ export default function AdminUsers() {
                                     {PERMISSION_LABELS[perm as AdminPermission] || perm}
                                   </span>
                                 )
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 2FA Management Section - Superadmin only */}
+                        {isSuperadmin && !isSelf(admin.id) && (
+                          <div className="border-t border-gray-200 pt-4 mt-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <KeyRound className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm font-medium text-gray-700">
+                                {t('adminUsers.2faManagement', '两步验证管理')}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3">
+                              {/* 2FA Status */}
+                              <div className="text-sm text-gray-600">
+                                {admin.twoFactorEnabled
+                                  ? t('adminUsers.2faStatusEnabled', '状态: 已启用')
+                                  : t('adminUsers.2faStatusDisabled', '状态: 未启用')}
+                                {admin.twoFactorRequired && (
+                                  <span className="ml-2 text-amber-600">
+                                    ({t('adminUsers.required', '要求启用')})
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Require/Unrequire 2FA */}
+                              {admin.twoFactorRequired ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleManage2FA(admin.id, 'unrequire')}
+                                  disabled={managing2FAId === admin.id}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                                >
+                                  {managing2FAId === admin.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <ShieldOff className="w-3 h-3" />
+                                  )}
+                                  {t('adminUsers.unrequire2FA', '取消强制')}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleManage2FA(admin.id, 'require')}
+                                  disabled={managing2FAId === admin.id}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50"
+                                >
+                                  {managing2FAId === admin.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <ShieldCheck className="w-3 h-3" />
+                                  )}
+                                  {t('adminUsers.require2FA', '强制启用')}
+                                </button>
+                              )}
+
+                              {/* Reset 2FA */}
+                              {admin.twoFactorEnabled && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleManage2FA(admin.id, 'reset')}
+                                  disabled={managing2FAId === admin.id}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50"
+                                >
+                                  {managing2FAId === admin.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-3 h-3" />
+                                  )}
+                                  {t('adminUsers.reset2FA', '重置2FA')}
+                                </button>
                               )}
                             </div>
                           </div>

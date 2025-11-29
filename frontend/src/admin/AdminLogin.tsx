@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAdminAuth } from './hooks/useAdmin';
+import { TwoFactorVerify } from './components/TwoFactorVerify';
 
 interface AdminLoginProps {
   onLogin: () => void;
@@ -11,7 +12,9 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
   const { t } = useTranslation('admin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { login, loading, error, lockUntil } = useAdminAuth();
+  const { login, loading, error, lockUntil, requiresTwoFA, authenticate2FA, cancel2FA } = useAdminAuth();
+  const [twoFAError, setTwoFAError] = useState<string | null>(null);
+  const [twoFALoading, setTwoFALoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,6 +23,42 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
       onLogin();
     }
   };
+
+  const handleTwoFAVerify = async (code: string, trustDevice: boolean, deviceName: string): Promise<boolean> => {
+    setTwoFALoading(true);
+    setTwoFAError(null);
+    try {
+      const success = await authenticate2FA(code, trustDevice, deviceName);
+      if (success) {
+        onLogin();
+        return true;
+      }
+      setTwoFAError(t('twoFactor.verifyFailed', '验证码错误，请重试'));
+      return false;
+    } catch (err) {
+      setTwoFAError(t('twoFactor.verifyError', '验证失败，请重试'));
+      return false;
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleCancelTwoFA = () => {
+    cancel2FA();
+    setTwoFAError(null);
+  };
+
+  // Show 2FA verification screen if needed
+  if (requiresTwoFA) {
+    return (
+      <TwoFactorVerify
+        onVerify={handleTwoFAVerify}
+        onCancel={handleCancelTwoFA}
+        loading={twoFALoading}
+        error={twoFAError}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center p-4">

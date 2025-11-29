@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Compass,
   Settings2,
+  Settings,
   Bug,
   Globe,
   BarChart3,
@@ -38,6 +39,7 @@ import AdminUsers from './pages/AdminUsers';
 import AuditLogs from './pages/AuditLogs';
 import Analytics from './pages/Analytics';
 import AISettings from './pages/AISettings';
+import AdminSettings from './pages/AdminSettings';
 
 export default function AdminLayout() {
   const { t, i18n } = useTranslation('admin');
@@ -176,7 +178,18 @@ export default function AdminLayout() {
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 space-y-1">
+          <button
+            onClick={() => navigate('/admin/settings')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
+              location.pathname === '/admin/settings'
+                ? 'bg-purple-50 text-purple-600'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+            <span className="font-medium">{t('nav.settings', '个人设置')}</span>
+          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition"
@@ -213,6 +226,7 @@ export default function AdminLayout() {
             <Route path="/admin/ai-settings" element={<SuperadminOnly><AISettings /></SuperadminOnly>} />
             <Route path="/admin/glowpedia" element={<Protected perm="content.write"><Glowpedia /></Protected>} />
             <Route path="/admin/audit" element={<Protected perm="audit.view"><AuditLogs /></Protected>} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
           </Routes>
         </div>
       </main>

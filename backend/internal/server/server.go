@@ -80,10 +80,25 @@ func New(cfg config.Config) *gin.Engine {
 	// Admin routes
 	admin := r.Group("/api/v1/admin")
 	admin.POST("/login", handlers.AdminLoginHandler)
+
+	// 2FA authentication (no auth required, uses temporary 2FA token)
+	admin.POST("/2fa/authenticate", handlers.Authenticate2FAHandler)
+
 	admin.Use(handlers.AdminAuthMiddleware(), handlers.AdminAuditMiddleware())
 	{
 		admin.GET("/me", handlers.GetAdminProfile)
+		admin.PUT("/me/password", handlers.ChangePasswordHandler) // Change password
 		admin.GET("/permissions/templates", handlers.GetPermissionTemplates) // Available to all admins for UI
+
+		// 2FA management (requires auth)
+		admin.GET("/2fa/status", handlers.Get2FAStatusHandler)
+		admin.POST("/2fa/setup", handlers.Setup2FAHandler)
+		admin.POST("/2fa/verify", handlers.Verify2FAHandler)
+		admin.DELETE("/2fa", handlers.Disable2FAHandler)
+		admin.POST("/2fa/recovery/regenerate", handlers.RegenerateRecoveryCodesHandler)
+		admin.GET("/2fa/devices", handlers.ListTrustedDevicesHandler)
+		admin.DELETE("/2fa/devices/:id", handlers.RevokeTrustedDeviceHandler)
+		admin.DELETE("/2fa/devices", handlers.RevokeAllTrustedDevicesHandler)
 
 		// Admin user management
 		adminUsers := admin.Group("/")
@@ -92,6 +107,7 @@ func New(cfg config.Config) *gin.Engine {
 			adminUsers.GET("/users", handlers.ListAdminUsers)
 			adminUsers.POST("/users", handlers.CreateAdminUser)
 			adminUsers.PUT("/users/:id", handlers.UpdateAdminUser)
+			adminUsers.PUT("/users/:id/2fa", handlers.ManageUser2FAHandler) // Superadmin 2FA management
 		}
 
 		// Audit

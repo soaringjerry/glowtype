@@ -130,6 +130,55 @@ export interface AdminUser {
   lastLoginIp?: string;
   createdAt?: string;
   updatedAt?: string;
+  // 2FA fields
+  twoFactorEnabled?: boolean;
+  twoFactorRequired?: boolean;
+  twoFactorVerifiedAt?: string;
+}
+
+// 2FA Types
+export interface TwoFactorStatus {
+  enabled: boolean;
+  verifiedAt?: string;
+  requiredByAdmin: boolean;
+  requiredBySystem: boolean;
+  recoveryCodesLeft: number;
+  configured: boolean;
+}
+
+export interface Setup2FAResponse {
+  secret: string;
+  qrCode: string;
+  issuer: string;
+  account: string;
+}
+
+export interface Verify2FAResponse {
+  success: boolean;
+  recoveryCodes: string[];
+  message: string;
+}
+
+export interface TrustedDevice {
+  id: number;
+  deviceName: string;
+  userAgent: string;
+  ip: string;
+  lastUsedAt?: string;
+  expiresAt: string;
+  createdAt: string;
+  isCurrent: boolean;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  requiresTwoFA?: boolean;
+  twoFAToken?: string;
+  token?: string;
+  expiresAt?: number;
+  user?: AdminUser;
+  needs2FASetup?: boolean;
+  deviceToken?: string;
 }
 
 export interface PermissionTemplates {
@@ -191,6 +240,17 @@ export interface ReliabilityStats {
   sampleSize: number;
   minSampleSize?: number;
   hasSufficientSample?: boolean;
+  byDimension?: Record<
+    string,
+    {
+      cronbachAlpha: number;
+      splitHalfReliability: number;
+      spearmanBrown: number;
+      sampleSize: number;
+      hasSufficientSample?: boolean;
+      itemTotalCorrelations?: Record<string, number>;
+    }
+  >;
 }
 
 export interface TrendPoint {
@@ -352,6 +412,7 @@ export interface DimensionImportItem {
 
 const ADMIN_TOKEN_KEY = 'admin_token';
 const ADMIN_USER_KEY = 'admin_user';
+const DEVICE_TOKEN_KEY = 'admin_device_token';
 
 const storage = {
   get: (key: string) => {
@@ -365,6 +426,22 @@ const storage = {
   remove: (key: string) => {
     if (typeof sessionStorage === 'undefined') return;
     sessionStorage.removeItem(key);
+  },
+};
+
+// localStorage for device token (persists across sessions)
+const deviceStorage = {
+  get: () => {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(DEVICE_TOKEN_KEY);
+  },
+  set: (value: string) => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(DEVICE_TOKEN_KEY, value);
+  },
+  remove: () => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(DEVICE_TOKEN_KEY);
   },
 };
 
@@ -393,11 +470,21 @@ export const useAdminAuth = () => {
   const [error, setError] = useState<string | null>(null);
   const [lockUntil, setLockUntil] = useState<string | null>(null);
 
-  const persistSession = (user: AdminUser, newToken: string) => {
+  // 2FA state
+  const [requiresTwoFA, setRequiresTwoFA] = useState(false);
+  const [twoFAToken, setTwoFAToken] = useState<string | null>(null);
+  const [needs2FASetup, setNeeds2FASetup] = useState(false);
+
+  const persistSession = (user: AdminUser, newToken: string, newDeviceToken?: string) => {
     storage.set(ADMIN_TOKEN_KEY, newToken);
     storage.set(ADMIN_USER_KEY, JSON.stringify(user));
     setToken(newToken);
     setCurrentUser(user);
+    if (newDeviceToken) {
+      deviceStorage.set(newDeviceToken);
+    }
+    // Check if user needs to setup 2FA
+    setNeeds2FASetup(!user.twoFactorEnabled && (user.twoFactorRequired || false));
   };
 
   const logout = useCallback(() => {
@@ -405,11 +492,22 @@ export const useAdminAuth = () => {
     storage.remove(ADMIN_USER_KEY);
     setToken(null);
     setCurrentUser(null);
+    setRequiresTwoFA(false);
+    setTwoFAToken(null);
+    setNeeds2FASetup(false);
   }, []);
 
   const getAuthHeader = useCallback((): Record<string, string> => {
     const activeToken = storage.get(ADMIN_TOKEN_KEY);
-    return activeToken ? { Authorization: `Bearer ${activeToken}` } : {};
+    const headers: Record<string, string> = {};
+    if (activeToken) {
+      headers['Authorization'] = `Bearer ${activeToken}`;
+    }
+    const deviceToken = deviceStorage.get();
+    if (deviceToken) {
+      headers['X-Device-Token'] = deviceToken;
+    }
+    return headers;
   }, []);
 
   const fetchProfile = useCallback(async () => {
@@ -425,8 +523,11 @@ export const useAdminAuth = () => {
         logout();
         return null;
       }
-      const data = (await res.json()) as AdminUser;
+      const data = (await res.json()) as AdminUser & { needs2FASetup?: boolean };
       persistSession(data, token);
+      if (data.needs2FASetup) {
+        setNeeds2FASetup(true);
+      }
       return data;
     } catch {
       return null;
@@ -441,33 +542,99 @@ export const useAdminAuth = () => {
     fetchProfile().finally(() => setInitializing(false));
   }, [token, fetchProfile]);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<LoginResponse> => {
     setLoading(true);
     setError(null);
     setLockUntil(null);
+    setRequiresTwoFA(false);
+    setTwoFAToken(null);
     try {
+      const deviceToken = deviceStorage.get();
       const res = await fetch(`${getApiBaseUrl()}/admin/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(deviceToken ? { 'X-Device-Token': deviceToken } : {}),
+        },
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json();
-      if (res.ok && data.success && data.token) {
-        persistSession(data.user, data.token);
-        return true;
+      const data = await res.json() as LoginResponse;
+
+      if (res.ok && data.success) {
+        // Check if 2FA is required
+        if (data.requiresTwoFA && data.twoFAToken) {
+          setRequiresTwoFA(true);
+          setTwoFAToken(data.twoFAToken);
+          return { success: true, requiresTwoFA: true, twoFAToken: data.twoFAToken };
+        }
+
+        // Normal login success
+        if (data.token && data.user) {
+          persistSession(data.user, data.token, data.deviceToken);
+          return { success: true, user: data.user, needs2FASetup: data.needs2FASetup };
+        }
       }
-      if (res.status === 429 && data.unlockAt) {
-        setLockUntil(data.unlockAt);
+
+      if (res.status === 429 && (data as any).unlockAt) {
+        setLockUntil((data as any).unlockAt);
       }
-      setError(data.error || 'Login failed');
-      return false;
+      setError((data as any).error || 'Login failed');
+      return { success: false };
     } catch {
       setError('Connection error');
-      return false;
+      return { success: false };
     } finally {
       setLoading(false);
     }
   };
+
+  const authenticate2FA = async (
+    code: string,
+    trustDevice: boolean = false,
+    deviceName: string = ''
+  ): Promise<LoginResponse> => {
+    if (!twoFAToken) {
+      setError('No 2FA token available');
+      return { success: false };
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/admin/2fa/authenticate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          twoFAToken,
+          code,
+          trustDevice,
+          deviceName,
+        }),
+      });
+      const data = await res.json() as LoginResponse & { recoveryCodesLeft?: number; usedRecoveryCode?: boolean };
+
+      if (res.ok && data.success && data.token && data.user) {
+        setRequiresTwoFA(false);
+        setTwoFAToken(null);
+        persistSession(data.user, data.token, data.deviceToken);
+        return { success: true, user: data.user };
+      }
+
+      setError((data as any).error || '2FA verification failed');
+      return { success: false };
+    } catch {
+      setError('Connection error');
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancel2FA = useCallback(() => {
+    setRequiresTwoFA(false);
+    setTwoFAToken(null);
+    setError(null);
+  }, []);
 
   const isAuthenticated = !!token && !!currentUser;
 
@@ -482,6 +649,12 @@ export const useAdminAuth = () => {
     getAuthHeader,
     currentUser,
     refreshProfile: fetchProfile,
+    // 2FA
+    requiresTwoFA,
+    twoFAToken,
+    authenticate2FA,
+    cancel2FA,
+    needs2FASetup,
   };
 };
 
@@ -702,5 +875,36 @@ export const useAdminApi = () => {
     getAISettings: () => apiCall<AISettings>('/admin/ai/settings'),
     updateAISettings: (data: AISettingsUpdate) =>
       apiCall<AISettings>('/admin/ai/settings', { method: 'PUT', body: JSON.stringify(data) }),
+
+    // 2FA Management
+    get2FAStatus: () => apiCall<TwoFactorStatus>('/admin/2fa/status'),
+    setup2FA: () => apiCall<Setup2FAResponse>('/admin/2fa/setup', { method: 'POST' }),
+    verify2FA: (code: string) =>
+      apiCall<Verify2FAResponse>('/admin/2fa/verify', { method: 'POST', body: JSON.stringify({ code }) }),
+    disable2FA: (code: string) =>
+      apiCall<{ success: boolean; message: string }>('/admin/2fa', { method: 'DELETE', body: JSON.stringify({ code }) }),
+    regenerateRecoveryCodes: (code: string) =>
+      apiCall<{ success: boolean; recoveryCodes: string[]; message: string }>('/admin/2fa/recovery/regenerate', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      }),
+
+    // Trusted Devices
+    listTrustedDevices: () => apiCall<TrustedDevice[]>('/admin/2fa/devices'),
+    revokeTrustedDevice: (id: number) =>
+      apiCall<{ success: boolean }>(`/admin/2fa/devices/${id}`, { method: 'DELETE' }),
+    revokeAllTrustedDevices: () =>
+      apiCall<{ success: boolean }>('/admin/2fa/devices', { method: 'DELETE' }),
+
+    // Superadmin 2FA Management
+    manageUser2FA: (userId: number, data: { forceEnabled?: boolean; reset?: boolean }) =>
+      apiCall<AdminUser>(`/admin/users/${userId}/2fa`, { method: 'PUT', body: JSON.stringify(data) }),
+
+    // Change Password
+    changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
+      apiCall<{ success: boolean; message: string }>('/admin/me/password', {
+        method: 'PUT',
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+      }),
   };
 };
