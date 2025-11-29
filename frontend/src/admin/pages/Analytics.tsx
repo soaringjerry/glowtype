@@ -18,6 +18,8 @@ import {
   Brain,
   MessageCircle,
   HelpCircle,
+  Shield,
+  GitCompare,
 } from 'lucide-react';
 import { useAdminApi, type AnalyticsResponse, type AnalyticsRequest } from '../hooks/useAdmin';
 import { getApiBaseUrl } from '../../api/baseUrl';
@@ -601,6 +603,335 @@ Please provide actionable specific recommendations.`,
             </div>
           )}
         </div>
+      </div>
+
+      {/* Validity Analysis */}
+      <div id="validity" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">{isZh ? '效度分析' : 'Validity Analysis'}</h3>
+              <p className="text-sm text-gray-500">{isZh ? '聚合效度与区分效度' : 'Convergent & Discriminant Validity'}</p>
+              <p className="text-xs text-gray-400">
+                {isZh
+                  ? `样本量 N=${data.validity.sampleSize}（需 N≥${data.validity.minSampleSize}）`
+                  : `Sample N=${data.validity.sampleSize} (need N≥${data.validity.minSampleSize})`}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => openChatWithQuestion(
+              isZh ? '请解释效度分析结果，AVE和HTMT代表什么？' : 'Please explain the validity analysis results. What do AVE and HTMT mean?',
+              'validity'
+            )}
+            className="p-2 hover:bg-teal-50 rounded-lg transition-colors group"
+            title={isZh ? '询问AI关于效度' : 'Ask AI about validity'}
+          >
+            <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-teal-500" />
+          </button>
+        </div>
+
+        {!data.validity.hasSufficientSample ? (
+          <div className="text-center py-8">
+            <Shield className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-gray-500">
+              {isZh
+                ? `效度分析需要至少 ${data.validity.minSampleSize} 份有效答卷`
+                : `Validity analysis requires at least ${data.validity.minSampleSize} valid responses`}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              {isZh ? `当前样本量：${data.validity.sampleSize}` : `Current sample: ${data.validity.sampleSize}`}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Overall Assessment */}
+            <div className={`p-4 rounded-xl ${
+              data.validity.overallAssessment.overallValid
+                ? 'bg-green-50 border border-green-200'
+                : 'bg-amber-50 border border-amber-200'
+            }`}>
+              <div className="flex items-center gap-2 mb-2">
+                {data.validity.overallAssessment.overallValid ? (
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                )}
+                <span className={`font-medium ${
+                  data.validity.overallAssessment.overallValid ? 'text-green-700' : 'text-amber-700'
+                }`}>
+                  {isZh
+                    ? (data.validity.overallAssessment.overallValid ? '效度良好' : '效度需改进')
+                    : (data.validity.overallAssessment.overallValid ? 'Good Validity' : 'Validity Needs Improvement')}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">
+                {isZh ? data.validity.overallAssessment.interpretationZh : data.validity.overallAssessment.interpretation}
+              </p>
+            </div>
+
+            {/* Convergent Validity */}
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                {isZh ? '聚合效度' : 'Convergent Validity'}
+                <span className="text-xs text-gray-400">AVE ≥ 0.5, CR ≥ 0.7</span>
+              </h4>
+              {Object.keys(data.validity.convergentValidity).length === 0 ? (
+                <p className="text-sm text-gray-400">{isZh ? '数据不足' : 'Insufficient data'}</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {Object.entries(data.validity.convergentValidity).map(([dim, stats]) => (
+                    <div
+                      key={dim}
+                      className={`p-3 rounded-lg border ${
+                        stats.meetsAVEThreshold && stats.meetsCRThreshold
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-gray-800 truncate" title={dim}>{dim}</p>
+                      <div className="flex justify-between mt-1">
+                        <div>
+                          <p className="text-xs text-gray-500">AVE</p>
+                          <p className={`text-sm font-bold ${stats.meetsAVEThreshold ? 'text-green-600' : 'text-red-600'}`}>
+                            {stats.ave.toFixed(3)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">CR</p>
+                          <p className={`text-sm font-bold ${stats.meetsCRThreshold ? 'text-green-600' : 'text-red-600'}`}>
+                            {stats.cr.toFixed(3)}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">{stats.itemCount} {isZh ? '题' : 'items'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Discriminant Validity - HTMT */}
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                {isZh ? '区分效度 (HTMT)' : 'Discriminant Validity (HTMT)'}
+                <span className="text-xs text-gray-400">HTMT &lt; 0.85</span>
+                {data.validity.discriminantValidity.passesHTMT ? (
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-amber-500" />
+                )}
+              </h4>
+              {Object.keys(data.validity.discriminantValidity.htmt).length === 0 ? (
+                <p className="text-sm text-gray-400">{isZh ? '需要至少2个维度' : 'Need at least 2 dimensions'}</p>
+              ) : (
+                <div className="space-y-2">
+                  {Object.entries(data.validity.discriminantValidity.htmt).map(([key, htmt]) => {
+                    const [dim1, dim2] = key.split('_');
+                    const isHigh = htmt >= 0.85;
+                    return (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className="w-32 text-xs text-gray-600 truncate" title={`${dim1} × ${dim2}`}>
+                          {dim1} × {dim2}
+                        </span>
+                        <div className="flex-1 h-4 bg-gray-100 rounded overflow-hidden relative">
+                          <div
+                            className={`h-full transition-all ${isHigh ? 'bg-red-400' : 'bg-teal-400'}`}
+                            style={{ width: `${Math.min(htmt * 100, 100)}%` }}
+                          />
+                          {/* Threshold line at 0.85 */}
+                          <div
+                            className="absolute top-0 bottom-0 w-0.5 bg-gray-400"
+                            style={{ left: '85%' }}
+                          />
+                        </div>
+                        <span className={`w-12 text-xs text-right font-medium ${isHigh ? 'text-red-600' : 'text-gray-600'}`}>
+                          {htmt.toFixed(3)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-2">
+                {isZh ? '* HTMT ≥ 0.85 表示维度间区分度不足' : '* HTMT ≥ 0.85 indicates poor discriminant validity'}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Group Comparison */}
+      <div id="groupComparison" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center">
+              <GitCompare className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">{isZh ? '群组对比分析' : 'Group Comparison'}</h3>
+              <p className="text-sm text-gray-500">{isZh ? 't检验、ANOVA 和效应量' : 't-test, ANOVA & Effect Size'}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => openChatWithQuestion(
+              isZh ? '请解释群组对比分析结果，t检验和Cohen\'s d代表什么？' : 'Please explain the group comparison results. What do t-test and Cohen\'s d mean?',
+              'groupComparison'
+            )}
+            className="p-2 hover:bg-rose-50 rounded-lg transition-colors group"
+            title={isZh ? '询问AI关于群组对比' : 'Ask AI about group comparison'}
+          >
+            <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-rose-500" />
+          </button>
+        </div>
+
+        {Object.keys(data.groupComparison.byDevice).length === 0 &&
+         Object.keys(data.groupComparison.byLanguage).length === 0 ? (
+          <div className="text-center py-8">
+            <GitCompare className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-gray-500">
+              {isZh
+                ? `群组对比需要每组至少 ${data.groupComparison.minSample} 个样本`
+                : `Group comparison requires at least ${data.groupComparison.minSample} samples per group`}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* By Device */}
+            {Object.keys(data.groupComparison.byDevice).length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Smartphone className="w-4 h-4 text-gray-500" />
+                  <h4 className="text-sm font-medium text-gray-700">
+                    {isZh ? '按设备类型' : 'By Device Type'}
+                  </h4>
+                </div>
+                <div className="space-y-3">
+                  {Object.entries(data.groupComparison.byDevice).map(([dim, comp]) => (
+                    <div key={dim} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-800">{dim}</span>
+                        <div className="flex items-center gap-2">
+                          {comp.significant ? (
+                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                              {isZh ? '显著' : 'Significant'}
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                              {isZh ? '不显著' : 'Not Significant'}
+                            </span>
+                          )}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            comp.effectSize.interpretation === 'large' ? 'bg-purple-100 text-purple-700' :
+                            comp.effectSize.interpretation === 'medium' ? 'bg-blue-100 text-blue-700' :
+                            comp.effectSize.interpretation === 'small' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-500'
+                          }`}>
+                            {isZh
+                              ? (comp.effectSize.interpretation === 'large' ? '大效应' :
+                                 comp.effectSize.interpretation === 'medium' ? '中效应' :
+                                 comp.effectSize.interpretation === 'small' ? '小效应' : '微小效应')
+                              : comp.effectSize.interpretation}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 text-xs text-gray-600">
+                        {comp.groups.map((g) => (
+                          <div key={g.name} className="flex-1">
+                            <span className="font-medium capitalize">{g.name}</span>
+                            <span className="text-gray-400 ml-1">(n={g.count})</span>
+                            <div className="mt-1">
+                              M={g.mean.toFixed(2)}, SD={g.stdDev.toFixed(2)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {comp.tTest && (
+                        <div className="mt-2 text-xs text-gray-500">
+                          t={comp.tTest.statistic.toFixed(2)}, p={comp.tTest.pValue.toFixed(3)}, d={comp.effectSize.value.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* By Language */}
+            {Object.keys(data.groupComparison.byLanguage).length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Languages className="w-4 h-4 text-gray-500" />
+                  <h4 className="text-sm font-medium text-gray-700">
+                    {isZh ? '按语言' : 'By Language'}
+                  </h4>
+                </div>
+                <div className="space-y-3">
+                  {Object.entries(data.groupComparison.byLanguage).map(([dim, comp]) => (
+                    <div key={dim} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-800">{dim}</span>
+                        <div className="flex items-center gap-2">
+                          {comp.significant ? (
+                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                              {isZh ? '显著' : 'Significant'}
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                              {isZh ? '不显著' : 'Not Significant'}
+                            </span>
+                          )}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            comp.effectSize.interpretation === 'large' ? 'bg-purple-100 text-purple-700' :
+                            comp.effectSize.interpretation === 'medium' ? 'bg-blue-100 text-blue-700' :
+                            comp.effectSize.interpretation === 'small' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-500'
+                          }`}>
+                            {isZh
+                              ? (comp.effectSize.interpretation === 'large' ? '大效应' :
+                                 comp.effectSize.interpretation === 'medium' ? '中效应' :
+                                 comp.effectSize.interpretation === 'small' ? '小效应' : '微小效应')
+                              : comp.effectSize.interpretation}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 text-xs text-gray-600">
+                        {comp.groups.map((g) => (
+                          <div key={g.name} className="flex-1">
+                            <span className="font-medium">{g.name === 'zh' ? '中文' : g.name === 'en' ? 'English' : g.name}</span>
+                            <span className="text-gray-400 ml-1">(n={g.count})</span>
+                            <div className="mt-1">
+                              M={g.mean.toFixed(2)}, SD={g.stdDev.toFixed(2)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {comp.tTest && (
+                        <div className="mt-2 text-xs text-gray-500">
+                          t={comp.tTest.statistic.toFixed(2)}, p={comp.tTest.pValue.toFixed(3)}, d={comp.effectSize.value.toFixed(2)}
+                        </div>
+                      )}
+                      {comp.anova && (
+                        <div className="mt-2 text-xs text-gray-500">
+                          F({comp.anova.dfBetween},{comp.anova.dfWithin})={comp.anova.fStatistic.toFixed(2)}, p={comp.anova.pValue.toFixed(3)}, η²={comp.effectSize.value.toFixed(3)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-gray-400">
+              {isZh
+                ? '* p < 0.05 为显著；Cohen\'s d: 0.2小, 0.5中, 0.8大'
+                : '* p < 0.05 is significant; Cohen\'s d: 0.2=small, 0.5=medium, 0.8=large'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Time Trends */}

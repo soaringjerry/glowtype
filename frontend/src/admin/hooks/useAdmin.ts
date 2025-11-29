@@ -288,10 +288,86 @@ export interface AnalyticsConstants {
   minValiditySample: number;
 }
 
+// Validity analysis types
+export interface ConvergentStats {
+  ave: number;           // Average Variance Extracted (should be > 0.5)
+  cr: number;            // Composite Reliability (should be > 0.7)
+  itemCount: number;
+  meetsAVEThreshold: boolean;
+  meetsCRThreshold: boolean;
+}
+
+export interface DiscriminantStats {
+  fornellLarcker: Record<string, Record<string, number>>;  // sqrt(AVE) vs correlations
+  htmt: Record<string, number>;                             // Heterotrait-Monotrait ratios
+  passesFornellLarcker: boolean;
+  passesHTMT: boolean;
+}
+
+export interface ValidityAssessment {
+  convergentValid: boolean;
+  discriminantValid: boolean;
+  overallValid: boolean;
+  interpretation: string;
+  interpretationZh: string;
+}
+
+export interface ValidityStats {
+  hasSufficientSample: boolean;
+  sampleSize: number;
+  minSampleSize: number;
+  convergentValidity: Record<string, ConvergentStats>;
+  discriminantValidity: DiscriminantStats;
+  overallAssessment: ValidityAssessment;
+}
+
+// Group comparison types
+export interface GroupStats {
+  name: string;
+  count: number;
+  mean: number;
+  stdDev: number;
+}
+
+export interface TTestStats {
+  statistic: number;
+  df: number;
+  pValue: number;
+}
+
+export interface ANOVAStats {
+  fStatistic: number;
+  dfBetween: number;
+  dfWithin: number;
+  pValue: number;
+}
+
+export interface EffectStats {
+  value: number;
+  type: 'cohensD' | 'etaSquared';
+  interpretation: string;
+}
+
+export interface DimensionComparison {
+  groups: GroupStats[];
+  tTest?: TTestStats;
+  anova?: ANOVAStats;
+  effectSize: EffectStats;
+  significant: boolean;
+}
+
+export interface GroupComparisonData {
+  byDevice: Record<string, DimensionComparison>;
+  byLanguage: Record<string, DimensionComparison>;
+  minSample: number;
+}
+
 export interface AnalyticsResponse {
   summary: AnalyticsSummary;
   dimensionStats: Record<string, DimensionStat>;
   reliability: ReliabilityStats;
+  validity: ValidityStats;
+  groupComparison: GroupComparisonData;
   trends: TrendData;
   segments: SegmentData;
   correlationMatrix: Record<string, number>;

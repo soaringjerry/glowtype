@@ -51,10 +51,94 @@ type AnalyticsResponse struct {
 	Summary           AnalyticsSummary         `json:"summary"`
 	DimensionStats    map[string]DimensionStat `json:"dimensionStats"`
 	Reliability       ReliabilityStats         `json:"reliability"`
+	Validity          ValidityStats            `json:"validity"`
+	GroupComparison   GroupComparisonData      `json:"groupComparison"`
 	Trends            TrendData                `json:"trends"`
 	Segments          SegmentData              `json:"segments"`
 	CorrelationMatrix map[string]float64       `json:"correlationMatrix"`
 	Constants         AnalyticsConstants       `json:"constants"`
+}
+
+// GroupComparisonData contains statistical comparisons between groups
+type GroupComparisonData struct {
+	ByDevice   map[string]DimensionComparison `json:"byDevice"`   // mobile vs desktop per dimension
+	ByLanguage map[string]DimensionComparison `json:"byLanguage"` // zh-CN vs en per dimension
+	MinSample  int                            `json:"minSample"`  // Minimum sample per group required
+}
+
+// DimensionComparison contains comparison stats for a single dimension
+type DimensionComparison struct {
+	Groups      []GroupStats  `json:"groups"`      // Stats for each group
+	TTest       *TTestStats   `json:"tTest"`       // For 2 groups
+	ANOVA       *ANOVAStats   `json:"anova"`       // For 3+ groups
+	EffectSize  EffectStats   `json:"effectSize"`  // Cohen's d or Eta-squared
+	Significant bool          `json:"significant"` // p < 0.05
+}
+
+// GroupStats contains descriptive stats for a single group
+type GroupStats struct {
+	Name   string  `json:"name"`
+	Count  int     `json:"count"`
+	Mean   float64 `json:"mean"`
+	StdDev float64 `json:"stdDev"`
+}
+
+// TTestStats contains t-test results
+type TTestStats struct {
+	Statistic float64 `json:"statistic"`
+	DF        float64 `json:"df"`
+	PValue    float64 `json:"pValue"`
+}
+
+// ANOVAStats contains ANOVA results
+type ANOVAStats struct {
+	FStatistic float64 `json:"fStatistic"`
+	DfBetween  int     `json:"dfBetween"`
+	DfWithin   int     `json:"dfWithin"`
+	PValue     float64 `json:"pValue"`
+}
+
+// EffectStats contains effect size measures
+type EffectStats struct {
+	Value          float64 `json:"value"`          // Cohen's d or Eta-squared
+	Type           string  `json:"type"`           // "cohensD" or "etaSquared"
+	Interpretation string  `json:"interpretation"` // negligible, small, medium, large
+}
+
+// ValidityStats contains validity analysis results
+type ValidityStats struct {
+	HasSufficientSample   bool                       `json:"hasSufficientSample"`
+	SampleSize            int                        `json:"sampleSize"`
+	MinSampleSize         int                        `json:"minSampleSize"`
+	ConvergentValidity    map[string]ConvergentStats `json:"convergentValidity"`    // AVE & CR by dimension
+	DiscriminantValidity  DiscriminantStats          `json:"discriminantValidity"`  // Fornell-Larcker & HTMT
+	OverallAssessment     ValidityAssessment         `json:"overallAssessment"`     // Summary interpretation
+}
+
+// ConvergentStats contains convergent validity metrics for a dimension
+type ConvergentStats struct {
+	AVE                float64 `json:"ave"`                // Average Variance Extracted (should be > 0.5)
+	CR                 float64 `json:"cr"`                 // Composite Reliability (should be > 0.7)
+	ItemCount          int     `json:"itemCount"`          // Number of items in this dimension
+	MeetsAVEThreshold  bool    `json:"meetsAVEThreshold"`  // AVE >= 0.5
+	MeetsCRThreshold   bool    `json:"meetsCRThreshold"`   // CR >= 0.7
+}
+
+// DiscriminantStats contains discriminant validity metrics
+type DiscriminantStats struct {
+	FornellLarcker     map[string]map[string]float64 `json:"fornellLarcker"`     // sqrt(AVE) vs inter-correlations
+	HTMT               map[string]float64            `json:"htmt"`               // Heterotrait-Monotrait ratios
+	PassesFornellLarcker bool                        `json:"passesFornellLarcker"`
+	PassesHTMT         bool                          `json:"passesHTMT"`         // All HTMT < 0.85
+}
+
+// ValidityAssessment provides an overall interpretation
+type ValidityAssessment struct {
+	ConvergentValid    bool   `json:"convergentValid"`    // All dimensions meet AVE > 0.5
+	DiscriminantValid  bool   `json:"discriminantValid"`  // Passes Fornell-Larcker or HTMT
+	OverallValid       bool   `json:"overallValid"`       // Both convergent and discriminant valid
+	Interpretation     string `json:"interpretation"`     // Human-readable summary (en)
+	InterpretationZh   string `json:"interpretationZh"`   // Human-readable summary (zh)
 }
 
 // AnalyticsSummary provides overview metrics
@@ -194,6 +278,8 @@ func (s *AnalyticsService) computeAndCacheAnalytics(req AnalyticsRequest) (*Anal
 	// Calculate all statistics
 	dimensionStats := s.calculateDimensionStats(results)
 	reliability := s.calculateReliability(results, req.TenantID)
+	validity := s.calculateValidity(results, req.TenantID, reliability)
+	groupComparison := s.calculateGroupComparison(results)
 	trends := s.calculateTrends(results, startDate, endDate)
 	segments := s.calculateSegments(results)
 	correlationMatrix := s.calculateCorrelationMatrix(results)
@@ -209,6 +295,8 @@ func (s *AnalyticsService) computeAndCacheAnalytics(req AnalyticsRequest) (*Anal
 		},
 		DimensionStats:    dimensionStats,
 		Reliability:       reliability,
+		Validity:          validity,
+		GroupComparison:   groupComparison,
 		Trends:            trends,
 		Segments:          segments,
 		CorrelationMatrix: correlationMatrix,
@@ -980,4 +1068,450 @@ func round2(v float64) float64 {
 
 func round3(v float64) float64 {
 	return math.Round(v*1000) / 1000
+}
+
+// calculateValidity performs validity analysis (convergent and discriminant)
+func (s *AnalyticsService) calculateValidity(results []database.QuizResultDB, tenantID *uint, reliability ReliabilityStats) ValidityStats {
+	n := len(results)
+	hasSufficient := n >= minValiditySample
+
+	stats := ValidityStats{
+		HasSufficientSample:  hasSufficient,
+		SampleSize:           n,
+		MinSampleSize:        minValiditySample,
+		ConvergentValidity:   make(map[string]ConvergentStats),
+		DiscriminantValidity: DiscriminantStats{
+			FornellLarcker:       make(map[string]map[string]float64),
+			HTMT:                 make(map[string]float64),
+			PassesFornellLarcker: false,
+			PassesHTMT:           false,
+		},
+		OverallAssessment: ValidityAssessment{
+			ConvergentValid:   false,
+			DiscriminantValid: false,
+			OverallValid:      false,
+		},
+	}
+
+	if !hasSufficient || n == 0 {
+		stats.OverallAssessment.Interpretation = fmt.Sprintf("Insufficient sample size. Need at least %d responses for validity analysis.", minValiditySample)
+		stats.OverallAssessment.InterpretationZh = fmt.Sprintf("样本量不足。效度分析至少需要 %d 份有效答卷。", minValiditySample)
+		return stats
+	}
+
+	// Get question-dimension mapping
+	qDimMap := s.getQuestionDimensionMap(tenantID)
+
+	// Collect item scores by dimension
+	dimItemScores := make(map[string]map[string][]float64) // dimension -> questionID -> scores
+
+	for _, r := range results {
+		var answers map[string]int
+		if err := json.Unmarshal(r.Answers, &answers); err != nil {
+			continue
+		}
+		for qID, score := range answers {
+			dimKey, ok := qDimMap[qID]
+			if !ok {
+				continue
+			}
+			if dimItemScores[dimKey] == nil {
+				dimItemScores[dimKey] = make(map[string][]float64)
+			}
+			dimItemScores[dimKey][qID] = append(dimItemScores[dimKey][qID], float64(score))
+		}
+	}
+
+	// Calculate convergent validity (AVE and CR) for each dimension
+	aveByDim := make(map[string]float64)
+	allAVEPass := true
+	allCRPass := true
+
+	for dimKey, itemScores := range dimItemScores {
+		itemCount := len(itemScores)
+		if itemCount < 2 {
+			continue
+		}
+
+		// Calculate factor loadings (item-total correlations as proxy)
+		// In proper factor analysis, these would be standardized factor loadings
+		// Here we use item-total correlations within dimension as approximation
+		var dimTotalScores []float64
+		for i := 0; i < n; i++ {
+			total := 0.0
+			count := 0
+			for _, scores := range itemScores {
+				if i < len(scores) {
+					total += scores[i]
+					count++
+				}
+			}
+			if count > 0 {
+				dimTotalScores = append(dimTotalScores, total)
+			}
+		}
+
+		var loadings []float64
+		for _, scores := range itemScores {
+			if len(scores) >= len(dimTotalScores) && len(dimTotalScores) > 0 {
+				loading := calculatePearsonCorrelation(scores[:len(dimTotalScores)], dimTotalScores)
+				if !math.IsNaN(loading) && loading > 0 {
+					loadings = append(loadings, loading)
+				}
+			}
+		}
+
+		if len(loadings) < 2 {
+			continue
+		}
+
+		// AVE = sum(loading^2) / n
+		sumLoadingSq := 0.0
+		for _, l := range loadings {
+			sumLoadingSq += l * l
+		}
+		ave := sumLoadingSq / float64(len(loadings))
+
+		// CR = (sum(loading))^2 / ((sum(loading))^2 + sum(1-loading^2))
+		sumLoading := 0.0
+		sumError := 0.0
+		for _, l := range loadings {
+			sumLoading += l
+			sumError += (1 - l*l)
+		}
+		cr := (sumLoading * sumLoading) / (sumLoading*sumLoading + sumError)
+
+		meetsAVE := ave >= 0.5
+		meetsCR := cr >= 0.7
+
+		if !meetsAVE {
+			allAVEPass = false
+		}
+		if !meetsCR {
+			allCRPass = false
+		}
+
+		aveByDim[dimKey] = ave
+		stats.ConvergentValidity[dimKey] = ConvergentStats{
+			AVE:               round3(ave),
+			CR:                round3(cr),
+			ItemCount:         itemCount,
+			MeetsAVEThreshold: meetsAVE,
+			MeetsCRThreshold:  meetsCR,
+		}
+	}
+
+	// Calculate discriminant validity
+	dims := make([]string, 0, len(aveByDim))
+	for d := range aveByDim {
+		dims = append(dims, d)
+	}
+	sort.Strings(dims)
+
+	// Calculate dimension-level correlations for Fornell-Larcker
+	dimScores := make(map[string][]float64)
+	for _, r := range results {
+		var scores map[string]float64
+		if err := json.Unmarshal(r.DimensionScores, &scores); err != nil {
+			continue
+		}
+		for dim, score := range scores {
+			dimScores[dim] = append(dimScores[dim], score)
+		}
+	}
+
+	// Fornell-Larcker criterion: sqrt(AVE) should be > inter-dimension correlations
+	passesFornellLarcker := true
+	for _, dim1 := range dims {
+		stats.DiscriminantValidity.FornellLarcker[dim1] = make(map[string]float64)
+		sqrtAVE := math.Sqrt(aveByDim[dim1])
+		stats.DiscriminantValidity.FornellLarcker[dim1][dim1] = round3(sqrtAVE) // diagonal = sqrt(AVE)
+
+		for _, dim2 := range dims {
+			if dim1 >= dim2 {
+				continue
+			}
+			scores1 := dimScores[dim1]
+			scores2 := dimScores[dim2]
+			minLen := len(scores1)
+			if len(scores2) < minLen {
+				minLen = len(scores2)
+			}
+			if minLen < 10 {
+				continue
+			}
+
+			corr := calculatePearsonCorrelation(scores1[:minLen], scores2[:minLen])
+			if math.IsNaN(corr) {
+				continue
+			}
+			absCorr := math.Abs(corr)
+
+			stats.DiscriminantValidity.FornellLarcker[dim1][dim2] = round3(corr)
+			if stats.DiscriminantValidity.FornellLarcker[dim2] == nil {
+				stats.DiscriminantValidity.FornellLarcker[dim2] = make(map[string]float64)
+			}
+			stats.DiscriminantValidity.FornellLarcker[dim2][dim1] = round3(corr)
+
+			// Check Fornell-Larcker: sqrt(AVE) of both dimensions should be > |correlation|
+			sqrtAVE1 := math.Sqrt(aveByDim[dim1])
+			sqrtAVE2 := math.Sqrt(aveByDim[dim2])
+			if sqrtAVE1 <= absCorr || sqrtAVE2 <= absCorr {
+				passesFornellLarcker = false
+			}
+
+			// HTMT calculation (simplified)
+			// HTMT = average(heterotrait-heteromethod correlations) / sqrt(average(monotrait-heteromethod correlations))
+			// Simplified: use |inter-dimension correlation| as HTMT proxy
+			htmtKey := fmt.Sprintf("%s_%s", dim1, dim2)
+			stats.DiscriminantValidity.HTMT[htmtKey] = round3(absCorr)
+		}
+	}
+
+	// Check HTMT threshold (< 0.85 is acceptable, < 0.90 is lenient)
+	passesHTMT := true
+	for _, htmt := range stats.DiscriminantValidity.HTMT {
+		if htmt >= 0.85 {
+			passesHTMT = false
+			break
+		}
+	}
+
+	stats.DiscriminantValidity.PassesFornellLarcker = passesFornellLarcker
+	stats.DiscriminantValidity.PassesHTMT = passesHTMT
+
+	// Overall assessment
+	convergentValid := allAVEPass && allCRPass && len(stats.ConvergentValidity) > 0
+	discriminantValid := (passesFornellLarcker || passesHTMT) && len(dims) > 1
+
+	stats.OverallAssessment.ConvergentValid = convergentValid
+	stats.OverallAssessment.DiscriminantValid = discriminantValid
+	stats.OverallAssessment.OverallValid = convergentValid && discriminantValid
+
+	// Generate interpretation
+	stats.OverallAssessment.Interpretation = s.generateValidityInterpretation(stats, false)
+	stats.OverallAssessment.InterpretationZh = s.generateValidityInterpretation(stats, true)
+
+	return stats
+}
+
+// generateValidityInterpretation creates human-readable validity assessment
+func (s *AnalyticsService) generateValidityInterpretation(stats ValidityStats, isZh bool) string {
+	if !stats.HasSufficientSample {
+		if isZh {
+			return fmt.Sprintf("样本量不足（当前 %d，需要 %d）。效度分析需要更多数据。", stats.SampleSize, stats.MinSampleSize)
+		}
+		return fmt.Sprintf("Insufficient sample size (%d, need %d). Validity analysis requires more data.", stats.SampleSize, stats.MinSampleSize)
+	}
+
+	var parts []string
+
+	// Convergent validity
+	avePass := 0
+	aveTotal := len(stats.ConvergentValidity)
+	for _, cv := range stats.ConvergentValidity {
+		if cv.MeetsAVEThreshold {
+			avePass++
+		}
+	}
+
+	if isZh {
+		if aveTotal == 0 {
+			parts = append(parts, "无法计算聚合效度（维度数据不足）")
+		} else if avePass == aveTotal {
+			parts = append(parts, fmt.Sprintf("聚合效度良好：所有 %d 个维度的 AVE ≥ 0.5", aveTotal))
+		} else {
+			parts = append(parts, fmt.Sprintf("聚合效度存在问题：%d/%d 个维度的 AVE < 0.5", aveTotal-avePass, aveTotal))
+		}
+
+		// Discriminant validity
+		if len(stats.DiscriminantValidity.HTMT) == 0 {
+			parts = append(parts, "无法计算区分效度（需要至少2个维度）")
+		} else if stats.DiscriminantValidity.PassesHTMT {
+			parts = append(parts, "区分效度良好：所有维度间 HTMT < 0.85")
+		} else {
+			parts = append(parts, "区分效度存在问题：部分维度间相关性过高（HTMT ≥ 0.85）")
+		}
+	} else {
+		if aveTotal == 0 {
+			parts = append(parts, "Cannot compute convergent validity (insufficient dimension data)")
+		} else if avePass == aveTotal {
+			parts = append(parts, fmt.Sprintf("Good convergent validity: All %d dimensions have AVE ≥ 0.5", aveTotal))
+		} else {
+			parts = append(parts, fmt.Sprintf("Convergent validity concern: %d/%d dimensions have AVE < 0.5", aveTotal-avePass, aveTotal))
+		}
+
+		// Discriminant validity
+		if len(stats.DiscriminantValidity.HTMT) == 0 {
+			parts = append(parts, "Cannot compute discriminant validity (need at least 2 dimensions)")
+		} else if stats.DiscriminantValidity.PassesHTMT {
+			parts = append(parts, "Good discriminant validity: All inter-dimension HTMT < 0.85")
+		} else {
+			parts = append(parts, "Discriminant validity concern: Some dimensions are too highly correlated (HTMT ≥ 0.85)")
+		}
+	}
+
+	return fmt.Sprintf("%s", joinStrings(parts, "; "))
+}
+
+func joinStrings(parts []string, sep string) string {
+	result := ""
+	for i, p := range parts {
+		if i > 0 {
+			result += sep
+		}
+		result += p
+	}
+	return result
+}
+
+const minGroupComparisonSample = 10 // Minimum sample per group for comparison
+
+// calculateGroupComparison performs t-tests and ANOVA for group comparisons
+func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResultDB) GroupComparisonData {
+	data := GroupComparisonData{
+		ByDevice:   make(map[string]DimensionComparison),
+		ByLanguage: make(map[string]DimensionComparison),
+		MinSample:  minGroupComparisonSample,
+	}
+
+	if len(results) < minGroupComparisonSample*2 {
+		return data
+	}
+
+	calc := NewStatisticsCalculator()
+
+	// Collect dimension scores by device type
+	deviceScores := make(map[string]map[string][]float64) // device -> dimension -> scores
+	langScores := make(map[string]map[string][]float64)   // language -> dimension -> scores
+
+	for _, r := range results {
+		var dimScores map[string]float64
+		if err := json.Unmarshal(r.DimensionScores, &dimScores); err != nil {
+			continue
+		}
+
+		// Group by device
+		device := "desktop"
+		if r.DeviceType == "mobile" || r.DeviceType == "tablet" {
+			device = "mobile"
+		}
+		if deviceScores[device] == nil {
+			deviceScores[device] = make(map[string][]float64)
+		}
+		for dim, score := range dimScores {
+			deviceScores[device][dim] = append(deviceScores[device][dim], score)
+		}
+
+		// Group by language
+		lang := r.Language
+		if lang == "" {
+			lang = "unknown"
+		}
+		// Simplify language codes
+		if len(lang) > 2 && (lang[:2] == "zh" || lang[:2] == "en") {
+			lang = lang[:2]
+		}
+		if langScores[lang] == nil {
+			langScores[lang] = make(map[string][]float64)
+		}
+		for dim, score := range dimScores {
+			langScores[lang][dim] = append(langScores[lang][dim], score)
+		}
+	}
+
+	// Compare by device (mobile vs desktop)
+	data.ByDevice = s.compareGroups(deviceScores, calc)
+
+	// Compare by language (zh vs en)
+	data.ByLanguage = s.compareGroups(langScores, calc)
+
+	return data
+}
+
+// compareGroups performs statistical comparison between groups for each dimension
+func (s *AnalyticsService) compareGroups(groupScores map[string]map[string][]float64, calc *StatisticsCalculator) map[string]DimensionComparison {
+	result := make(map[string]DimensionComparison)
+
+	// Get all dimensions
+	dims := make(map[string]bool)
+	for _, dimMap := range groupScores {
+		for dim := range dimMap {
+			dims[dim] = true
+		}
+	}
+
+	// For each dimension, compare groups
+	for dim := range dims {
+		var groups []GroupStats
+		var groupData [][]float64
+		groupNames := make([]string, 0)
+
+		for groupName, dimMap := range groupScores {
+			scores := dimMap[dim]
+			if len(scores) < minGroupComparisonSample {
+				continue
+			}
+
+			mean := calculateMean(scores)
+			stdDev := calculateStdDev(scores, mean)
+			groups = append(groups, GroupStats{
+				Name:   groupName,
+				Count:  len(scores),
+				Mean:   round2(mean),
+				StdDev: round2(stdDev),
+			})
+			groupData = append(groupData, scores)
+			groupNames = append(groupNames, groupName)
+		}
+
+		if len(groups) < 2 {
+			continue // Need at least 2 groups
+		}
+
+		comparison := DimensionComparison{
+			Groups: groups,
+		}
+
+		if len(groups) == 2 {
+			// Use t-test for 2 groups
+			tResult := calc.TTest(groupData[0], groupData[1])
+			comparison.TTest = &TTestStats{
+				Statistic: tResult.Statistic,
+				DF:        tResult.DegreesOfFree,
+				PValue:    tResult.PValue,
+			}
+			comparison.Significant = tResult.IsSignificant
+
+			// Cohen's d for effect size
+			d := calc.CohensD(groupData[0], groupData[1])
+			comparison.EffectSize = EffectStats{
+				Value:          round3(math.Abs(d)),
+				Type:           "cohensD",
+				Interpretation: calc.InterpretCohensD(d),
+			}
+		} else {
+			// Use ANOVA for 3+ groups
+			anovaResult := calc.OneWayANOVA(groupData)
+			comparison.ANOVA = &ANOVAStats{
+				FStatistic: anovaResult.FStatistic,
+				DfBetween:  anovaResult.DfBetween,
+				DfWithin:   anovaResult.DfWithin,
+				PValue:     anovaResult.PValue,
+			}
+			comparison.Significant = anovaResult.IsSignificant
+
+			// Eta-squared for effect size
+			eta2 := calc.EtaSquared(groupData)
+			comparison.EffectSize = EffectStats{
+				Value:          round3(eta2),
+				Type:           "etaSquared",
+				Interpretation: calc.InterpretEtaSquared(eta2),
+			}
+		}
+
+		result[dim] = comparison
+	}
+
+	return result
 }

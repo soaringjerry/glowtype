@@ -120,6 +120,9 @@ func (h *AnalyticsChatHandler) buildSystemPrompt(analyticsData json.RawMessage, 
 - 偏度(Skewness): 分布的不对称程度，0表示对称，正值右偏，负值左偏
 - 峰度(Kurtosis): 分布的尖峭程度，0表示正态，正值尖峭，负值平坦
 - Cohen's d: 效应量，表示组间差异的实际意义，<0.2很小，0.2-0.5小，0.5-0.8中等，>0.8大
+- AVE (平均变异抽取量): 聚合效度指标，反映维度解释变异的能力。≥0.5表示该维度能解释其题目一半以上的变异
+- CR (组合信度): 类似于Cronbach's Alpha，≥0.7表示良好
+- HTMT (异质-同质特质比): 区分效度指标，<0.85表示两个维度有足够的区分度，≥0.85则可能测量同一概念
 
 回答时请：
 - 使用简单的语言，避免过于专业的术语
@@ -144,6 +147,9 @@ Statistical terminology guide:
 - Skewness: Distribution asymmetry, 0=symmetric, positive=right-skewed, negative=left-skewed
 - Kurtosis: Distribution peakedness, 0=normal, positive=peaked, negative=flat
 - Cohen's d: Effect size, <0.2 negligible, 0.2-0.5 small, 0.5-0.8 medium, >0.8 large
+- AVE (Average Variance Extracted): Convergent validity indicator. ≥0.5 means the dimension explains more than half of the variance in its items
+- CR (Composite Reliability): Similar to Cronbach's Alpha. ≥0.7 indicates good reliability
+- HTMT (Heterotrait-Monotrait ratio): Discriminant validity indicator. <0.85 indicates good discriminant validity; ≥0.85 suggests the dimensions may measure the same concept
 
 When responding:
 - Use simple language, avoid overly technical jargon
@@ -167,6 +173,10 @@ When responding:
 			viewContext = "\n\n用户当前正在查看【群组分析】面板。"
 		case "correlations":
 			viewContext = "\n\n用户当前正在查看【相关矩阵】面板。"
+		case "validity":
+			viewContext = "\n\n用户当前正在查看【效度分析】面板。这里显示聚合效度(AVE, CR)和区分效度(HTMT)指标。"
+		case "groupComparison":
+			viewContext = "\n\n用户当前正在查看【群组对比分析】面板。这里显示不同群组(按设备类型、语言)之间维度得分的统计对比，包括t检验、ANOVA和效应量(Cohen's d, η²)。"
 		}
 	} else {
 		switch currentView {
@@ -180,6 +190,10 @@ When responding:
 			viewContext = "\n\nThe user is currently viewing the [Segment Analysis] panel."
 		case "correlations":
 			viewContext = "\n\nThe user is currently viewing the [Correlation Matrix] panel."
+		case "validity":
+			viewContext = "\n\nThe user is currently viewing the [Validity Analysis] panel. This shows convergent validity (AVE, CR) and discriminant validity (HTMT) metrics."
+		case "groupComparison":
+			viewContext = "\n\nThe user is currently viewing the [Group Comparison] panel. This shows statistical comparisons between groups (by device type, language) for dimension scores, including t-tests, ANOVA, and effect sizes (Cohen's d, η²)."
 		}
 	}
 
