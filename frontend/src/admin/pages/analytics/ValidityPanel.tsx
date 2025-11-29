@@ -82,11 +82,11 @@ export default function ValidityPanel({ validity, isZh, onAskAI }: ValidityPanel
               {isZh ? '聚合效度' : 'Convergent Validity'}
               <span className="text-xs text-gray-400">AVE ≥ 0.5, CR ≥ 0.7</span>
             </h4>
-            {Object.keys(validity.convergentValidity).length === 0 ? (
+            {Object.keys(validity.convergentValidity ?? {}).length === 0 ? (
               <p className="text-sm text-gray-400">{isZh ? '数据不足' : 'Insufficient data'}</p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {Object.entries(validity.convergentValidity).map(([dim, stats]) => (
+                {Object.entries(validity.convergentValidity ?? {}).map(([dim, stats]) => (
                   <div
                     key={dim}
                     className={`p-3 rounded-lg border ${
@@ -122,17 +122,17 @@ export default function ValidityPanel({ validity, isZh, onAskAI }: ValidityPanel
             <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
               {isZh ? '区分效度 (HTMT)' : 'Discriminant Validity (HTMT)'}
               <span className="text-xs text-gray-400">HTMT &lt; 0.85</span>
-              {validity.discriminantValidity.passesHTMT ? (
+              {validity.discriminantValidity?.passesHTMT ? (
                 <CheckCircle className="w-4 h-4 text-green-500" />
               ) : (
                 <AlertCircle className="w-4 h-4 text-amber-500" />
               )}
             </h4>
-            {Object.keys(validity.discriminantValidity.htmt).length === 0 ? (
+            {Object.keys(validity.discriminantValidity?.htmt ?? {}).length === 0 ? (
               <p className="text-sm text-gray-400">{isZh ? '需要至少2个维度' : 'Need at least 2 dimensions'}</p>
             ) : (
               <div className="space-y-2">
-                {Object.entries(validity.discriminantValidity.htmt).map(([key, htmt]) => {
+                {Object.entries(validity.discriminantValidity?.htmt ?? {}).map(([key, htmt]) => {
                   const [dim1, dim2] = key.split('_');
                   const isHigh = htmt >= 0.85;
                   return (

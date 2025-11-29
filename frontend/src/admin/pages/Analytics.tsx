@@ -155,16 +155,16 @@ Please provide actionable specific recommendations.`,
         minSampleSize: minReliabilitySample,
         hasSufficientSample: reliabilityReady,
       },
-      dimensionStats: Object.fromEntries(
+      dimensionStats: data.dimensionStats ? Object.fromEntries(
         Object.entries(data.dimensionStats).map(([k, v]) => [k, { mean: v.mean, stdDev: v.stdDev, min: v.min, max: v.max }])
-      ),
+      ) : {},
       segments: {
-        topRegions: data.segments.byRegion.slice(0, 5),
-        devices: data.segments.byDevice,
-        languages: data.segments.byLanguage,
+        topRegions: data.segments?.byRegion?.slice(0, 5) ?? [],
+        devices: data.segments?.byDevice ?? [],
+        languages: data.segments?.byLanguage ?? [],
       },
       trends: {
-        recentDays: data.trends.daily.slice(-7),
+        recentDays: data.trends?.daily?.slice(-7) ?? [],
       },
     };
 
@@ -230,9 +230,9 @@ Please provide actionable specific recommendations.`,
     );
   }
 
-  const dimEntries = Object.entries(data.dimensionStats);
-  const correlationEntries = Object.entries(data.correlationMatrix);
-  const itemCorrelations = Object.entries(data.reliability.itemTotalCorrelations).sort((a, b) => b[1] - a[1]);
+  const dimEntries = Object.entries(data.dimensionStats ?? {});
+  const correlationEntries = Object.entries(data.correlationMatrix ?? {});
+  const itemCorrelations = Object.entries(data.reliability?.itemTotalCorrelations ?? {}).sort((a, b) => b[1] - a[1]);
   const suggestionsDisabled = aiLoading || !reliabilityReady || itemCorrelations.length === 0;
 
   return (

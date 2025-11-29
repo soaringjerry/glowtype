@@ -77,19 +77,19 @@ export default function AnalyticsChatPanel({
               currentView,
               analyticsData: analyticsData ? {
                 summary: analyticsData.summary,
-                reliability: {
+                reliability: analyticsData.reliability ? {
                   cronbachAlpha: analyticsData.reliability.cronbachAlpha,
                   spearmanBrown: analyticsData.reliability.spearmanBrown,
                   sampleSize: analyticsData.reliability.sampleSize,
                   hasSufficientSample: analyticsData.reliability.hasSufficientSample,
                   itemTotalCorrelations: analyticsData.reliability.itemTotalCorrelations,
-                },
-                dimensionStats: Object.fromEntries(
+                } : null,
+                dimensionStats: analyticsData.dimensionStats ? Object.fromEntries(
                   Object.entries(analyticsData.dimensionStats).map(([k, v]) => [
                     k,
                     { mean: v.mean, stdDev: v.stdDev, min: v.min, max: v.max, median: v.median },
                   ])
-                ),
+                ) : null,
               } : null,
               language: isZh ? 'zh-CN' : 'en',
             },
@@ -249,19 +249,19 @@ export default function AnalyticsChatPanel({
   const prepareDataForAI = (data: AnalyticsResponse) => {
     return {
       summary: data.summary,
-      reliability: {
+      reliability: data.reliability ? {
         cronbachAlpha: data.reliability.cronbachAlpha,
         spearmanBrown: data.reliability.spearmanBrown,
         sampleSize: data.reliability.sampleSize,
         hasSufficientSample: data.reliability.hasSufficientSample,
         itemTotalCorrelations: data.reliability.itemTotalCorrelations,
-      },
-      dimensionStats: Object.fromEntries(
+      } : null,
+      dimensionStats: data.dimensionStats ? Object.fromEntries(
         Object.entries(data.dimensionStats).map(([k, v]) => [
           k,
           { mean: v.mean, stdDev: v.stdDev, min: v.min, max: v.max, median: v.median },
         ])
-      ),
+      ) : null,
       segments: {
         topRegions: data.segments?.byRegion?.slice(0, 5),
         devices: data.segments?.byDevice,

@@ -49,8 +49,8 @@ function formatLanguageName(name: string): string {
 }
 
 export default function GroupComparisonPanel({ groupComparison, isZh, onAskAI }: GroupComparisonPanelProps) {
-  const hasDeviceData = Object.keys(groupComparison.byDevice).length > 0;
-  const hasLanguageData = Object.keys(groupComparison.byLanguage).length > 0;
+  const hasDeviceData = Object.keys(groupComparison.byDevice ?? {}).length > 0;
+  const hasLanguageData = Object.keys(groupComparison.byLanguage ?? {}).length > 0;
 
   return (
     <div id="groupComparison" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
