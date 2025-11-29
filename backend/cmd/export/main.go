@@ -326,7 +326,7 @@ func writeJSON(outputDir, filename string, data ExportData) {
 		log.Fatalf("Invalid filename")
 	}
 	target := filepath.Join(outputDir, filepath.Base(filename+".json"))
-	file, err := os.Create(target)
+	file, err := os.Create(target) // #nosec G304 -- CLI tool, paths are admin-controlled
 	if err != nil {
 		log.Fatalf("Failed to create file: %v", err)
 	}
@@ -356,7 +356,7 @@ func writeCSV(outputDir, filename string, data ExportData) {
 	// Write quiz results CSV
 	if len(data.QuizResults) > 0 {
 		filepath := filepath.Join(outputDir, safeBase+"_results.csv")
-		file, err := os.Create(filepath)
+		file, err := os.Create(filepath) // #nosec G304 -- CLI tool, paths are admin-controlled
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
 		}
@@ -399,7 +399,7 @@ func writeCSV(outputDir, filename string, data ExportData) {
 	// Write chat sessions CSV
 	if len(data.ChatSessions) > 0 {
 		filepath := filepath.Join(outputDir, safeBase+"_chats.csv")
-		file, err := os.Create(filepath)
+		file, err := os.Create(filepath) // #nosec G304 -- CLI tool, paths are admin-controlled
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
 		}
@@ -438,7 +438,7 @@ func writeCSV(outputDir, filename string, data ExportData) {
 	// Write usage stats CSV
 	if len(data.UsageStats) > 0 {
 		filepath := filepath.Join(outputDir, safeBase+"_stats.csv")
-		file, err := os.Create(filepath)
+		file, err := os.Create(filepath) // #nosec G304 -- CLI tool, paths are admin-controlled
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
 		}
@@ -464,7 +464,7 @@ func writeCSV(outputDir, filename string, data ExportData) {
 	// Write distribution CSV
 	if len(data.GlowtypeDistribution) > 0 {
 		filepath := filepath.Join(outputDir, safeBase+"_distribution.csv")
-		file, err := os.Create(filepath)
+		file, err := os.Create(filepath) // #nosec G304 -- CLI tool, paths are admin-controlled
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
 		}
