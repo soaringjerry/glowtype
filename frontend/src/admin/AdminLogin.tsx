@@ -29,8 +29,8 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
     setTwoFALoading(true);
     setTwoFAError(null);
     try {
-      const success = await authenticate2FA(code, trustDevice, deviceName);
-      if (success) {
+      const result = await authenticate2FA(code, trustDevice, deviceName);
+      if (result.success) {
         onLogin();
         return true;
       }

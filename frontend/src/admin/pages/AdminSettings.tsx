@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Settings,
@@ -53,20 +53,31 @@ export default function AdminSettings() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
+  // Track loading to prevent race conditions
+  const loadingRef = useRef(false);
+
   // Load 2FA status and trusted devices
   const load2FAData = async () => {
+    if (loadingRef.current) return; // Prevent concurrent calls
+    loadingRef.current = true;
     setLoading2FA(true);
-    const status = await api.get2FAStatus();
-    if (status) {
-      setTwoFAStatus(status);
-      if (status.enabled) {
-        const devices = await api.listTrustedDevices();
-        if (devices) {
-          setTrustedDevices(devices);
+    try {
+      const status = await api.get2FAStatus();
+      if (status) {
+        setTwoFAStatus(status);
+        if (status.enabled) {
+          const devices = await api.listTrustedDevices();
+          if (devices) {
+            setTrustedDevices(devices);
+          }
+        } else {
+          setTrustedDevices([]);
         }
       }
+    } finally {
+      setLoading2FA(false);
+      loadingRef.current = false;
     }
-    setLoading2FA(false);
   };
 
   useEffect(() => {
@@ -125,16 +136,20 @@ export default function AdminSettings() {
   // Regenerate Recovery Codes - shows a prompt for current 2FA code first
   const [showRegeneratePrompt, setShowRegeneratePrompt] = useState(false);
   const [regenerateCode, setRegenerateCode] = useState('');
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
   const handleRegenerateRecoveryCodes = async () => {
     if (!regenerateCode.trim()) return;
     setRegeneratingCodes(true);
+    setRegenerateError(null);
     const result = await api.regenerateRecoveryCodes(regenerateCode.trim());
     if (result?.recoveryCodes) {
       setNewRecoveryCodes(result.recoveryCodes);
       setShowRecoveryCodes(true);
       setShowRegeneratePrompt(false);
       setRegenerateCode('');
+    } else {
+      setRegenerateError(api.error || t('settings.regenerateFailed', '重新生成失败，请检查验证码'));
     }
     setRegeneratingCodes(false);
   };
@@ -152,8 +167,8 @@ export default function AdminSettings() {
   // Revoke Trusted Device
   const handleRevokeDevice = async (deviceId: number) => {
     setRevokingDevice(deviceId);
-    const success = await api.revokeTrustedDevice(deviceId);
-    if (success) {
+    const result = await api.revokeTrustedDevice(deviceId);
+    if (result?.success) {
       setTrustedDevices(devices => devices.filter(d => d.id !== deviceId));
     }
     setRevokingDevice(null);
@@ -161,8 +176,8 @@ export default function AdminSettings() {
 
   // Revoke All Devices
   const handleRevokeAllDevices = async () => {
-    const success = await api.revokeAllTrustedDevices();
-    if (success) {
+    const result = await api.revokeAllTrustedDevices();
+    if (result?.success) {
       setTrustedDevices([]);
     }
   };
@@ -297,11 +312,18 @@ export default function AdminSettings() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-center text-xl tracking-widest font-mono mb-4"
                     autoFocus
                   />
+                  {regenerateError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      {regenerateError}
+                    </div>
+                  )}
                   <div className="flex gap-3">
                     <button
                       onClick={() => {
                         setShowRegeneratePrompt(false);
                         setRegenerateCode('');
+                        setRegenerateError(null);
                       }}
                       className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition"
                     >
