@@ -35,7 +35,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
       }
       setTwoFAError(t('twoFactor.verifyFailed', '验证码错误，请重试'));
       return false;
-    } catch (err) {
+    } catch {
       setTwoFAError(t('twoFactor.verifyError', '验证失败，请重试'));
       return false;
     } finally {

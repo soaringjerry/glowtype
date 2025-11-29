@@ -81,7 +81,7 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
       } else {
         setVerifyError(t('twoFactor.verifyFailed', '验证码错误，请重试'));
       }
-    } catch (err) {
+    } catch {
       setVerifyError(t('twoFactor.verifyError', '验证失败，请重试'));
     } finally {
       setVerifying(false);
