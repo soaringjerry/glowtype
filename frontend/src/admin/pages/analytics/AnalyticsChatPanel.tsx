@@ -64,7 +64,7 @@ export default function AnalyticsChatPanel({
         setMessages([userMessage]);
         setLoading(true);
 
-        const token = localStorage.getItem('adminToken');
+        const token = localStorage.getItem('admin_token');
         fetch(`${getApiBaseUrl()}/admin/analytics/chat`, {
           method: 'POST',
           headers: {
@@ -129,7 +129,7 @@ export default function AnalyticsChatPanel({
     setSuggestions([]);
 
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${getApiBaseUrl()}/admin/analytics/chat`, {
         method: 'POST',
         headers: {
@@ -194,7 +194,7 @@ export default function AnalyticsChatPanel({
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${getApiBaseUrl()}/admin/analytics/quick-question`, {
         method: 'POST',
         headers: {
