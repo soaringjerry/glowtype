@@ -129,7 +129,7 @@ Please provide actionable specific recommendations.`,
       } else {
         setAiError(result.error || 'Failed to generate analysis');
       }
-    } catch (e) {
+    } catch {
       setAiError('Network error');
     } finally {
       setAiLoading(false);
