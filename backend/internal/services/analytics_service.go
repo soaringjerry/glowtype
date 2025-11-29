@@ -75,12 +75,23 @@ type Distribution struct {
 
 // ReliabilityStats contains reliability analysis results
 type ReliabilityStats struct {
+	CronbachAlpha         float64                   `json:"cronbachAlpha"`
+	ItemTotalCorrelations map[string]float64        `json:"itemTotalCorrelations"`
+	SplitHalfReliability  float64                   `json:"splitHalfReliability"`
+	SpearmanBrown         float64                   `json:"spearmanBrown"`
+	SampleSize            int                       `json:"sampleSize"`
+	MinSampleSize         int                       `json:"minSampleSize"`
+	HasSufficientSample   bool                      `json:"hasSufficientSample"`
+	ByDimension           map[string]DimReliability `json:"byDimension,omitempty"`
+}
+
+// DimReliability captures reliability metrics for a specific dimension/scale
+type DimReliability struct {
 	CronbachAlpha         float64            `json:"cronbachAlpha"`
 	ItemTotalCorrelations map[string]float64 `json:"itemTotalCorrelations"`
 	SplitHalfReliability  float64            `json:"splitHalfReliability"`
 	SpearmanBrown         float64            `json:"spearmanBrown"`
 	SampleSize            int                `json:"sampleSize"`
-	MinSampleSize         int                `json:"minSampleSize"`
 	HasSufficientSample   bool               `json:"hasSufficientSample"`
 }
 
@@ -146,7 +157,7 @@ func (s *AnalyticsService) GetAnalytics(req AnalyticsRequest) (*AnalyticsRespons
 
 	// Calculate all statistics
 	dimensionStats := s.calculateDimensionStats(results)
-	reliability := s.calculateReliability(results)
+	reliability := s.calculateReliability(results, req.TenantID)
 	trends := s.calculateTrends(results, startDate, endDate)
 	segments := s.calculateSegments(results)
 	correlationMatrix := s.calculateCorrelationMatrix(results)
@@ -234,18 +245,62 @@ func (s *AnalyticsService) calculateDimensionStats(results []database.QuizResult
 	return stats
 }
 
+// getQuestionDimensionMap returns a map of questionID -> dimension key (based on PrimaryDimensionID)
+func (s *AnalyticsService) getQuestionDimensionMap(tenantID *uint) map[string]string {
+	result := make(map[string]string)
+
+	// Load dimensions (id -> key) for the tenant/global
+	dimKeyByID := make(map[uint]string)
+	var dims []database.TraitDimensionDB
+	dq := s.db.Model(&database.TraitDimensionDB{})
+	if tenantID != nil {
+		dq = dq.Where("tenant_id = ? OR tenant_id IS NULL", *tenantID)
+	} else {
+		dq = dq.Where("tenant_id IS NULL")
+	}
+	dq.Find(&dims)
+	for _, d := range dims {
+		dimKeyByID[d.ID] = d.Key
+	}
+
+	// Load questions with primary dimension
+	var questions []database.QuizQuestionDB
+	qq := s.db.Select("question_id, primary_dimension_id").Model(&database.QuizQuestionDB{}).Where("is_active = ?", true)
+	if tenantID != nil {
+		qq = qq.Where("tenant_id = ? OR tenant_id IS NULL", *tenantID)
+	} else {
+		qq = qq.Where("tenant_id IS NULL")
+	}
+	qq.Find(&questions)
+	for _, q := range questions {
+		if q.PrimaryDimensionID != nil {
+			if key, ok := dimKeyByID[*q.PrimaryDimensionID]; ok {
+				result[q.QuestionID] = key
+			}
+		}
+	}
+	return result
+}
+
 // calculateReliability performs reliability analysis
-func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB) ReliabilityStats {
+func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB, tenantID *uint) ReliabilityStats {
 	stats := ReliabilityStats{
 		ItemTotalCorrelations: make(map[string]float64),
 		SampleSize:            len(results),
 		MinSampleSize:         minReliabilitySample,
 	}
 
+	// Build question -> dimension key map (for per-dimension reliability)
+	qDimMap := s.getQuestionDimensionMap(tenantID)
+
 	// Parse answers to build item-level data
 	itemScores := make(map[string][]float64) // questionId -> scores
 	totalScores := make([]float64, 0, len(results))
 	validResponses := 0
+
+	// Per-dimension containers
+	dimItemScores := make(map[string]map[string][]float64) // dimKey -> questionId -> scores
+	dimTotalScores := make(map[string][]float64)           // dimKey -> totals per response
 
 	for _, r := range results {
 		var answers []database.AnswerRecord
@@ -266,8 +321,22 @@ func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB)
 		totalScores = append(totalScores, total)
 
 		// Track item-level responses (using optionIndex as a numeric score)
+		perDimTotals := make(map[string]float64)
 		for _, ans := range answers {
 			itemScores[ans.QuestionID] = append(itemScores[ans.QuestionID], float64(ans.OptionIndex))
+
+			if dimKey, ok := qDimMap[ans.QuestionID]; ok && dimKey != "" {
+				if _, exists := dimItemScores[dimKey]; !exists {
+					dimItemScores[dimKey] = make(map[string][]float64)
+				}
+				dimItemScores[dimKey][ans.QuestionID] = append(dimItemScores[dimKey][ans.QuestionID], float64(ans.OptionIndex))
+				perDimTotals[dimKey] += float64(ans.OptionIndex)
+			}
+		}
+
+		// Append per-dimension totals for this response
+		for dimKey, sum := range perDimTotals {
+			dimTotalScores[dimKey] = append(dimTotalScores[dimKey], sum)
 		}
 	}
 
@@ -278,6 +347,35 @@ func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB)
 	}
 
 	stats.HasSufficientSample = true
+
+	// Per-dimension reliability
+	stats.ByDimension = make(map[string]DimReliability)
+	for dimKey, dimItems := range dimItemScores {
+		dTotals := dimTotalScores[dimKey]
+		if len(dTotals) < minReliabilitySample {
+			stats.ByDimension[dimKey] = DimReliability{
+				SampleSize:          len(dTotals),
+				HasSufficientSample: false,
+			}
+			continue
+		}
+		alpha := s.calculateCronbachAlpha(dimItems, dTotals)
+		itemCorrs := make(map[string]float64)
+		for qID, scores := range dimItems {
+			if len(scores) == len(dTotals) {
+				itemCorrs[qID] = round3(calculatePearsonCorrelation(scores, dTotals))
+			}
+		}
+		splitHalf, sb := s.calculateSplitHalfReliability(dimItems, len(dTotals))
+		stats.ByDimension[dimKey] = DimReliability{
+			CronbachAlpha:         alpha,
+			ItemTotalCorrelations: itemCorrs,
+			SplitHalfReliability:  splitHalf,
+			SpearmanBrown:         sb,
+			SampleSize:            len(dTotals),
+			HasSufficientSample:   true,
+		}
+	}
 
 	// Calculate Cronbach's Alpha
 	stats.CronbachAlpha = s.calculateCronbachAlpha(itemScores, totalScores)

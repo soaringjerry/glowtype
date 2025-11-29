@@ -62,6 +62,7 @@ export default function Analytics() {
   const correlationSampleMin = 15;
   const totalSamples = data?.summary.totalResponses ?? 0;
   const correlationReady = totalSamples >= correlationSampleMin;
+  const dimensionReliabilityEntries = Object.entries((data?.reliability as any)?.byDimension ?? {});
 
   const generateAIAnalysis = async (type: 'report' | 'suggestions') => {
     if (!data) return;
@@ -463,6 +464,35 @@ Please provide actionable specific recommendations.`,
               </>
             )}
           </div>
+
+          {dimensionReliabilityEntries.length > 0 && (
+            <div className="mt-6">
+              <p className="text-sm font-medium text-gray-700 mb-2">{isZh ? '分维度信度' : 'Reliability by dimension'}</p>
+              <div className="space-y-2">
+                {dimensionReliabilityEntries.map(([dimKey, rel]) => {
+                  const dimReady = rel.hasSufficientSample ?? rel.sampleSize >= minReliabilitySample;
+                  return (
+                    <div key={dimKey} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-800">{dimKey}</p>
+                        <p className="text-[11px] text-gray-500">{isZh ? `样本 N=${rel.sampleSize}` : `Sample N=${rel.sampleSize}`}</p>
+                      </div>
+                      <div className="text-right">
+                        {dimReady ? (
+                          <>
+                            <p className="text-sm font-bold text-blue-700">α {rel.cronbachAlpha.toFixed(3)}</p>
+                            <p className="text-[11px] text-gray-500">SB {rel.spearmanBrown.toFixed(3)}</p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-gray-400">{isZh ? '样本不足' : 'Insufficient sample'}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
