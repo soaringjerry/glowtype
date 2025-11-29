@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,6 @@ import (
 	"github.com/soaringjerry/glowtype/internal/services"
 	"github.com/soaringjerry/glowtype/internal/utils"
 	"gorm.io/gorm"
-	"strings"
 )
 
 type ChatHandler struct {
@@ -24,6 +24,11 @@ func NewChatHandler(service *services.ChatService, db *gorm.DB) *ChatHandler {
 }
 
 func (h *ChatHandler) CreateSession(c *gin.Context) {
+	if !h.service.Allow(c.ClientIP()) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	var req models.ChatSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
@@ -35,6 +40,11 @@ func (h *ChatHandler) CreateSession(c *gin.Context) {
 }
 
 func (h *ChatHandler) SendMessage(c *gin.Context) {
+	if !h.service.Allow(c.ClientIP()) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	var req models.ChatMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
@@ -47,6 +57,11 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 
 // GenerateInsight handles single-turn insight generation via provider-backed AI.
 func (h *ChatHandler) GenerateInsight(c *gin.Context) {
+	if !h.service.Allow(c.ClientIP()) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+		return
+	}
+
 	var req struct {
 		SystemPrompt string `json:"systemPrompt"`
 		Prompt       string `json:"prompt"`

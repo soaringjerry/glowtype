@@ -23,22 +23,29 @@ type ChatService struct {
 	provider string
 
 	// Fallback config from environment (used when DB config not available)
-	envAPIKey   string
-	envBaseURL  string
-	envModel    string
-	client      *http.Client
-	db          *gorm.DB
+	envAPIKey  string
+	envBaseURL string
+	envModel   string
+	client     *http.Client
+	db         *gorm.DB
+
+	rateLimiter *ipRateLimiter
 }
 
 // aiConfig holds the effective AI configuration
 type aiConfig struct {
-	provider string
-	apiKey   string
-	baseURL  string
-	model    string
+	provider  string
+	apiKey    string
+	baseURL   string
+	model     string
+	rateLimit rateLimitConfig
 }
 
 const defaultOpenAIBase = "https://api.openai.com/v1"
+const (
+	defaultRateLimitPerMinute = 60
+	defaultRateLimitBurst     = 10
+)
 
 func NewChatService(cfg config.Config, db *gorm.DB) *ChatService {
 	provider := strings.ToLower(strings.TrimSpace(cfg.ChatProvider))
@@ -79,46 +86,59 @@ func NewChatService(cfg config.Config, db *gorm.DB) *ChatService {
 	}
 
 	return &ChatService{
-		sessions:   make(map[string]time.Time),
-		provider:   provider,
-		envAPIKey:  apiKey,
-		envBaseURL: baseURL,
-		envModel:   model,
-		client:     &http.Client{Timeout: 30 * time.Second},
-		db:         db,
+		sessions:    make(map[string]time.Time),
+		provider:    provider,
+		envAPIKey:   apiKey,
+		envBaseURL:  baseURL,
+		envModel:    model,
+		client:      &http.Client{Timeout: 30 * time.Second},
+		db:          db,
+		rateLimiter: newIPRateLimiter(),
 	}
 }
 
 // getEffectiveConfig returns AI configuration, prioritizing DB settings over environment variables
 func (s *ChatService) getEffectiveConfig() aiConfig {
-	// Try to get config from database first
+	rateCfg := rateLimitConfig{
+		enabled:   true,
+		perMinute: defaultRateLimitPerMinute,
+		burst:     defaultRateLimitBurst,
+	}
+
+	// Try to get config from database first (rate limits always respected from DB even if AI is inactive)
 	if s.db != nil {
 		dbSettings, err := database.GetAISettings(s.db)
-		if err == nil && dbSettings != nil && dbSettings.IsActive && dbSettings.APIKey != "" {
-			baseURL := strings.TrimRight(strings.TrimSpace(dbSettings.BaseURL), "/")
-			if baseURL == "" {
-				baseURL = defaultOpenAIBase
-			}
-			model := strings.TrimSpace(dbSettings.Model)
-			if model == "" {
-				model = "gpt-4o-mini"
-			}
-			log.Printf("[ChatService] Using DB AI config: provider=%q, model=%q", dbSettings.Provider, model)
-			return aiConfig{
-				provider: dbSettings.Provider,
-				apiKey:   dbSettings.APIKey,
-				baseURL:  baseURL,
-				model:    model,
+		if err == nil && dbSettings != nil {
+			rateCfg = buildRateLimitConfig(dbSettings)
+
+			if dbSettings.IsActive && strings.TrimSpace(dbSettings.APIKey) != "" {
+				baseURL := strings.TrimRight(strings.TrimSpace(dbSettings.BaseURL), "/")
+				if baseURL == "" {
+					baseURL = defaultOpenAIBase
+				}
+				model := strings.TrimSpace(dbSettings.Model)
+				if model == "" {
+					model = "gpt-4o-mini"
+				}
+				log.Printf("[ChatService] Using DB AI config: provider=%q, model=%q", dbSettings.Provider, model)
+				return aiConfig{
+					provider:  dbSettings.Provider,
+					apiKey:    dbSettings.APIKey,
+					baseURL:   baseURL,
+					model:     model,
+					rateLimit: rateCfg,
+				}
 			}
 		}
 	}
 
 	// Fall back to environment config
 	return aiConfig{
-		provider: s.provider,
-		apiKey:   s.envAPIKey,
-		baseURL:  s.envBaseURL,
-		model:    s.envModel,
+		provider:  s.provider,
+		apiKey:    s.envAPIKey,
+		baseURL:   s.envBaseURL,
+		model:     s.envModel,
+		rateLimit: rateCfg,
 	}
 }
 
@@ -281,4 +301,88 @@ func safetyNotice(lang string) *string {
 	}
 	text := "If you ever feel unsafe or in crisis, please reach out to a trusted adult or local crisis hotline."
 	return &text
+}
+
+// Allow checks whether the caller identified by key (IP) can proceed under current rate limits.
+func (s *ChatService) Allow(key string) bool {
+	cfg := s.getEffectiveConfig().rateLimit
+	return s.rateLimiter.allow(key, cfg)
+}
+
+type rateLimitConfig struct {
+	enabled   bool
+	perMinute int
+	burst     int
+}
+
+func buildRateLimitConfig(settings *database.AISettings) rateLimitConfig {
+	cfg := rateLimitConfig{
+		enabled:   settings.RateLimitEnabled,
+		perMinute: settings.RateLimitRequestsPerMin,
+		burst:     settings.RateLimitBurst,
+	}
+	if cfg.perMinute <= 0 {
+		cfg.perMinute = defaultRateLimitPerMinute
+	}
+	if cfg.burst <= 0 {
+		cfg.burst = defaultRateLimitBurst
+	}
+	return cfg
+}
+
+type ipRateLimiter struct {
+	mu       sync.Mutex
+	limiters map[string]*limiterState
+}
+
+type limiterState struct {
+	tokens float64
+	last   time.Time
+}
+
+func newIPRateLimiter() *ipRateLimiter {
+	return &ipRateLimiter{
+		limiters: make(map[string]*limiterState),
+	}
+}
+
+func (r *ipRateLimiter) allow(key string, cfg rateLimitConfig) bool {
+	if key == "" {
+		key = "unknown"
+	}
+	if !cfg.enabled {
+		return true
+	}
+
+	if cfg.burst < 1 {
+		cfg.burst = cfg.perMinute
+	}
+	if cfg.burst < 1 {
+		cfg.burst = 1
+	}
+	refillRate := float64(cfg.perMinute) / 60.0 // tokens per second
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	state, ok := r.limiters[key]
+	now := time.Now()
+	if !ok {
+		state = &limiterState{tokens: float64(cfg.burst), last: now}
+		r.limiters[key] = state
+	} else {
+		elapsed := now.Sub(state.last).Seconds()
+		state.tokens += elapsed * refillRate
+		if state.tokens > float64(cfg.burst) {
+			state.tokens = float64(cfg.burst)
+		}
+		state.last = now
+	}
+
+	if state.tokens < 1 {
+		return false
+	}
+
+	state.tokens -= 1
+	return true
 }

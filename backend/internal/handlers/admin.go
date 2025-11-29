@@ -88,9 +88,8 @@ var RolePermissionTemplates = map[string]map[Permission]struct{}{
 		PermResultsView,
 		PermAuditView,
 	),
-	// Viewer: read-only access to most areas (NO admin.manage - that was a bug)
+	// Viewer: read-only access to most areas (NO admin.manage, NO audit.view)
 	database.AdminRoleViewer: permissionSet(
-		PermAuditView,
 		PermDimensions,
 		PermQuestions,
 		PermRules,
@@ -142,6 +141,42 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 	}
 }
 
+// Require2FACompletionMiddleware blocks access to most admin endpoints until 2FA is enabled when required.
+func Require2FACompletionMiddleware() gin.HandlerFunc {
+	allowedPaths := map[string]struct{}{
+		"/api/v1/admin/me":                      {},
+		"/api/v1/admin/permissions/templates":   {},
+		"/api/v1/admin/2fa/status":              {},
+		"/api/v1/admin/2fa/setup":               {},
+		"/api/v1/admin/2fa/verify":              {},
+		"/api/v1/admin/2fa/recovery/regenerate": {},
+	}
+
+	return func(c *gin.Context) {
+		admin, ok := getAdminFromContext(c)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		forced := admin.TwoFactorRequired || services.IsForceAdmin2FAEnabled()
+		if !forced || admin.TwoFactorEnabled {
+			c.Next()
+			return
+		}
+
+		if _, ok := allowedPaths[c.FullPath()]; ok {
+			c.Next()
+			return
+		}
+
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"error":         "Two-factor authentication setup required",
+			"needs2FASetup": true,
+		})
+	}
+}
+
 // AdminAuditMiddleware records admin actions for accountability.
 func AdminAuditMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -164,6 +199,8 @@ func AdminAuditMiddleware() gin.HandlerFunc {
 			path = c.Request.URL.Path
 		}
 
+		sensitiveAISettings := strings.Contains(path, "/ai/settings")
+
 		payload := map[string]any{
 			"durationMs":  time.Since(start).Milliseconds(),
 			"status":      c.Writer.Status(),
@@ -179,14 +216,18 @@ func AdminAuditMiddleware() gin.HandlerFunc {
 		if len(reqSnapshot.Query) > 0 {
 			payload["query"] = reqSnapshot.Query
 		}
-		if reqSnapshot.Body != nil {
+		if sensitiveAISettings {
+			payload["requestBody"] = "[redacted]"
+		} else if reqSnapshot.Body != nil {
 			payload["requestBody"] = reqSnapshot.Body
 		}
 		if reqSnapshot.BodyTruncated {
 			payload["requestBodyTruncated"] = true
 		}
 
-		if sample := recorder.Sample(); sample != "" {
+		if sensitiveAISettings {
+			payload["responseSample"] = "[redacted]"
+		} else if sample := recorder.Sample(); sample != "" {
 			payload["responseSample"] = sample
 			if recorder.Truncated() {
 				payload["responseSampleTruncated"] = true
@@ -535,12 +576,12 @@ func CreateAdminUser(c *gin.Context) {
 	})
 
 	c.JSON(http.StatusCreated, gin.H{
-		"id":                 admin.ID,
-		"username":           admin.Username,
-		"role":               admin.Role,
-		"permissions":        req.Permissions,
+		"id":                   admin.ID,
+		"username":             admin.Username,
+		"role":                 admin.Role,
+		"permissions":          req.Permissions,
 		"effectivePermissions": getUserPermissions(admin),
-		"createdAt":          admin.CreatedAt,
+		"createdAt":            admin.CreatedAt,
 	})
 }
 
@@ -1028,6 +1069,10 @@ var auditSensitiveKeys = []string{
 	"pwd",
 	"token",
 	"secret",
+	"api_key",
+	"apikey",
+	"api-key",
+	"openai",
 	"authorization",
 	"credential",
 }
@@ -1789,25 +1834,31 @@ func GetAISettings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":        settings.ID,
-		"provider":  settings.Provider,
-		"baseUrl":   settings.BaseURL,
-		"model":     settings.Model,
-		"isActive":  settings.IsActive,
-		"hasApiKey": hasKey,
-		"apiKey":    maskedKey,
-		"updatedAt": settings.UpdatedAt,
+		"id":                      settings.ID,
+		"provider":                settings.Provider,
+		"baseUrl":                 settings.BaseURL,
+		"model":                   settings.Model,
+		"isActive":                settings.IsActive,
+		"hasApiKey":               hasKey,
+		"apiKey":                  maskedKey,
+		"rateLimitEnabled":        settings.RateLimitEnabled,
+		"rateLimitRequestsPerMin": settings.RateLimitRequestsPerMin,
+		"rateLimitBurst":          settings.RateLimitBurst,
+		"updatedAt":               settings.UpdatedAt,
 	})
 }
 
 // UpdateAISettings updates the AI configuration
 func UpdateAISettings(c *gin.Context) {
 	var req struct {
-		Provider *string `json:"provider"`
-		APIKey   *string `json:"apiKey"`
-		BaseURL  *string `json:"baseUrl"`
-		Model    *string `json:"model"`
-		IsActive *bool   `json:"isActive"`
+		Provider                *string `json:"provider"`
+		APIKey                  *string `json:"apiKey"`
+		BaseURL                 *string `json:"baseUrl"`
+		Model                   *string `json:"model"`
+		IsActive                *bool   `json:"isActive"`
+		RateLimitEnabled        *bool   `json:"rateLimitEnabled"`
+		RateLimitRequestsPerMin *int    `json:"rateLimitRequestsPerMin"`
+		RateLimitBurst          *int    `json:"rateLimitBurst"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -1851,6 +1902,24 @@ func UpdateAISettings(c *gin.Context) {
 		updates["is_active"] = *req.IsActive
 	}
 
+	if req.RateLimitEnabled != nil {
+		updates["rate_limit_enabled"] = *req.RateLimitEnabled
+	}
+	if req.RateLimitRequestsPerMin != nil {
+		if *req.RateLimitRequestsPerMin <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "rateLimitRequestsPerMin must be greater than 0"})
+			return
+		}
+		updates["rate_limit_requests_per_min"] = *req.RateLimitRequestsPerMin
+	}
+	if req.RateLimitBurst != nil {
+		if *req.RateLimitBurst <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "rateLimitBurst must be greater than 0"})
+			return
+		}
+		updates["rate_limit_burst"] = *req.RateLimitBurst
+	}
+
 	if len(updates) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No changes provided"})
 		return
@@ -1873,14 +1942,17 @@ func UpdateAISettings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":        settings.ID,
-		"provider":  settings.Provider,
-		"baseUrl":   settings.BaseURL,
-		"model":     settings.Model,
-		"isActive":  settings.IsActive,
-		"hasApiKey": hasKey,
-		"apiKey":    maskedKey,
-		"updatedAt": settings.UpdatedAt,
+		"id":                      settings.ID,
+		"provider":                settings.Provider,
+		"baseUrl":                 settings.BaseURL,
+		"model":                   settings.Model,
+		"isActive":                settings.IsActive,
+		"hasApiKey":               hasKey,
+		"apiKey":                  maskedKey,
+		"rateLimitEnabled":        settings.RateLimitEnabled,
+		"rateLimitRequestsPerMin": settings.RateLimitRequestsPerMin,
+		"rateLimitBurst":          settings.RateLimitBurst,
+		"updatedAt":               settings.UpdatedAt,
 	})
 }
 

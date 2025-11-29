@@ -478,13 +478,17 @@ func (AdminAuditLog) TableName() string {
 
 // AISettings stores AI provider configuration (singleton record with id=1)
 type AISettings struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Provider  string    `gorm:"default:openai" json:"provider"` // openai, mock
-	APIKey    string    `json:"-"`                              // Never expose in JSON
-	BaseURL   string    `json:"baseUrl"`
-	Model     string    `json:"model"`
-	IsActive  bool      `gorm:"default:true" json:"isActive"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	Provider string `gorm:"default:openai" json:"provider"` // openai, mock
+	APIKey   string `json:"-"`                              // Never expose in JSON
+	BaseURL  string `json:"baseUrl"`
+	Model    string `json:"model"`
+	IsActive bool   `gorm:"default:true" json:"isActive"`
+	// Simple anti-abuse controls for anonymous AI endpoints
+	RateLimitEnabled        bool      `gorm:"default:true" json:"rateLimitEnabled"`
+	RateLimitRequestsPerMin int       `gorm:"default:60" json:"rateLimitRequestsPerMin"`
+	RateLimitBurst          int       `gorm:"default:10" json:"rateLimitBurst"`
+	UpdatedAt               time.Time `json:"updatedAt"`
 }
 
 func (AISettings) TableName() string {
@@ -499,11 +503,14 @@ func GetAISettings(db *gorm.DB) (*AISettings, error) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create default settings
 			settings = AISettings{
-				ID:       1,
-				Provider: "openai",
-				BaseURL:  "https://api.openai.com/v1",
-				Model:    "gpt-4o-mini",
-				IsActive: false, // Disabled by default until configured
+				ID:                      1,
+				Provider:                "openai",
+				BaseURL:                 "https://api.openai.com/v1",
+				Model:                   "gpt-4o-mini",
+				IsActive:                false, // Disabled by default until configured
+				RateLimitEnabled:        true,
+				RateLimitRequestsPerMin: 60,
+				RateLimitBurst:          10,
 			}
 			if err := db.Create(&settings).Error; err != nil {
 				return nil, err

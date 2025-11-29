@@ -53,7 +53,7 @@ export const PrivacyContentZh = () => {
 
 （三）地理位置信息
 
-我们可能通过您的IP地址推断您的大致地理位置，精确度仅到城市级别。我们使用此信息进行匿名的地区趋势分析，例如了解不同地区青年群体的整体情绪状态。我们不收集精确的GPS位置或可以精确定位您具体位置的信息。
+我们可能通过您的IP地址推断您的大致地理位置，精确度仅到城市级别。我们会使用受信任的GeoIP服务进行查询，以防止滥用并做匿名的地区趋势分析；查询后不会存储您的精确IP，这是在匿名化与滥用防护之间的权衡。我们不收集精确的GPS位置或可以精确定位您具体位置的信息。
 
 （四）基础统计信息
 
@@ -267,7 +267,7 @@ We recommend that you do not share sensitive personally identifiable information
 
 (3) Geographic Location Information
 
-We may infer your approximate geographic location through your IP address, accurate only to the city level. We use this information for anonymous regional trend analysis, such as understanding the overall emotional state of youth groups in different regions. We do not collect precise GPS locations or information that can pinpoint your specific location.
+We may infer your approximate geographic location through your IP address, accurate only to the city level. We use a trusted GeoIP service to do this so we can prevent abuse and run anonymous regional trend analysis; after lookup, your exact IP is not retained. We do not collect precise GPS locations or information that can pinpoint your specific location.
 
 (4) Basic Statistical Information
 

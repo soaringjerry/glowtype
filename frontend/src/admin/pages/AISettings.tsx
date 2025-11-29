@@ -31,6 +31,9 @@ export default function AISettings() {
   const [model, setModel] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [isActive, setIsActive] = useState(false);
+  const [rateLimitEnabled, setRateLimitEnabled] = useState(true);
+  const [rateLimitRequestsPerMin, setRateLimitRequestsPerMin] = useState(60);
+  const [rateLimitBurst, setRateLimitBurst] = useState(10);
 
   const api = useAdminApi();
 
@@ -44,6 +47,9 @@ export default function AISettings() {
       setBaseUrl(data.baseUrl || '');
       setModel(data.model || '');
       setIsActive(data.isActive);
+      setRateLimitEnabled(data.rateLimitEnabled);
+      setRateLimitRequestsPerMin(data.rateLimitRequestsPerMin || 60);
+      setRateLimitBurst(data.rateLimitBurst || 10);
       setApiKey(''); // Don't populate - user must enter new key
     } else if (api.error) {
       setSaveError(api.error);
@@ -66,6 +72,9 @@ export default function AISettings() {
       baseUrl: baseUrl.trim() || undefined,
       model: model.trim() || undefined,
       isActive,
+      rateLimitEnabled,
+      rateLimitRequestsPerMin,
+      rateLimitBurst,
     };
 
     // Only send API key if user entered a new one
@@ -238,6 +247,59 @@ export default function AISettings() {
             />
             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
           </label>
+        </div>
+
+        {/* Rate Limit */}
+        <div className="p-4 bg-gray-50 rounded-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium text-gray-800 flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                {t('aiSettings.rateLimitTitle', 'Anonymous rate limit')}
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {t('aiSettings.rateLimitHint', 'Limits per-IP traffic for public chat/insight endpoints to prevent abuse.')}
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rateLimitEnabled}
+                onChange={(e) => setRateLimitEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+            </label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('aiSettings.rateLimitPerMin', 'Requests per minute (per IP)')}
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={rateLimitRequestsPerMin}
+                onChange={(e) => setRateLimitRequestsPerMin(Math.max(1, Number(e.target.value)))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('aiSettings.rateLimitBurst', 'Burst tokens')}
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={rateLimitBurst}
+                onChange={(e) => setRateLimitBurst(Math.max(1, Number(e.target.value)))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                {t('aiSettings.rateLimitBurstHint', 'Allows short spikes while keeping overall flow limited.')}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Error/Success Messages */}

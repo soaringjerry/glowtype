@@ -79,9 +79,8 @@ const ROLE_PERMISSION_TEMPLATES: Record<AdminRole, AdminPermission[]> = {
     'results.view',
   ],
   analyst: ['stats.view', 'results.view', 'audit.view'],
-  // Viewer: read-only, NO admin.manage (bug fix)
+  // Viewer: read-only, NO admin.manage, NO audit.view
   viewer: [
-    'audit.view',
     'dimensions.write',
     'questions.write',
     'rules.write',
@@ -343,6 +342,9 @@ export interface AISettings {
   isActive: boolean;
   hasApiKey: boolean;
   apiKey?: string; // Masked key for display
+  rateLimitEnabled: boolean;
+  rateLimitRequestsPerMin: number;
+  rateLimitBurst: number;
   updatedAt: string;
 }
 
@@ -352,6 +354,9 @@ export interface AISettingsUpdate {
   baseUrl?: string;
   model?: string;
   isActive?: boolean;
+  rateLimitEnabled?: boolean;
+  rateLimitRequestsPerMin?: number;
+  rateLimitBurst?: number;
 }
 
 // Import/Export types
