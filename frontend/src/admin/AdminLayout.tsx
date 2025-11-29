@@ -43,7 +43,7 @@ import AdminSettings from './pages/AdminSettings';
 
 export default function AdminLayout() {
   const { t, i18n } = useTranslation('admin');
-  const { isAuthenticated, initializing, currentUser, logout } = useAdminAuth();
+  const { isAuthenticated, initializing, currentUser, logout, needs2FASetup } = useAdminAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -58,7 +58,17 @@ export default function AdminLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (needs2FASetup && location.pathname !== '/admin/settings') {
+      navigate('/admin/settings', { replace: true });
+    }
+  }, [needs2FASetup, location.pathname, navigate]);
+
   const navItems = useMemo(() => {
+    if (needs2FASetup) {
+      return [];
+    }
+
     const items: Array<{ path: string; labelKey: string; icon: any; perm: AdminPermission }> = [
       { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard, perm: 'stats.view' },
       { path: '/admin/analytics', labelKey: 'nav.analytics', icon: TrendingUp, perm: 'stats.view' },
@@ -113,6 +123,17 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {needs2FASetup && (
+        <div className="bg-yellow-50 border-b border-yellow-200 text-yellow-800 px-4 py-3 text-sm flex items-center justify-between">
+          <span>{t('twoFactor.requiredNotice', '已被要求启用两步验证，请先在“个人设置”完成绑定后继续使用后台。')}</span>
+          <button
+            onClick={() => navigate('/admin/settings')}
+            className="text-yellow-900 font-medium underline"
+          >
+            {t('nav.settings', '个人设置')}
+          </button>
+        </div>
+      )}
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-40 flex items-center px-4">
         <button
