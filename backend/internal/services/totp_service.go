@@ -68,7 +68,7 @@ func GenerateTOTPSecret(username string) (*otp.Key, error) {
 		AccountName: username,
 		Period:      totpPeriod,
 		Digits:      otp.DigitsSix,
-		Algorithm:   otp.AlgorithmSHA256, // SHA-256 is more secure than deprecated SHA-1
+		Algorithm:   otp.AlgorithmSHA1, // SHA-1 for maximum compatibility with authenticator apps
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate TOTP secret: %w", err)
@@ -83,7 +83,7 @@ func ValidateTOTP(secret, code string) bool {
 		Period:    totpPeriod,
 		Skew:      totpSkew, // allows ±1 time window (90 seconds total)
 		Digits:    otp.DigitsSix,
-		Algorithm: otp.AlgorithmSHA256,
+		Algorithm: otp.AlgorithmSHA1, // SHA-1 for maximum compatibility
 	})
 	if err != nil {
 		return false
