@@ -30,13 +30,16 @@ const (
 	totpIssuer               = "Glowtype Admin"
 	totpPeriod               = 30 // seconds
 	totpDigits               = 6
-	recoveryCodeLength       = 8
+	totpSkew                 = 1  // allow ±1 time window (90 seconds total)
+	recoveryCodeBytes        = 6  // 6 bytes = 48 bits entropy (was 4 bytes = 32 bits)
 	defaultRecoveryCodeCount = 10
 	defaultTrustedDeviceDays = 7
 	twoFATokenTTL            = 5 * time.Minute
 	totpEncryptionKeyEnvHint = "TOTP_ENCRYPTION_KEY"
 	forceAdmin2FAEnvHint     = "FORCE_ADMIN_2FA"
 	trustedDeviceDaysEnvHint = "TRUSTED_DEVICE_DAYS"
+	maxDeviceNameLength      = 255
+	maxUserAgentLength       = 1024
 )
 
 var (
@@ -65,7 +68,7 @@ func GenerateTOTPSecret(username string) (*otp.Key, error) {
 		AccountName: username,
 		Period:      totpPeriod,
 		Digits:      otp.DigitsSix,
-		Algorithm:   otp.AlgorithmSHA1,
+		Algorithm:   otp.AlgorithmSHA256, // SHA-256 is more secure than deprecated SHA-1
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate TOTP secret: %w", err)
@@ -74,8 +77,18 @@ func GenerateTOTPSecret(username string) (*otp.Key, error) {
 }
 
 // ValidateTOTP validates a 6-digit TOTP code against a secret
+// Uses custom validation with time window skew to handle network latency
 func ValidateTOTP(secret, code string) bool {
-	return totp.Validate(code, secret)
+	valid, err := totp.ValidateCustom(code, secret, time.Now(), totp.ValidateOpts{
+		Period:    totpPeriod,
+		Skew:      totpSkew, // allows ±1 time window (90 seconds total)
+		Digits:    otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA256,
+	})
+	if err != nil {
+		return false
+	}
+	return valid
 }
 
 // EncryptTOTPSecret encrypts the TOTP secret before DB storage using AES-256-GCM
@@ -142,6 +155,7 @@ func DecryptTOTPSecret(encrypted string) (string, error) {
 
 // GenerateRecoveryCodes generates N one-time recovery codes
 // Returns (plainCodes for display, hashedCodes for storage)
+// Each code has 48 bits of entropy (6 bytes), formatted as 12 hex characters
 func GenerateRecoveryCodes(count int) ([]string, []string, error) {
 	if count <= 0 {
 		count = defaultRecoveryCodeCount
@@ -151,11 +165,12 @@ func GenerateRecoveryCodes(count int) ([]string, []string, error) {
 	hashedCodes := make([]string, count)
 
 	for i := 0; i < count; i++ {
-		// Generate random bytes and format as hex
-		bytes := make([]byte, recoveryCodeLength/2)
+		// Generate random bytes (6 bytes = 48 bits entropy)
+		bytes := make([]byte, recoveryCodeBytes)
 		if _, err := rand.Read(bytes); err != nil {
 			return nil, nil, fmt.Errorf("failed to generate random bytes: %w", err)
 		}
+		// Format as uppercase hex (12 characters)
 		code := strings.ToUpper(hex.EncodeToString(bytes))
 		plainCodes[i] = code
 
@@ -244,6 +259,26 @@ func CountUnusedRecoveryCodes(db *gorm.DB, adminID uint) (int, error) {
 	return int(count), nil
 }
 
+// SanitizeDeviceName validates and truncates device name
+func SanitizeDeviceName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "Trusted Device"
+	}
+	if len(name) > maxDeviceNameLength {
+		return name[:maxDeviceNameLength]
+	}
+	return name
+}
+
+// SanitizeUserAgent truncates user agent to prevent DB overflow
+func SanitizeUserAgent(ua string) string {
+	if len(ua) > maxUserAgentLength {
+		return ua[:maxUserAgentLength]
+	}
+	return ua
+}
+
 // CreateTrustedDevice creates a new trusted device record
 func CreateTrustedDevice(db *gorm.DB, adminID uint, deviceToken, deviceName, userAgent, ip string) error {
 	hashedToken := HashDeviceToken(deviceToken)
@@ -252,8 +287,8 @@ func CreateTrustedDevice(db *gorm.DB, adminID uint, deviceToken, deviceName, use
 	device := database.AdminTrustedDevice{
 		AdminID:     adminID,
 		DeviceToken: hashedToken,
-		DeviceName:  deviceName,
-		UserAgent:   userAgent,
+		DeviceName:  SanitizeDeviceName(deviceName),
+		UserAgent:   SanitizeUserAgent(userAgent),
 		IP:          ip,
 		ExpiresAt:   expiresAt,
 	}
@@ -334,18 +369,22 @@ func IsTOTPEncryptionKeyConfigured() bool {
 }
 
 // getTOTPEncryptionKey returns the 32-byte AES key for encrypting TOTP secrets
+// If 2FA is expected (key is set but invalid), this will panic at startup
 func getTOTPEncryptionKey() []byte {
 	totpEncryptionKeyOnce.Do(func() {
 		secret := strings.TrimSpace(os.Getenv(totpEncryptionKeyEnvHint))
 		if secret == "" {
-			log.Printf("[2FA] Warning: %s not set. 2FA features will be unavailable.", totpEncryptionKeyEnvHint)
+			// Key not set - 2FA will be unavailable (graceful degradation)
+			log.Printf("[2FA] Info: %s not set. 2FA features will be unavailable.", totpEncryptionKeyEnvHint)
 			return
 		}
+		// Key is set but invalid - fail fast to prevent misconfiguration
 		if len(secret) != 32 {
-			log.Printf("[2FA] Warning: %s must be exactly 32 characters for AES-256. Got %d chars.", totpEncryptionKeyEnvHint, len(secret))
-			return
+			log.Fatalf("[2FA] FATAL: %s must be exactly 32 characters for AES-256. Got %d chars. "+
+				"Generate a secure key with: openssl rand -hex 16", totpEncryptionKeyEnvHint, len(secret))
 		}
 		totpEncryptionKey = []byte(secret)
+		log.Printf("[2FA] TOTP encryption key configured successfully")
 	})
 	return totpEncryptionKey
 }

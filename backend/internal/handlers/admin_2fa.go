@@ -237,6 +237,12 @@ func Verify2FAHandler(c *gin.Context) {
 		return
 	}
 
+	// Audit log metadata
+	c.Set("auditMetadata", map[string]any{
+		"eventType":          "2fa_enabled",
+		"recoveryCodesCount": len(plainCodes),
+	})
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":       true,
 		"recoveryCodes": plainCodes,
@@ -326,6 +332,11 @@ func Disable2FAHandler(c *gin.Context) {
 		return
 	}
 	_ = database.GetDB().Model(&user).Update("token_version", gorm.Expr("token_version + 1"))
+
+	// Audit log metadata
+	c.Set("auditMetadata", map[string]any{
+		"eventType": "2fa_disabled",
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -430,6 +441,12 @@ func RegenerateRecoveryCodesHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save recovery codes"})
 		return
 	}
+
+	// Audit log metadata
+	c.Set("auditMetadata", map[string]any{
+		"eventType":          "2fa_recovery_codes_regenerated",
+		"recoveryCodesCount": len(plainCodes),
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":       true,
@@ -574,6 +591,19 @@ func Authenticate2FAHandler(c *gin.Context) {
 		recoveryCodesLeft, _ := services.CountUnusedRecoveryCodes(database.GetDB(), user.ID)
 		response["recoveryCodesLeft"] = recoveryCodesLeft
 		response["usedRecoveryCode"] = true
+
+		// Audit log metadata for recovery code usage
+		c.Set("auditMetadata", map[string]any{
+			"eventType":         "2fa_auth_recovery_code",
+			"recoveryCodesLeft": recoveryCodesLeft,
+			"deviceTrusted":     req.TrustDevice,
+		})
+	} else {
+		// Audit log metadata for normal TOTP auth
+		c.Set("auditMetadata", map[string]any{
+			"eventType":     "2fa_auth_totp",
+			"deviceTrusted": req.TrustDevice,
+		})
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -8,6 +8,8 @@ import {
   QrCode,
   AlertTriangle,
   X,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -38,6 +40,8 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
   const [copiedCodes, setCopiedCodes] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [codesRevealed, setCodesRevealed] = useState(false);
+  const [codesSaved, setCodesSaved] = useState(false);
 
   const handleCopySecret = async () => {
     try {
@@ -264,40 +268,80 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
           <div className="bg-slate-900 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-gray-400 text-sm">
-                {t('twoFactor.recoveryCodes', '恢复码')}
+                {t('twoFactor.recoveryCodes', '恢复码')} ({recoveryCodes.length})
               </span>
-              <button
-                onClick={handleCopyCodes}
-                className="flex items-center text-sm text-purple-400 hover:text-purple-300 transition-colors"
-              >
-                {copiedCodes ? (
-                  <>
-                    <Check className="w-4 h-4 mr-1" />
-                    {t('twoFactor.copied', '已复制')}
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4 mr-1" />
-                    {t('twoFactor.copy', '复制')}
-                  </>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCodesRevealed(!codesRevealed)}
+                  className="flex items-center text-sm text-gray-400 hover:text-gray-300 transition-colors"
+                  title={codesRevealed ? t('twoFactor.hideCodes', '隐藏') : t('twoFactor.showCodes', '显示')}
+                >
+                  {codesRevealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                {codesRevealed && (
+                  <button
+                    onClick={handleCopyCodes}
+                    className="flex items-center text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    {copiedCodes ? (
+                      <>
+                        <Check className="w-4 h-4 mr-1" />
+                        {t('twoFactor.copied', '已复制')}
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 mr-1" />
+                        {t('twoFactor.copy', '复制')}
+                      </>
+                    )}
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {recoveryCodes.map((code, index) => (
                 <code
                   key={index}
-                  className="bg-slate-800 px-3 py-2 rounded text-gray-300 font-mono text-sm text-center"
+                  className={`bg-slate-800 px-3 py-2 rounded font-mono text-sm text-center transition-all ${
+                    codesRevealed ? 'text-gray-300' : 'text-transparent bg-slate-700 select-none'
+                  }`}
+                  style={!codesRevealed ? { textShadow: '0 0 8px rgba(255,255,255,0.5)' } : undefined}
                 >
-                  {code}
+                  {codesRevealed ? code : '••••••••••••'}
                 </code>
               ))}
             </div>
+            {!codesRevealed && (
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                {t('twoFactor.clickToReveal', '点击眼睛图标显示恢复码')}
+              </p>
+            )}
           </div>
+
+          {/* Security warning */}
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-red-300 text-xs">
+              {t('twoFactor.clipboardWarning', '警告：复制到剪贴板的内容可能被其他应用访问。建议手动记录或截图保存。')}
+            </p>
+          </div>
+
+          {/* Confirmation checkbox */}
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={codesSaved}
+              onChange={(e) => setCodesSaved(e.target.checked)}
+              className="mt-1 w-4 h-4 rounded border-gray-600 bg-slate-700 text-purple-500 focus:ring-purple-500 focus:ring-offset-slate-800"
+            />
+            <span className="text-sm text-gray-300">
+              {t('twoFactor.confirmSaved', '我已将恢复码保存在安全的地方，并了解这些恢复码只会显示一次')}
+            </span>
+          </label>
 
           <button
             onClick={handleComplete}
-            className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+            disabled={!codesSaved}
+            className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
           >
             {t('twoFactor.done', '完成')}
           </button>
