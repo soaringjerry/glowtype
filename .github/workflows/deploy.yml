@@ -47,6 +47,9 @@ jobs:
   backend-security:
     name: Backend Security Scan (${{ matrix.tool }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -97,8 +100,8 @@ jobs:
           esac
 
       - name: Upload gosec SARIF
-        if: matrix.tool == 'gosec'
-        uses: github/codeql-action/upload-sarif@v3
+        if: matrix.tool == 'gosec' && always()
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: backend/gosec.sarif
 
