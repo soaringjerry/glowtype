@@ -78,11 +78,18 @@ jobs:
           cd backend
           case "${{ matrix.tool }}" in
             gosec)
-              gosec -fmt=text ./... | tee gosec.log
-              status=${PIPESTATUS[0]}
-              # Produce SARIF for code scanning (do not change fail/pass outcome)
+              gosec -fmt=json -out gosec.json ./... || true
               gosec -fmt=sarif -out gosec.sarif ./... || true
-              exit ${status}
+              # Show results in readable format
+              if [ -f gosec.json ]; then
+                echo "=== Gosec Results ==="
+                cat gosec.json | jq -r '.Issues[]? | "[\(.severity)] \(.file):\(.line) - \(.details)"' 2>/dev/null || cat gosec.json
+              fi
+              # Exit with error if issues found
+              if [ -f gosec.json ] && [ "$(cat gosec.json | jq '.Issues | length' 2>/dev/null)" != "0" ]; then
+                echo "::error::Gosec found security issues"
+                exit 1
+              fi
               ;;
             govulncheck)
               govulncheck ./...
