@@ -123,12 +123,23 @@ func Setup2FAHandler(c *gin.Context) {
 		return
 	}
 
-	// Generate QR code URL
-	qrURL := key.URL()
+	// Generate QR code image as base64 data URL
+	qrImage, err := key.Image(200, 200)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate QR code"})
+		return
+	}
+
+	var qrBuf bytes.Buffer
+	if err := png.Encode(&qrBuf, qrImage); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encode QR code"})
+		return
+	}
+	qrDataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(qrBuf.Bytes())
 
 	c.JSON(http.StatusOK, gin.H{
 		"secret":  key.Secret(),
-		"qrCode":  qrURL,
+		"qrCode":  qrDataURL,
 		"issuer":  key.Issuer(),
 		"account": user.Username,
 	})
