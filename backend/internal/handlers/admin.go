@@ -42,7 +42,24 @@ const (
 	PermResetData    Permission = "data.reset"
 )
 
-var rolePermissions = map[string]map[Permission]struct{}{
+// AllPermissions lists all available permissions for UI/validation
+var AllPermissions = []Permission{
+	PermManageAdmins,
+	PermAuditView,
+	PermDimensions,
+	PermQuestions,
+	PermRules,
+	PermGlowtypes,
+	PermPrompts,
+	PermContent,
+	PermStatsView,
+	PermResultsView,
+	PermResetData,
+}
+
+// RolePermissionTemplates defines default permissions for each role (used as templates)
+var RolePermissionTemplates = map[string]map[Permission]struct{}{
+	database.AdminRoleSuper: permissionSet(AllPermissions...), // superadmin has all
 	database.AdminRoleStandard: permissionSet(
 		PermDimensions,
 		PermQuestions,
@@ -71,8 +88,8 @@ var rolePermissions = map[string]map[Permission]struct{}{
 		PermResultsView,
 		PermAuditView,
 	),
+	// Viewer: read-only access to most areas (NO admin.manage - that was a bug)
 	database.AdminRoleViewer: permissionSet(
-		PermManageAdmins,
 		PermAuditView,
 		PermDimensions,
 		PermQuestions,
@@ -230,7 +247,7 @@ func RequirePermission(perms ...Permission) gin.HandlerFunc {
 			return
 		}
 		for _, p := range perms {
-			if roleHasPermission(admin.Role, p) {
+			if userHasPermission(admin, p) {
 				continue
 			}
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
@@ -313,16 +330,23 @@ func AdminLoginHandler(c *gin.Context) {
 		"userAgent": c.Request.UserAgent(),
 	})
 
+	var customPerms []string
+	if len(user.Permissions) > 0 {
+		_ = json.Unmarshal(user.Permissions, &customPerms)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":   true,
 		"token":     token,
 		"expiresAt": exp.Unix(),
 		"user": gin.H{
-			"id":          user.ID,
-			"username":    user.Username,
-			"role":        user.Role,
-			"lastLoginAt": user.LastLoginAt,
-			"lastLoginIp": user.LastLoginIP,
+			"id":                   user.ID,
+			"username":             user.Username,
+			"role":                 user.Role,
+			"permissions":          customPerms,
+			"effectivePermissions": getUserPermissions(user),
+			"lastLoginAt":          user.LastLoginAt,
+			"lastLoginIp":          user.LastLoginIP,
 		},
 	})
 }
@@ -335,13 +359,20 @@ func GetAdminProfile(c *gin.Context) {
 		return
 	}
 
+	var customPerms []string
+	if len(admin.Permissions) > 0 {
+		_ = json.Unmarshal(admin.Permissions, &customPerms)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"id":          admin.ID,
-		"username":    admin.Username,
-		"role":        admin.Role,
-		"lastLoginAt": admin.LastLoginAt,
-		"lastLoginIp": admin.LastLoginIP,
-		"createdAt":   admin.CreatedAt,
+		"id":                   admin.ID,
+		"username":             admin.Username,
+		"role":                 admin.Role,
+		"permissions":          customPerms,
+		"effectivePermissions": getUserPermissions(admin),
+		"lastLoginAt":          admin.LastLoginAt,
+		"lastLoginIp":          admin.LastLoginIP,
+		"createdAt":            admin.CreatedAt,
 	})
 }
 
@@ -353,20 +384,43 @@ func ListAdminUsers(c *gin.Context) {
 		return
 	}
 
-	// Remove password hashes from response
-	for i := range admins {
-		admins[i].PasswordHash = ""
+	// Build response with effective permissions
+	result := make([]gin.H, len(admins))
+	for i, admin := range admins {
+		var customPerms []string
+		if len(admin.Permissions) > 0 {
+			_ = json.Unmarshal(admin.Permissions, &customPerms)
+		}
+		result[i] = gin.H{
+			"id":                   admin.ID,
+			"username":             admin.Username,
+			"role":                 admin.Role,
+			"permissions":          customPerms,
+			"effectivePermissions": getUserPermissions(admin),
+			"isActive":             admin.IsActive,
+			"lastLoginAt":          admin.LastLoginAt,
+			"lastLoginIp":          admin.LastLoginIP,
+			"createdAt":            admin.CreatedAt,
+			"updatedAt":            admin.UpdatedAt,
+		}
 	}
 
-	c.JSON(http.StatusOK, admins)
+	c.JSON(http.StatusOK, result)
 }
 
 // CreateAdminUser creates a new admin account (super admin only).
 func CreateAdminUser(c *gin.Context) {
+	current, ok := getAdminFromContext(c)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Role     string `json:"role"`
+		Username    string   `json:"username"`
+		Password    string   `json:"password"`
+		Role        string   `json:"role"`
+		Permissions []string `json:"permissions"` // Custom permissions (optional)
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -382,9 +436,25 @@ func CreateAdminUser(c *gin.Context) {
 		return
 	}
 
+	// Only superadmin can create another superadmin
+	if role == database.AdminRoleSuper && current.Role != database.AdminRoleSuper {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only superadmin can create superadmin accounts"})
+		return
+	}
+
 	if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.Password) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password are required"})
 		return
+	}
+
+	// Validate custom permissions if provided
+	var permissionsJSON []byte
+	if len(req.Permissions) > 0 {
+		if err := validatePermissions(req.Permissions); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		permissionsJSON, _ = json.Marshal(req.Permissions)
 	}
 
 	hash, err := services.HashPassword(req.Password)
@@ -397,6 +467,7 @@ func CreateAdminUser(c *gin.Context) {
 		Username:     strings.TrimSpace(req.Username),
 		PasswordHash: hash,
 		Role:         role,
+		Permissions:  permissionsJSON,
 		IsActive:     true,
 	}
 
@@ -412,17 +483,20 @@ func CreateAdminUser(c *gin.Context) {
 	c.Set("auditMetadata", map[string]any{
 		"createdUser": admin.Username,
 		"role":        admin.Role,
+		"permissions": req.Permissions,
 	})
 
 	c.JSON(http.StatusCreated, gin.H{
-		"id":        admin.ID,
-		"username":  admin.Username,
-		"role":      admin.Role,
-		"createdAt": admin.CreatedAt,
+		"id":                 admin.ID,
+		"username":           admin.Username,
+		"role":               admin.Role,
+		"permissions":        req.Permissions,
+		"effectivePermissions": getUserPermissions(admin),
+		"createdAt":          admin.CreatedAt,
 	})
 }
 
-// UpdateAdminUser updates role/activation for an admin (super admin only).
+// UpdateAdminUser updates role/activation/permissions for an admin (super admin only).
 func UpdateAdminUser(c *gin.Context) {
 	current, ok := getAdminFromContext(c)
 	if !ok {
@@ -437,14 +511,15 @@ func UpdateAdminUser(c *gin.Context) {
 	}
 
 	var req struct {
-		Role     *string `json:"role"`
-		IsActive *bool   `json:"isActive"`
+		Role        *string   `json:"role"`
+		IsActive    *bool     `json:"isActive"`
+		Permissions *[]string `json:"permissions"` // Custom permissions (null = use role defaults, [] = clear custom)
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
-	if req.Role == nil && req.IsActive == nil {
+	if req.Role == nil && req.IsActive == nil && req.Permissions == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No changes provided"})
 		return
 	}
@@ -469,16 +544,29 @@ func UpdateAdminUser(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot deactivate yourself"})
 			return
 		}
+		if req.Permissions != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot change your own permissions"})
+			return
+		}
 	}
 
 	updates := map[string]any{}
 	prevRole := target.Role
 	prevActive := target.IsActive
+	var prevPerms []string
+	if len(target.Permissions) > 0 {
+		_ = json.Unmarshal(target.Permissions, &prevPerms)
+	}
 
 	if req.Role != nil {
 		role := strings.TrimSpace(*req.Role)
 		if !isValidAdminRole(role) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+			return
+		}
+		// Only superadmin can assign superadmin role
+		if role == database.AdminRoleSuper && current.Role != database.AdminRoleSuper {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only superadmin can assign superadmin role"})
 			return
 		}
 		if target.Role == database.AdminRoleSuper && role != database.AdminRoleSuper {
@@ -516,6 +604,22 @@ func UpdateAdminUser(c *gin.Context) {
 		target.IsActive = *req.IsActive
 	}
 
+	if req.Permissions != nil {
+		if len(*req.Permissions) > 0 {
+			if err := validatePermissions(*req.Permissions); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			permJSON, _ := json.Marshal(*req.Permissions)
+			updates["permissions"] = permJSON
+			target.Permissions = permJSON
+		} else {
+			// Empty array = clear custom permissions (use role defaults)
+			updates["permissions"] = nil
+			target.Permissions = nil
+		}
+	}
+
 	if len(updates) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid changes"})
 		return
@@ -526,24 +630,33 @@ func UpdateAdminUser(c *gin.Context) {
 		return
 	}
 
+	var newPerms []string
+	if len(target.Permissions) > 0 {
+		_ = json.Unmarshal(target.Permissions, &newPerms)
+	}
+
 	c.Set("auditMetadata", map[string]any{
-		"targetUser": target.Username,
-		"targetId":   target.ID,
-		"fromRole":   prevRole,
-		"toRole":     target.Role,
-		"fromActive": prevActive,
-		"toActive":   target.IsActive,
+		"targetUser":      target.Username,
+		"targetId":        target.ID,
+		"fromRole":        prevRole,
+		"toRole":          target.Role,
+		"fromActive":      prevActive,
+		"toActive":        target.IsActive,
+		"fromPermissions": prevPerms,
+		"toPermissions":   newPerms,
 	})
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":          target.ID,
-		"username":    target.Username,
-		"role":        target.Role,
-		"isActive":    target.IsActive,
-		"lastLoginAt": target.LastLoginAt,
-		"lastLoginIp": target.LastLoginIP,
-		"createdAt":   target.CreatedAt,
-		"updatedAt":   target.UpdatedAt,
+		"id":                   target.ID,
+		"username":             target.Username,
+		"role":                 target.Role,
+		"permissions":          newPerms,
+		"effectivePermissions": getUserPermissions(target),
+		"isActive":             target.IsActive,
+		"lastLoginAt":          target.LastLoginAt,
+		"lastLoginIp":          target.LastLoginIP,
+		"createdAt":            target.CreatedAt,
+		"updatedAt":            target.UpdatedAt,
 	})
 }
 
@@ -577,16 +690,64 @@ func getAdminFromContext(c *gin.Context) (database.AdminUser, bool) {
 	return admin, ok
 }
 
-func roleHasPermission(role string, perm Permission) bool {
-	if role == database.AdminRoleSuper {
+// userHasPermission checks if a user has a specific permission.
+// Priority: custom permissions > role template defaults
+func userHasPermission(user database.AdminUser, perm Permission) bool {
+	// Superadmin always has all permissions
+	if user.Role == database.AdminRoleSuper {
 		return true
 	}
-	allowed, ok := rolePermissions[role]
+
+	// Check custom permissions if set
+	if len(user.Permissions) > 0 {
+		var customPerms []string
+		if err := json.Unmarshal(user.Permissions, &customPerms); err == nil && len(customPerms) > 0 {
+			for _, p := range customPerms {
+				if Permission(p) == perm {
+					return true
+				}
+			}
+			return false // Custom permissions are set but don't include this one
+		}
+	}
+
+	// Fall back to role template
+	allowed, ok := RolePermissionTemplates[user.Role]
 	if !ok {
 		return false
 	}
 	_, ok = allowed[perm]
 	return ok
+}
+
+// getUserPermissions returns the effective permissions for a user
+func getUserPermissions(user database.AdminUser) []string {
+	if user.Role == database.AdminRoleSuper {
+		perms := make([]string, len(AllPermissions))
+		for i, p := range AllPermissions {
+			perms[i] = string(p)
+		}
+		return perms
+	}
+
+	// Check custom permissions first
+	if len(user.Permissions) > 0 {
+		var customPerms []string
+		if err := json.Unmarshal(user.Permissions, &customPerms); err == nil && len(customPerms) > 0 {
+			return customPerms
+		}
+	}
+
+	// Fall back to role template
+	template, ok := RolePermissionTemplates[user.Role]
+	if !ok {
+		return []string{}
+	}
+	perms := make([]string, 0, len(template))
+	for p := range template {
+		perms = append(perms, string(p))
+	}
+	return perms
 }
 
 func isValidAdminRole(role string) bool {
@@ -614,6 +775,42 @@ func isReadOnlyMethod(method string) bool {
 	default:
 		return false
 	}
+}
+
+// validatePermissions checks if all permissions in the list are valid
+func validatePermissions(perms []string) error {
+	validPerms := make(map[string]struct{}, len(AllPermissions))
+	for _, p := range AllPermissions {
+		validPerms[string(p)] = struct{}{}
+	}
+	for _, p := range perms {
+		if _, ok := validPerms[p]; !ok {
+			return fmt.Errorf("invalid permission: %s", p)
+		}
+	}
+	return nil
+}
+
+// GetPermissionTemplates returns all role permission templates for the UI
+func GetPermissionTemplates(c *gin.Context) {
+	templates := make(map[string][]string)
+	for role, perms := range RolePermissionTemplates {
+		permList := make([]string, 0, len(perms))
+		for p := range perms {
+			permList = append(permList, string(p))
+		}
+		templates[role] = permList
+	}
+
+	allPerms := make([]string, len(AllPermissions))
+	for i, p := range AllPermissions {
+		allPerms[i] = string(p)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"allPermissions": allPerms,
+		"roleTemplates":  templates,
+	})
 }
 
 type auditRequestContext struct {

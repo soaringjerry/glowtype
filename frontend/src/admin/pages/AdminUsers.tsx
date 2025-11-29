@@ -1,13 +1,129 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, PlusCircle, Loader2, AlertCircle, Users, ToggleLeft, ToggleRight, Save } from 'lucide-react';
-import type { AdminRole, AdminUser } from '../hooks/useAdmin';
-import { isReadOnlyRole, roleHasPermission, useAdminApi, useAdminAuth } from '../hooks/useAdmin';
+import {
+  Shield,
+  PlusCircle,
+  Loader2,
+  AlertCircle,
+  Users,
+  ToggleLeft,
+  ToggleRight,
+  Save,
+  ChevronDown,
+  ChevronUp,
+  Settings2,
+  RotateCcw,
+} from 'lucide-react';
+import type { AdminRole, AdminUser, AdminPermission } from '../hooks/useAdmin';
+import {
+  isReadOnlyRole,
+  userHasPermission,
+  useAdminApi,
+  useAdminAuth,
+  ALL_PERMISSIONS,
+  PERMISSION_LABELS,
+  ROLE_LABELS,
+  getRoleDefaultPermissions,
+} from '../hooks/useAdmin';
 
 interface NewAdminForm {
   username: string;
   password: string;
   role: AdminRole;
+  permissions: string[];
+  useCustomPermissions: boolean;
+}
+
+interface AdminDraft {
+  role: AdminRole;
+  isActive: boolean;
+  permissions: string[];
+  useCustomPermissions: boolean;
+}
+
+// Permission checkbox component
+function PermissionCheckbox({
+  permission,
+  checked,
+  onChange,
+  disabled,
+}: {
+  permission: AdminPermission;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition cursor-pointer ${
+        checked
+          ? 'bg-purple-50 border-purple-300 text-purple-700'
+          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+      />
+      <span className="text-sm">{PERMISSION_LABELS[permission]}</span>
+    </label>
+  );
+}
+
+// Permission selector panel
+function PermissionSelector({
+  selectedPermissions,
+  onChange,
+  disabled,
+  onResetToRole,
+  roleName,
+}: {
+  selectedPermissions: string[];
+  onChange: (permissions: string[]) => void;
+  disabled?: boolean;
+  onResetToRole?: () => void;
+  roleName?: string;
+}) {
+  const handleToggle = (perm: AdminPermission, checked: boolean) => {
+    if (checked) {
+      onChange([...selectedPermissions, perm]);
+    } else {
+      onChange(selectedPermissions.filter((p) => p !== perm));
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">自定义权限</span>
+        {onResetToRole && (
+          <button
+            type="button"
+            onClick={onResetToRole}
+            disabled={disabled}
+            className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1 disabled:opacity-50"
+          >
+            <RotateCcw className="w-3 h-3" />
+            重置为{roleName ? ROLE_LABELS[roleName as AdminRole] : '角色'}默认
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {ALL_PERMISSIONS.map((perm) => (
+          <PermissionCheckbox
+            key={perm}
+            permission={perm}
+            checked={selectedPermissions.includes(perm)}
+            onChange={(checked) => handleToggle(perm, checked)}
+            disabled={disabled}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function AdminUsers() {
@@ -15,14 +131,23 @@ export default function AdminUsers() {
   const { currentUser } = useAdminAuth();
   const { listAdmins, createAdmin, updateAdmin, loading, error } = useAdminApi();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-  const [form, setForm] = useState<NewAdminForm>({ username: '', password: '', role: 'admin' });
+  const [form, setForm] = useState<NewAdminForm>({
+    username: '',
+    password: '',
+    role: 'admin',
+    permissions: getRoleDefaultPermissions('admin'),
+    useCustomPermissions: false,
+  });
   const [success, setSuccess] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
-  const [drafts, setDrafts] = useState<Record<number, { role: AdminRole; isActive: boolean }>>({});
+  const [drafts, setDrafts] = useState<Record<number, AdminDraft>>({});
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [showCreatePermissions, setShowCreatePermissions] = useState(false);
 
-  const canManage = useMemo(() => roleHasPermission(currentUser?.role, 'admin.manage'), [currentUser]);
+  const canManage = useMemo(() => userHasPermission(currentUser, 'admin.manage'), [currentUser]);
   const readOnly = isReadOnlyRole(currentUser?.role);
   const isSelf = (id: number) => currentUser?.id === id;
+  const isSuperadmin = currentUser?.role === 'superadmin';
 
   const roleOptions: { value: AdminRole; label: string }[] = [
     { value: 'viewer', label: t('roles.viewer') },
@@ -30,7 +155,8 @@ export default function AdminUsers() {
     { value: 'content_admin', label: t('roles.content_admin') },
     { value: 'data_admin', label: t('roles.data_admin') },
     { value: 'analyst', label: t('roles.analyst') },
-    { value: 'superadmin', label: t('roles.superadmin') },
+    // Only superadmin can create superadmin
+    ...(isSuperadmin ? [{ value: 'superadmin' as AdminRole, label: t('roles.superadmin') }] : []),
   ];
 
   useEffect(() => {
@@ -42,25 +168,88 @@ export default function AdminUsers() {
     load();
   }, [canManage, listAdmins]);
 
+  // Update permissions when role changes in create form
+  const handleRoleChange = (role: AdminRole) => {
+    setForm((f) => ({
+      ...f,
+      role,
+      permissions: f.useCustomPermissions ? f.permissions : getRoleDefaultPermissions(role),
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccess(null);
-    const res = await createAdmin(form);
+    const payload: { username: string; password: string; role: AdminRole; permissions?: string[] } = {
+      username: form.username,
+      password: form.password,
+      role: form.role,
+    };
+    // Only send custom permissions if enabled and different from role defaults
+    if (form.useCustomPermissions) {
+      payload.permissions = form.permissions;
+    }
+    const res = await createAdmin(payload);
     if (res) {
       setAdmins((prev) => [res, ...prev]);
-      setForm({ username: '', password: '', role: 'admin' });
+      setForm({
+        username: '',
+        password: '',
+        role: 'admin',
+        permissions: getRoleDefaultPermissions('admin'),
+        useCustomPermissions: false,
+      });
+      setShowCreatePermissions(false);
       setSuccess(t('adminUsers.created', { user: res.username }));
     }
   };
 
-  const getDraft = (admin: AdminUser) =>
-    drafts[admin.id] ?? { role: admin.role, isActive: admin.isActive ?? true };
+  const getDraft = (admin: AdminUser): AdminDraft => {
+    if (drafts[admin.id]) return drafts[admin.id];
+    const hasCustom = admin.permissions && admin.permissions.length > 0;
+    return {
+      role: admin.role,
+      isActive: admin.isActive ?? true,
+      permissions: admin.effectivePermissions ?? getRoleDefaultPermissions(admin.role),
+      useCustomPermissions: hasCustom ?? false,
+    };
+  };
+
+  const handleDraftRoleChange = (admin: AdminUser, role: AdminRole) => {
+    const draft = getDraft(admin);
+    setDrafts((prev) => ({
+      ...prev,
+      [admin.id]: {
+        ...draft,
+        role,
+        permissions: draft.useCustomPermissions ? draft.permissions : getRoleDefaultPermissions(role),
+      },
+    }));
+  };
 
   const handleUpdate = async (admin: AdminUser) => {
     const draft = getDraft(admin);
-    const payload: Partial<Pick<AdminUser, 'role' | 'isActive'>> = {};
+    const payload: { role?: AdminRole; isActive?: boolean; permissions?: string[] | null } = {};
+
     if (draft.role !== admin.role) payload.role = draft.role;
     if ((admin.isActive ?? true) !== draft.isActive) payload.isActive = draft.isActive;
+
+    // Handle permissions
+    const hasCustom = admin.permissions && admin.permissions.length > 0;
+    if (draft.useCustomPermissions) {
+      // Check if permissions actually changed
+      const currentPerms = admin.effectivePermissions ?? [];
+      const permsChanged =
+        draft.permissions.length !== currentPerms.length ||
+        !draft.permissions.every((p) => currentPerms.includes(p));
+      if (permsChanged || !hasCustom) {
+        payload.permissions = draft.permissions;
+      }
+    } else if (hasCustom) {
+      // Clear custom permissions (use role defaults)
+      payload.permissions = null;
+    }
+
     if (Object.keys(payload).length === 0) return;
 
     setSavingId(admin.id);
@@ -75,6 +264,18 @@ export default function AdminUsers() {
       });
       setSuccess(t('adminUsers.updated', { user: admin.username }));
     }
+  };
+
+  const toggleRowExpanded = (id: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   if (!canManage) {
@@ -111,6 +312,7 @@ export default function AdminUsers() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Create Admin Form */}
         <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-4">
             <PlusCircle className="w-5 h-5 text-purple-500" />
@@ -148,7 +350,7 @@ export default function AdminUsers() {
               <label className="block text-sm font-medium text-gray-700 mb-2">{t('adminUsers.role')}</label>
               <select
                 value={form.role}
-                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as AdminRole }))}
+                onChange={(e) => handleRoleChange(e.target.value as AdminRole)}
                 disabled={readOnly}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition bg-white"
               >
@@ -158,6 +360,53 @@ export default function AdminUsers() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Custom permissions toggle */}
+            <div className="border-t border-gray-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowCreatePermissions(!showCreatePermissions)}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-purple-600 transition"
+              >
+                <Settings2 className="w-4 h-4" />
+                <span>自定义权限</span>
+                {showCreatePermissions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showCreatePermissions && (
+                <div className="mt-4 space-y-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.useCustomPermissions}
+                      onChange={(e) => {
+                        const useCustom = e.target.checked;
+                        setForm((f) => ({
+                          ...f,
+                          useCustomPermissions: useCustom,
+                          permissions: useCustom ? f.permissions : getRoleDefaultPermissions(f.role),
+                        }));
+                      }}
+                      disabled={readOnly}
+                      className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-gray-700">使用自定义权限（而非角色默认）</span>
+                  </label>
+
+                  {form.useCustomPermissions && (
+                    <PermissionSelector
+                      selectedPermissions={form.permissions}
+                      onChange={(perms) => setForm((f) => ({ ...f, permissions: perms }))}
+                      disabled={readOnly}
+                      onResetToRole={() =>
+                        setForm((f) => ({ ...f, permissions: getRoleDefaultPermissions(f.role) }))
+                      }
+                      roleName={form.role}
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {(error || success) && (
@@ -188,6 +437,7 @@ export default function AdminUsers() {
           </form>
         </div>
 
+        {/* Admin List */}
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-2 mb-4">
             <Users className="w-5 h-5 text-purple-500" />
@@ -200,107 +450,179 @@ export default function AdminUsers() {
               {t('common.loading')}
             </div>
           ) : admins.length === 0 ? (
-            <div className="text-gray-500 text-sm bg-gray-50 rounded-xl p-4">
-              {t('adminUsers.empty')}
-            </div>
+            <div className="text-gray-500 text-sm bg-gray-50 rounded-xl p-4">{t('adminUsers.empty')}</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      {t('adminUsers.username')}
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      {t('adminUsers.role')}
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      {t('adminUsers.status')}
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      {t('adminUsers.lastLogin')}
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      {t('adminUsers.lastIp')}
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      {t('adminUsers.actions')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100 text-sm">
-                  {admins.map((admin) => {
-                    const draft = getDraft(admin);
-                    const hasChanges =
-                      draft.role !== admin.role || (admin.isActive ?? true) !== draft.isActive;
-                    const disabled = readOnly || isSelf(admin.id);
-                    return (
-                      <tr key={admin.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium text-gray-800">{admin.username}</td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={draft.role}
-                            disabled={disabled}
-                            onChange={(e) =>
+            <div className="space-y-3">
+              {admins.map((admin) => {
+                const draft = getDraft(admin);
+                const hasChanges =
+                  draft.role !== admin.role ||
+                  (admin.isActive ?? true) !== draft.isActive ||
+                  (draft.useCustomPermissions &&
+                    JSON.stringify(draft.permissions.sort()) !==
+                      JSON.stringify((admin.effectivePermissions ?? []).sort())) ||
+                  (!draft.useCustomPermissions && admin.permissions && admin.permissions.length > 0);
+                const disabled = readOnly || isSelf(admin.id);
+                const isExpanded = expandedRows.has(admin.id);
+                const canAssignSuper = isSuperadmin || admin.role !== 'superadmin';
+
+                return (
+                  <div
+                    key={admin.id}
+                    className="border border-gray-200 rounded-xl overflow-hidden hover:border-purple-200 transition"
+                  >
+                    {/* Main row */}
+                    <div className="flex items-center gap-4 p-4 bg-white">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-800 truncate">{admin.username}</div>
+                        <div className="text-xs text-gray-500">
+                          {admin.lastLoginAt
+                            ? `上次登录: ${new Date(admin.lastLoginAt).toLocaleString()}`
+                            : t('adminUsers.never')}
+                          {admin.lastLoginIp && ` · ${admin.lastLoginIp}`}
+                        </div>
+                      </div>
+
+                      <select
+                        value={draft.role}
+                        disabled={disabled || !canAssignSuper}
+                        onChange={(e) => handleDraftRoleChange(admin, e.target.value as AdminRole)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
+                      >
+                        {roleOptions.map((opt) => (
+                          <option
+                            key={opt.value}
+                            value={opt.value}
+                            disabled={opt.value === 'superadmin' && !isSuperadmin}
+                          >
+                            {opt.label}
+                          </option>
+                        ))}
+                        {/* Keep superadmin option visible for existing superadmins */}
+                        {admin.role === 'superadmin' && !isSuperadmin && (
+                          <option value="superadmin">{t('roles.superadmin')}</option>
+                        )}
+                      </select>
+
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [admin.id]: { ...draft, isActive: !draft.isActive },
+                          }))
+                        }
+                        className="flex items-center gap-1 text-sm text-gray-700 disabled:opacity-50"
+                      >
+                        {draft.isActive ? (
+                          <ToggleRight className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleRowExpanded(admin.id)}
+                        className="p-2 text-gray-400 hover:text-purple-600 transition"
+                        title="权限详情"
+                      >
+                        <Settings2 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!hasChanges || savingId === admin.id || disabled}
+                        onClick={() => handleUpdate(admin)}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingId === admin.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        {t('adminUsers.save')}
+                      </button>
+                    </div>
+
+                    {/* Expanded permissions panel */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-100 bg-gray-50 p-4 space-y-4">
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={draft.useCustomPermissions}
+                              onChange={(e) => {
+                                const useCustom = e.target.checked;
+                                setDrafts((prev) => ({
+                                  ...prev,
+                                  [admin.id]: {
+                                    ...draft,
+                                    useCustomPermissions: useCustom,
+                                    permissions: useCustom
+                                      ? draft.permissions
+                                      : getRoleDefaultPermissions(draft.role),
+                                  },
+                                }));
+                              }}
+                              disabled={disabled || admin.role === 'superadmin'}
+                              className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-gray-700">使用自定义权限</span>
+                          </label>
+                          {admin.permissions && admin.permissions.length > 0 && (
+                            <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                              已自定义
+                            </span>
+                          )}
+                        </div>
+
+                        {admin.role === 'superadmin' ? (
+                          <div className="text-sm text-gray-500 italic">超级管理员拥有所有权限</div>
+                        ) : draft.useCustomPermissions ? (
+                          <PermissionSelector
+                            selectedPermissions={draft.permissions}
+                            onChange={(perms) =>
                               setDrafts((prev) => ({
                                 ...prev,
-                                [admin.id]: { ...draft, role: e.target.value as AdminRole },
+                                [admin.id]: { ...draft, permissions: perms },
                               }))
                             }
-                            className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
-                          >
-                            {roleOptions.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            type="button"
                             disabled={disabled}
-                            onClick={() =>
+                            onResetToRole={() =>
                               setDrafts((prev) => ({
                                 ...prev,
-                                [admin.id]: { ...draft, isActive: !draft.isActive },
+                                [admin.id]: { ...draft, permissions: getRoleDefaultPermissions(draft.role) },
                               }))
                             }
-                            className="flex items-center gap-2 text-sm text-gray-700 disabled:opacity-50"
-                          >
-                            {draft.isActive ? (
-                              <>
-                                <ToggleRight className="w-5 h-5 text-green-500" />
-                                {t('adminUsers.active')}
-                              </>
-                            ) : (
-                              <>
-                                <ToggleLeft className="w-5 h-5 text-gray-400" />
-                                {t('adminUsers.inactive')}
-                              </>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {admin.lastLoginAt ? new Date(admin.lastLoginAt).toLocaleString() : t('adminUsers.never')}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{admin.lastLoginIp || '-'}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            disabled={!hasChanges || savingId === admin.id || disabled}
-                            onClick={() => handleUpdate(admin)}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {savingId === admin.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            {t('adminUsers.save')}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                            roleName={draft.role}
+                          />
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="text-sm text-gray-600">
+                              当前权限（{ROLE_LABELS[draft.role]}默认）:
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {(admin.effectivePermissions ?? getRoleDefaultPermissions(admin.role)).map(
+                                (perm) => (
+                                  <span
+                                    key={perm}
+                                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                                  >
+                                    {PERMISSION_LABELS[perm as AdminPermission] || perm}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

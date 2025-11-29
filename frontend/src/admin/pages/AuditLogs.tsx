@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock3, Shield, ScrollText, Loader2 } from 'lucide-react';
 import type { AdminAuditLog } from '../hooks/useAdmin';
-import { roleHasPermission, useAdminApi, useAdminAuth } from '../hooks/useAdmin';
+import { userHasPermission, useAdminApi, useAdminAuth } from '../hooks/useAdmin';
 
 export default function AuditLogs() {
   const { t } = useTranslation('admin');
@@ -10,7 +10,7 @@ export default function AuditLogs() {
   const { listAuditLogs, loading } = useAdminApi();
   const [logs, setLogs] = useState<AdminAuditLog[]>([]);
 
-  const canView = useMemo(() => roleHasPermission(currentUser?.role, 'audit.view'), [currentUser]);
+  const canView = useMemo(() => userHasPermission(currentUser, 'audit.view'), [currentUser]);
 
   useEffect(() => {
     if (!canView) return;

@@ -21,7 +21,7 @@ import {
   Loader2,
   TrendingUp
 } from 'lucide-react';
-import { isReadOnlyRole, roleHasPermission, useAdminAuth } from './hooks/useAdmin';
+import { isReadOnlyRole, userHasPermission, useAdminAuth } from './hooks/useAdmin';
 import type { AdminPermission } from './hooks/useAdmin';
 import AdminLogin from './AdminLogin';
 import Dashboard from './pages/Dashboard';
@@ -69,7 +69,7 @@ export default function AdminLayout() {
       { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles, perm: 'content.write' },
       { path: '/admin/audit', labelKey: 'nav.audit', icon: ScrollText, perm: 'audit.view' },
     ];
-    return items.filter((item) => roleHasPermission(currentUser?.role, item.perm as any));
+    return items.filter((item) => userHasPermission(currentUser, item.perm));
   }, [currentUser]);
 
   if (initializing) {
@@ -212,7 +212,7 @@ type ProtectedProps = {
 function Protected({ perm, children }: ProtectedProps) {
   const { t } = useTranslation('admin');
   const { currentUser } = useAdminAuth();
-  if (!roleHasPermission(currentUser?.role, perm)) {
+  if (!userHasPermission(currentUser, perm)) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-6 border border-amber-100">
         <h2 className="text-lg font-semibold text-gray-800 mb-1">{t('accessDenied.title')}</h2>

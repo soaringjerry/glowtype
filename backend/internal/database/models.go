@@ -385,15 +385,16 @@ const (
 
 // AdminUser represents an authenticated admin account
 type AdminUser struct {
-	ID           uint       `gorm:"primaryKey" json:"id"`
-	Username     string     `gorm:"uniqueIndex;not null" json:"username"`
-	PasswordHash string     `json:"-"`
-	Role         string     `gorm:"default:admin" json:"role"`
-	IsActive     bool       `gorm:"default:true" json:"isActive"`
-	LastLoginAt  *time.Time `json:"lastLoginAt"`
-	LastLoginIP  string     `json:"lastLoginIp"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
+	ID           uint           `gorm:"primaryKey" json:"id"`
+	Username     string         `gorm:"uniqueIndex;not null" json:"username"`
+	PasswordHash string         `json:"-"`
+	Role         string         `gorm:"default:admin" json:"role"`
+	Permissions  datatypes.JSON `gorm:"type:json" json:"permissions"` // Custom permissions override (null = use role defaults)
+	IsActive     bool           `gorm:"default:true" json:"isActive"`
+	LastLoginAt  *time.Time     `json:"lastLoginAt"`
+	LastLoginIP  string         `json:"lastLoginIp"`
+	CreatedAt    time.Time      `json:"createdAt"`
+	UpdatedAt    time.Time      `json:"updatedAt"`
 }
 
 func (AdminUser) TableName() string {

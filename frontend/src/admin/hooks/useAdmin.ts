@@ -15,20 +15,49 @@ export type AdminPermission =
   | 'results.view'
   | 'data.reset';
 
-const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
-  superadmin: [
-    'admin.manage',
-    'audit.view',
-    'dimensions.write',
-    'questions.write',
-    'rules.write',
-    'glowtypes.write',
-    'prompts.write',
-    'content.write',
-    'stats.view',
-    'results.view',
-    'data.reset',
-  ],
+// All available permissions for UI
+export const ALL_PERMISSIONS: AdminPermission[] = [
+  'admin.manage',
+  'audit.view',
+  'dimensions.write',
+  'questions.write',
+  'rules.write',
+  'glowtypes.write',
+  'prompts.write',
+  'content.write',
+  'stats.view',
+  'results.view',
+  'data.reset',
+];
+
+// Permission display names for UI
+export const PERMISSION_LABELS: Record<AdminPermission, string> = {
+  'admin.manage': '管理员管理',
+  'audit.view': '审计日志',
+  'dimensions.write': '维度管理',
+  'questions.write': '题目管理',
+  'rules.write': '规则管理',
+  'glowtypes.write': 'Glowtype管理',
+  'prompts.write': 'AI提示词管理',
+  'content.write': '内容管理',
+  'stats.view': '统计查看',
+  'results.view': '结果查看',
+  'data.reset': '数据重置',
+};
+
+// Role display names
+export const ROLE_LABELS: Record<AdminRole, string> = {
+  superadmin: '超级管理员',
+  admin: '管理员',
+  content_admin: '内容管理员',
+  data_admin: '数据管理员',
+  analyst: '分析师',
+  viewer: '只读用户',
+};
+
+// Default role permission templates (for reference, actual checking uses effectivePermissions)
+const ROLE_PERMISSION_TEMPLATES: Record<AdminRole, AdminPermission[]> = {
+  superadmin: [...ALL_PERMISSIONS],
   admin: [
     'dimensions.write',
     'questions.write',
@@ -50,8 +79,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'results.view',
   ],
   analyst: ['stats.view', 'results.view', 'audit.view'],
+  // Viewer: read-only, NO admin.manage (bug fix)
   viewer: [
-    'admin.manage',
     'audit.view',
     'dimensions.write',
     'questions.write',
@@ -64,10 +93,28 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
   ],
 };
 
+// Get default permissions for a role (used when creating new admin)
+export const getRoleDefaultPermissions = (role: AdminRole): AdminPermission[] => {
+  return ROLE_PERMISSION_TEMPLATES[role] ?? [];
+};
+
+// Check permission using effectivePermissions from user object
+export const userHasPermission = (
+  user: AdminUser | null | undefined,
+  perm: AdminPermission
+): boolean => {
+  if (!user) return false;
+  if (user.role === 'superadmin') return true;
+  // Use effectivePermissions if available (from API), fallback to role template
+  const perms = user.effectivePermissions ?? ROLE_PERMISSION_TEMPLATES[user.role] ?? [];
+  return perms.includes(perm);
+};
+
+// Legacy function for backward compatibility (uses role template only)
 export const roleHasPermission = (role: AdminRole | undefined, perm: AdminPermission) => {
   if (!role) return false;
   if (role === 'superadmin') return true;
-  return ROLE_PERMISSIONS[role]?.includes(perm) ?? false;
+  return ROLE_PERMISSION_TEMPLATES[role]?.includes(perm) ?? false;
 };
 
 export const isReadOnlyRole = (role: AdminRole | undefined) => role === 'viewer';
@@ -76,10 +123,18 @@ export interface AdminUser {
   id: number;
   username: string;
   role: AdminRole;
+  permissions?: string[];           // Custom permissions (null = use role defaults)
+  effectivePermissions?: string[];  // Computed effective permissions from API
   isActive?: boolean;
   lastLoginAt?: string;
   lastLoginIp?: string;
   createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PermissionTemplates {
+  allPermissions: string[];
+  roleTemplates: Record<string, string[]>;
 }
 
 export interface AdminAuditLog {
@@ -536,13 +591,17 @@ export const useAdminApi = () => {
   // Admin accounts & audit
   const getCurrentAdmin = useCallback(() => apiCall<AdminUser>('/admin/me'), [apiCall]);
   const listAdmins = useCallback(() => apiCall<AdminUser[]>('/admin/users'), [apiCall]);
+  const getPermissionTemplates = useCallback(
+    () => apiCall<PermissionTemplates>('/admin/permissions/templates'),
+    [apiCall],
+  );
   const createAdmin = useCallback(
-    (data: { username: string; password: string; role?: AdminRole }) =>
+    (data: { username: string; password: string; role?: AdminRole; permissions?: string[] }) =>
       apiCall<AdminUser>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
     [apiCall],
   );
   const updateAdmin = useCallback(
-    (id: number, data: { role?: AdminRole; isActive?: boolean }) =>
+    (id: number, data: { role?: AdminRole; isActive?: boolean; permissions?: string[] | null }) =>
       apiCall<AdminUser>(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     [apiCall],
   );
@@ -613,6 +672,7 @@ export const useAdminApi = () => {
     // Admin
     getCurrentAdmin,
     listAdmins,
+    getPermissionTemplates,
     createAdmin,
     updateAdmin,
     listAuditLogs,

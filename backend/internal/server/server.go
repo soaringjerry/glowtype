@@ -83,6 +83,7 @@ func New(cfg config.Config) *gin.Engine {
 	admin.Use(handlers.AdminAuthMiddleware(), handlers.AdminAuditMiddleware())
 	{
 		admin.GET("/me", handlers.GetAdminProfile)
+		admin.GET("/permissions/templates", handlers.GetPermissionTemplates) // Available to all admins for UI
 
 		// Admin user management
 		adminUsers := admin.Group("/")
