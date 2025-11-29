@@ -499,6 +499,7 @@ func ListAdminUsers(c *gin.Context) {
 			"twoFactorEnabled":     admin.TwoFactorEnabled,
 			"twoFactorRequired":    admin.TwoFactorRequired,
 			"twoFactorVerifiedAt":  admin.TwoFactorVerifiedAt,
+			"twoFactorPending":     admin.TwoFactorSecret != "" && !admin.TwoFactorEnabled, // Has unverified secret
 		}
 	}
 

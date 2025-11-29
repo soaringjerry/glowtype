@@ -65,8 +65,11 @@ func Setup2FAHandler(c *gin.Context) {
 		return
 	}
 
-	// If user already has 2FA configured, require proof of possession before rotating secret
-	if user.TwoFactorEnabled || user.TwoFactorSecret != "" {
+	// If user already has 2FA enabled and verified, require proof of possession before rotating secret
+	// Note: We only check TwoFactorEnabled, not TwoFactorSecret, because a user might have
+	// an unverified secret from a failed setup attempt. In that case, they should be able
+	// to start fresh without needing a code they never successfully set up.
+	if user.TwoFactorEnabled {
 		if strings.TrimSpace(req.CurrentCode) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Current 2FA code is required to change 2FA setup"})
 			return
@@ -700,6 +703,7 @@ func ManageUser2FAHandler(c *gin.Context) {
 		"twoFactorEnabled":     user.TwoFactorEnabled,
 		"twoFactorRequired":    user.TwoFactorRequired,
 		"twoFactorVerifiedAt":  user.TwoFactorVerifiedAt,
+		"twoFactorPending":     user.TwoFactorSecret != "" && !user.TwoFactorEnabled,
 	})
 }
 

@@ -133,6 +133,7 @@ export interface AdminUser {
   twoFactorEnabled?: boolean;
   twoFactorRequired?: boolean;
   twoFactorVerifiedAt?: string;
+  twoFactorPending?: boolean; // Has unverified secret (stuck in setup)
 }
 
 // 2FA Types

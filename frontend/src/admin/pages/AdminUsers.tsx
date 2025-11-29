@@ -236,6 +236,7 @@ export default function AdminUsers() {
                 ...a,
                 twoFactorRequired: action === 'require' ? true : action === 'unrequire' ? false : a.twoFactorRequired,
                 twoFactorEnabled: action === 'reset' ? false : a.twoFactorEnabled,
+                twoFactorPending: action === 'reset' ? false : a.twoFactorPending,
               }
             : a
         )
@@ -697,7 +698,9 @@ export default function AdminUsers() {
                               <div className="text-sm text-gray-600">
                                 {admin.twoFactorEnabled
                                   ? t('adminUsers.2faStatusEnabled', '状态: 已启用')
-                                  : t('adminUsers.2faStatusDisabled', '状态: 未启用')}
+                                  : admin.twoFactorPending
+                                    ? t('adminUsers.2faStatusPending', '状态: 设置未完成')
+                                    : t('adminUsers.2faStatusDisabled', '状态: 未启用')}
                                 {admin.twoFactorRequired && (
                                   <span className="ml-2 text-amber-600">
                                     ({t('adminUsers.required', '要求启用')})
@@ -736,8 +739,8 @@ export default function AdminUsers() {
                                 </button>
                               )}
 
-                              {/* Reset 2FA */}
-                              {admin.twoFactorEnabled && (
+                              {/* Reset 2FA - show when enabled OR when stuck in pending state */}
+                              {(admin.twoFactorEnabled || admin.twoFactorPending) && (
                                 <button
                                   type="button"
                                   onClick={() => handleManage2FA(admin.id, 'reset')}

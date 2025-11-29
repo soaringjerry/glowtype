@@ -67,6 +67,7 @@
     "2faRequiredNotSet": "要求启用2FA但未设置",
     "2faManagement": "两步验证管理",
     "2faStatusEnabled": "状态: 已启用",
+    "2faStatusPending": "状态: 设置未完成",
     "2faStatusDisabled": "状态: 未启用",
     "required": "要求启用",
     "require2FA": "强制启用",

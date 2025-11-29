@@ -67,6 +67,7 @@
     "2faRequiredNotSet": "2FA required but not set up",
     "2faManagement": "Two-Factor Authentication Management",
     "2faStatusEnabled": "Status: Enabled",
+    "2faStatusPending": "Status: Setup incomplete",
     "2faStatusDisabled": "Status: Not enabled",
     "required": "Required",
     "require2FA": "Require 2FA",
