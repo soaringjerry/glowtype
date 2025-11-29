@@ -703,6 +703,14 @@ export const useAdminApi = () => {
         window.location.reload();
         return null;
       }
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        if ((data as any).needs2FASetup) {
+          window.location.assign('/admin/settings');
+          return null;
+        }
+        throw new Error((data as any).error || 'Forbidden');
+      }
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'API Error');

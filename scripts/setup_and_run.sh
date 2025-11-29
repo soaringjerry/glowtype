@@ -128,6 +128,12 @@ if [ -f "${ROOT_DIR}/backend/.env" ]; then
   if ! grep -q "^ADMIN_SUPER_USERNAME=" "${ROOT_DIR}/backend/.env"; then
     echo "ADMIN_SUPER_USERNAME=superadmin" >> "${ROOT_DIR}/backend/.env"
   fi
+
+  # Ensure TOTP encryption key exists (exactly 32 chars)
+  if ! grep -q "^TOTP_ENCRYPTION_KEY=" "${ROOT_DIR}/backend/.env"; then
+    echo "TOTP_ENCRYPTION_KEY=$(gen_secret | head -c 32)" >> "${ROOT_DIR}/backend/.env"
+    echo "[INFO] Generated TOTP_ENCRYPTION_KEY in backend/.env (rotate if needed)"
+  fi
 fi
 
 # Load root .env for local variable substitution
