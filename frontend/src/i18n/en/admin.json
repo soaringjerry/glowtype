@@ -2,6 +2,7 @@
   "title": "Glowtype Admin",
   "nav": {
     "dashboard": "Dashboard",
+    "analytics": "Data Analytics",
     "adminUsers": "Admin Accounts",
     "dimensions": "Dimensions",
     "questions": "Quiz Questions",

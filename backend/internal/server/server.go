@@ -169,6 +169,7 @@ func New(cfg config.Config) *gin.Engine {
 			stats.GET("/stats/daily", handlers.GetDailyStats)
 			stats.GET("/stats/glowtypes", handlers.GetGlowtypeDistribution)
 			stats.GET("/stats/enhanced", handlers.GetEnhancedStatsHandler)
+			stats.GET("/stats/analytics", handlers.GetAnalyticsHandler)
 		}
 
 		// Quiz Results

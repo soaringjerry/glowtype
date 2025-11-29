@@ -18,7 +18,8 @@ import {
   Shield,
   ScrollText,
   Eye,
-  Loader2
+  Loader2,
+  TrendingUp
 } from 'lucide-react';
 import { isReadOnlyRole, roleHasPermission, useAdminAuth } from './hooks/useAdmin';
 import type { AdminPermission } from './hooks/useAdmin';
@@ -34,6 +35,7 @@ import Results from './pages/Results';
 import Glowpedia from './pages/Glowpedia';
 import AdminUsers from './pages/AdminUsers';
 import AuditLogs from './pages/AuditLogs';
+import Analytics from './pages/Analytics';
 
 export default function AdminLayout() {
   const { t, i18n } = useTranslation('admin');
@@ -55,6 +57,7 @@ export default function AdminLayout() {
   const navItems = useMemo(() => {
     const items: Array<{ path: string; labelKey: string; icon: any; perm: AdminPermission }> = [
       { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard, perm: 'stats.view' },
+      { path: '/admin/analytics', labelKey: 'nav.analytics', icon: TrendingUp, perm: 'stats.view' },
       { path: '/admin/users', labelKey: 'nav.adminUsers', icon: Shield, perm: 'admin.manage' },
       { path: '/admin/dimensions', labelKey: 'nav.dimensions', icon: Compass, perm: 'dimensions.write' },
       { path: '/admin/questions', labelKey: 'nav.questions', icon: HelpCircle, perm: 'questions.write' },
@@ -183,6 +186,7 @@ export default function AdminLayout() {
           )}
           <Routes>
             <Route path="/admin" element={<Protected perm="stats.view"><Dashboard /></Protected>} />
+            <Route path="/admin/analytics" element={<Protected perm="stats.view"><Analytics /></Protected>} />
             <Route path="/admin/users" element={<Protected perm="admin.manage"><AdminUsers /></Protected>} />
             <Route path="/admin/dimensions" element={<Protected perm="dimensions.write"><Dimensions /></Protected>} />
             <Route path="/admin/questions" element={<Protected perm="questions.write"><Questions /></Protected>} />
