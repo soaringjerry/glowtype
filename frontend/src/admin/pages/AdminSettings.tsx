@@ -108,12 +108,18 @@ export default function AdminSettings() {
       if (result.token) {
         updateToken(result.token);
       }
-      setShowSetup(false);
-      setSetupData(null);
+      // Don't close modal here - let TwoFactorSetup show recovery codes first
+      // Modal will be closed when user clicks "Done" in the recovery codes step
       await load2FAData();
       return { success: true, recoveryCodes: result.recoveryCodes };
     }
     return { success: false };
+  };
+
+  // Called when user finishes 2FA setup (after viewing recovery codes)
+  const handleSetupComplete = () => {
+    setShowSetup(false);
+    setSetupData(null);
   };
 
   // Disable 2FA
@@ -573,10 +579,7 @@ export default function AdminSettings() {
           qrCode={setupData.qrCode}
           secret={setupData.secret}
           onVerify={handleVerify2FA}
-          onCancel={() => {
-            setShowSetup(false);
-            setSetupData(null);
-          }}
+          onCancel={handleSetupComplete}
         />
       )}
 

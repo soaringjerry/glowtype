@@ -112,9 +112,9 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
   // Step 1: Scan QR Code
   if (step === 'scan') {
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-700">
-          <div className="flex items-center justify-between mb-6">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-700 my-4">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-white flex items-center">
               <ShieldCheck className="w-6 h-6 mr-2 text-purple-400" />
               {t('twoFactor.setupTitle', '设置两步验证')}
@@ -127,27 +127,46 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
             </button>
           </div>
 
-          <div className="space-y-6">
+          {/* Tutorial Section */}
+          <div className="bg-slate-900/50 rounded-lg p-4 mb-4">
+            <h3 className="text-sm font-medium text-purple-300 mb-2">
+              {t('twoFactor.whatIs2FA', '什么是两步验证？')}
+            </h3>
+            <p className="text-gray-400 text-xs mb-3">
+              {t('twoFactor.whatIs2FADesc', '两步验证为您的账户添加额外的安全保护。登录时除了密码，还需要输入手机上验证器应用生成的动态验证码。')}
+            </p>
+            <h3 className="text-sm font-medium text-purple-300 mb-2">
+              {t('twoFactor.howToSetup', '如何设置？')}
+            </h3>
+            <ol className="text-gray-400 text-xs space-y-1 list-decimal list-inside">
+              <li>{t('twoFactor.step1', '在手机上下载验证器应用（推荐 Google Authenticator 或 Microsoft Authenticator）')}</li>
+              <li>{t('twoFactor.step2', '打开验证器应用，点击"+"添加账户')}</li>
+              <li>{t('twoFactor.step3', '扫描下方二维码，或手动输入密钥')}</li>
+              <li>{t('twoFactor.step4', '输入应用中显示的6位验证码完成设置')}</li>
+            </ol>
+          </div>
+
+          <div className="space-y-4">
             <div className="text-center">
-              <p className="text-gray-300 text-sm mb-4">
-                {t('twoFactor.scanQRCode', '使用身份验证器应用扫描下方二维码')}
+              <p className="text-gray-300 text-sm mb-3">
+                {t('twoFactor.scanQRCode', '使用验证器应用扫描二维码')}
               </p>
-              <div className="bg-white p-4 rounded-xl inline-block">
+              <div className="bg-white p-3 rounded-xl inline-block">
                 <img
                   src={qrCode}
                   alt="2FA QR Code"
-                  className="w-48 h-48"
+                  className="w-40 h-40"
                 />
               </div>
             </div>
 
-            <div className="border-t border-slate-700 pt-4">
+            <div className="border-t border-slate-700 pt-3">
               <p className="text-gray-400 text-xs mb-2 flex items-center">
                 <QrCode className="w-4 h-4 mr-1" />
-                {t('twoFactor.manualEntry', '或手动输入密钥：')}
+                {t('twoFactor.manualEntry', '无法扫码？手动输入密钥：')}
               </p>
               <div className="flex items-center space-x-2">
-                <code className="flex-1 bg-slate-900 px-3 py-2 rounded-lg text-purple-400 font-mono text-sm break-all">
+                <code className="flex-1 bg-slate-900 px-3 py-2 rounded-lg text-purple-400 font-mono text-xs break-all">
                   {secret}
                 </code>
                 <button
@@ -167,7 +186,7 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
               <p className="text-amber-300 text-xs flex items-start">
                 <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
-                {t('twoFactor.setupWarning', '请确保您已在身份验证器应用中添加此账户，再点击下一步')}
+                {t('twoFactor.setupWarning', '请确保验证器应用中已显示 Glowtype Admin 账户，再点击下一步')}
               </p>
             </div>
 
@@ -175,7 +194,7 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
               onClick={() => setStep('verify')}
               className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
             >
-              {t('twoFactor.next', '下一步')}
+              {t('twoFactor.next', '我已添加，下一步')}
             </button>
           </div>
         </div>
