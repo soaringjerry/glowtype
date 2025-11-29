@@ -17,6 +17,8 @@ func glowtypeConfigDir() string {
 
 func LoadGlowtypes() ([]models.GlowtypeConfig, error) {
 	path := filepath.Join(glowtypeConfigDir(), "glowtypes.json")
+	// glowtypeConfigDir is internal; path is trusted
+	// #nosec G304
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read glowtypes config: %w", err)

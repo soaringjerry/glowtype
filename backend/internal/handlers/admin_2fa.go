@@ -7,6 +7,7 @@ import (
 	"errors"
 	"image/png"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -510,7 +511,9 @@ func Authenticate2FAHandler(c *gin.Context) {
 			if deviceName == "" {
 				deviceName = "Trusted Device"
 			}
-			services.CreateTrustedDevice(database.GetDB(), user.ID, deviceToken, deviceName, c.Request.UserAgent(), clientIP)
+			if err := services.CreateTrustedDevice(database.GetDB(), user.ID, deviceToken, deviceName, c.Request.UserAgent(), clientIP); err != nil {
+				log.Printf("failed to create trusted device: %v", err)
+			}
 		}
 	}
 

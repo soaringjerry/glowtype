@@ -1124,6 +1124,21 @@ func createAuditLog(admin database.AdminUser, action string, c *gin.Context, sta
 	}
 }
 
+func parseUintParam(c *gin.Context, name string) (uint, bool) {
+	raw := strings.TrimSpace(c.Param(name))
+	id64, err := strconv.ParseUint(raw, 10, 64)
+	if err != nil || id64 == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return 0, false
+	}
+	maxUint := ^uint(0)
+	if id64 > uint64(maxUint) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID out of range"})
+		return 0, false
+	}
+	return uint(id64), true
+}
+
 // ============ Trait Dimensions CRUD ============
 
 func ListDimensions(c *gin.Context) {
@@ -1149,7 +1164,10 @@ func CreateDimension(c *gin.Context) {
 }
 
 func UpdateDimension(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	var dim database.TraitDimensionDB
 	if err := database.GetDB().First(&dim, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Dimension not found"})
@@ -1160,7 +1178,7 @@ func UpdateDimension(c *gin.Context) {
 		return
 	}
 	// Ensure ID is preserved after JSON binding
-	dim.ID = uint(id)
+	dim.ID = id
 	if err := database.GetDB().Save(&dim).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1169,7 +1187,10 @@ func UpdateDimension(c *gin.Context) {
 }
 
 func DeleteDimension(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	if err := database.GetDB().Delete(&database.TraitDimensionDB{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1225,7 +1246,10 @@ func CreateQuestion(c *gin.Context) {
 }
 
 func UpdateQuestion(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	var question database.QuizQuestionDB
 	if err := database.GetDB().First(&question, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Question not found"})
@@ -1236,7 +1260,7 @@ func UpdateQuestion(c *gin.Context) {
 		return
 	}
 	// Ensure ID is preserved after JSON binding
-	question.ID = uint(id)
+	question.ID = id
 	if err := database.GetDB().Save(&question).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1245,7 +1269,10 @@ func UpdateQuestion(c *gin.Context) {
 }
 
 func DeleteQuestion(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	// Soft delete by setting IsActive = false
 	if err := database.GetDB().Model(&database.QuizQuestionDB{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -1444,7 +1471,10 @@ func updateOrCreateI18N(glowtypeID uint, lang, name, tagline, description, tips,
 }
 
 func UpdateGlowtype(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	var glowtype database.GlowtypeDB
 	if err := database.GetDB().First(&glowtype, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Glowtype not found"})
@@ -1475,7 +1505,7 @@ func UpdateGlowtype(c *gin.Context) {
 	var zhI18n database.GlowtypeI18NDB
 	if err := db.Where("glowtype_id = ? AND lang = ?", id, "zh").First(&zhI18n).Error; err != nil {
 		// Create new
-		zhI18n = database.GlowtypeI18NDB{GlowtypeID: uint(id), Lang: "zh"}
+		zhI18n = database.GlowtypeI18NDB{GlowtypeID: id, Lang: "zh"}
 	}
 	zhI18n.Name = input.NameZh
 	zhI18n.Tagline = input.TaglineZh
@@ -1488,7 +1518,7 @@ func UpdateGlowtype(c *gin.Context) {
 	var enI18n database.GlowtypeI18NDB
 	if err := db.Where("glowtype_id = ? AND lang = ?", id, "en").First(&enI18n).Error; err != nil {
 		// Create new
-		enI18n = database.GlowtypeI18NDB{GlowtypeID: uint(id), Lang: "en"}
+		enI18n = database.GlowtypeI18NDB{GlowtypeID: id, Lang: "en"}
 	}
 	enI18n.Name = input.NameEn
 	enI18n.Tagline = input.TaglineEn
@@ -1498,12 +1528,15 @@ func UpdateGlowtype(c *gin.Context) {
 	db.Save(&enI18n)
 
 	// Return merged result
-	input.ID = uint(id)
+	input.ID = id
 	c.JSON(http.StatusOK, input)
 }
 
 func DeleteGlowtype(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	if err := database.GetDB().Model(&database.GlowtypeDB{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1527,7 +1560,10 @@ func CreateGlowtypeI18N(c *gin.Context) {
 }
 
 func UpdateGlowtypeI18N(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	var i18n database.GlowtypeI18NDB
 	if err := database.GetDB().First(&i18n, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "I18N record not found"})
@@ -1538,7 +1574,7 @@ func UpdateGlowtypeI18N(c *gin.Context) {
 		return
 	}
 	// Ensure ID is preserved after JSON binding
-	i18n.ID = uint(id)
+	i18n.ID = id
 	if err := database.GetDB().Save(&i18n).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1594,7 +1630,10 @@ func CreateRule(c *gin.Context) {
 }
 
 func UpdateRule(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	var rule database.ScoringRuleDB
 	if err := database.GetDB().First(&rule, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Rule not found"})
@@ -1605,7 +1644,7 @@ func UpdateRule(c *gin.Context) {
 		return
 	}
 	// Ensure ID is preserved after JSON binding
-	rule.ID = uint(id)
+	rule.ID = id
 	if err := database.GetDB().Save(&rule).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1614,7 +1653,10 @@ func UpdateRule(c *gin.Context) {
 }
 
 func DeleteRule(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
 	if err := database.GetDB().Model(&database.ScoringRuleDB{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

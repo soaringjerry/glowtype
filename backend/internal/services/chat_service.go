@@ -272,7 +272,9 @@ func (s *ChatService) callOpenAI(cfg aiConfig, messages []openAIMessage) (string
 	if resp.StatusCode != http.StatusOK {
 		// Read error body for more details
 		var errBody map[string]any
-		json.NewDecoder(resp.Body).Decode(&errBody)
+		if err := json.NewDecoder(resp.Body).Decode(&errBody); err != nil {
+			return "", fmt.Errorf("openai status %d: failed to decode error body: %w", resp.StatusCode, err)
+		}
 		return "", fmt.Errorf("openai status %d: %v", resp.StatusCode, errBody)
 	}
 

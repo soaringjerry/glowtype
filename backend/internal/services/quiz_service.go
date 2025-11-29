@@ -104,8 +104,9 @@ func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models
 		// Parse optionId like "o1" -> index 0, "o2" -> index 1, etc.
 		optionIndex := 0
 		if len(ans.OptionID) > 1 && ans.OptionID[0] == 'o' {
-			fmt.Sscanf(ans.OptionID[1:], "%d", &optionIndex)
-			optionIndex-- // Convert 1-based to 0-based
+			if _, err := fmt.Sscanf(ans.OptionID[1:], "%d", &optionIndex); err == nil && optionIndex > 0 {
+				optionIndex-- // Convert 1-based to 0-based
+			}
 		}
 
 		answers = append(answers, database.AnswerRecord{

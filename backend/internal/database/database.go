@@ -22,7 +22,7 @@ func InitDB(cfg config.Config) *gorm.DB {
 
 	// Ensure directory exists
 	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		log.Printf("Warning: could not create db directory %s: %v", dir, err)
 		// Fall back to current directory
 		dbPath = "./glowtype.db"

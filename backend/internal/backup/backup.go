@@ -178,6 +178,10 @@ func ensureFreeSpace(cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("check free disk space: %w", err)
 	}
+	freeInt, err := safeUint64ToInt64(free)
+	if err != nil {
+		return fmt.Errorf("free space overflow: %w", err)
+	}
 
 	dbSize := int64(0)
 	if info, statErr := os.Stat(cfg.DBPath); statErr == nil {
@@ -185,11 +189,11 @@ func ensureFreeSpace(cfg Config) error {
 	}
 
 	required := cfg.MinFreeBytes + dbSize
-	if int64(free) >= required {
+	if freeInt >= required {
 		return nil
 	}
 
-	for len(files) > 0 && int64(free) < required {
+	for len(files) > 0 && freeInt < required {
 		oldest := files[0]
 		if err := os.Remove(oldest.path); err != nil {
 			return fmt.Errorf("remove old backup %s: %w", oldest.path, err)
@@ -201,11 +205,15 @@ func ensureFreeSpace(cfg Config) error {
 		if err != nil {
 			return fmt.Errorf("check free disk space: %w", err)
 		}
+		freeInt, err = safeUint64ToInt64(free)
+		if err != nil {
+			return fmt.Errorf("free space overflow: %w", err)
+		}
 	}
 
-	if int64(free) < required {
+	if freeInt < required {
 		return fmt.Errorf("not enough disk space for backup: need ~%s free (db %s + buffer %s), current free %s",
-			formatBytes(required), formatBytes(dbSize), formatBytes(cfg.MinFreeBytes), formatBytes(int64(free)))
+			formatBytes(required), formatBytes(dbSize), formatBytes(cfg.MinFreeBytes), formatBytes(freeInt))
 	}
 
 	return nil
@@ -246,12 +254,27 @@ type fileEntry struct {
 	modTime time.Time
 }
 
+// safeUint64ToInt64 converts uint64 to int64 with overflow check.
+func safeUint64ToInt64(v uint64) (int64, error) {
+	if v > math.MaxInt64 {
+		return 0, fmt.Errorf("value %d overflows int64", v)
+	}
+	return int64(v), nil
+}
+
 func diskFreeBytes(path string) (uint64, error) {
 	var stat unix.Statfs_t
 	if err := unix.Statfs(path, &stat); err != nil {
 		return 0, err
 	}
-	return stat.Bavail * uint64(stat.Bsize), nil
+	if stat.Bsize < 0 {
+		return 0, fmt.Errorf("unexpected negative block size")
+	}
+	blockSize := uint64(stat.Bsize)
+	if stat.Bavail > math.MaxUint64/blockSize {
+		return 0, fmt.Errorf("free space overflow")
+	}
+	return stat.Bavail * blockSize, nil
 }
 
 func formatBytes(size int64) string {

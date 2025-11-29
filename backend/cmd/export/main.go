@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/soaringjerry/glowtype/internal/config"
@@ -188,7 +189,9 @@ func exportQuizResults(db *gorm.DB, startDate, endDate string) []AnonymizedQuizR
 		// Parse dimension scores
 		var scores map[string]float64
 		if r.DimensionScores != nil {
-			json.Unmarshal(r.DimensionScores, &scores)
+			if err := json.Unmarshal(r.DimensionScores, &scores); err != nil {
+				log.Printf("Warning: failed to parse dimension scores for result %d: %v", r.ID, err)
+			}
 		}
 
 		anonymized = append(anonymized, AnonymizedQuizResult{
@@ -319,8 +322,11 @@ func exportGlowtypeDistribution(db *gorm.DB, startDate, endDate string) []Glowty
 }
 
 func writeJSON(outputDir, filename string, data ExportData) {
-	filepath := filepath.Join(outputDir, filename+".json")
-	file, err := os.Create(filepath)
+	if strings.TrimSpace(filename) == "" {
+		log.Fatalf("Invalid filename")
+	}
+	target := filepath.Join(outputDir, filepath.Base(filename+".json"))
+	file, err := os.Create(target)
 	if err != nil {
 		log.Fatalf("Failed to create file: %v", err)
 	}
@@ -332,13 +338,24 @@ func writeJSON(outputDir, filename string, data ExportData) {
 		log.Fatalf("Failed to write JSON: %v", err)
 	}
 
-	log.Printf("Written to: %s", filepath)
+	log.Printf("Written to: %s", target)
 }
 
 func writeCSV(outputDir, filename string, data ExportData) {
+	safeBase := filepath.Base(filename)
+	if safeBase == "" {
+		log.Fatalf("Invalid filename")
+	}
+
+	writeRecord := func(w *csv.Writer, record []string) {
+		if err := w.Write(record); err != nil {
+			log.Fatalf("Failed to write CSV: %v", err)
+		}
+	}
+
 	// Write quiz results CSV
 	if len(data.QuizResults) > 0 {
-		filepath := filepath.Join(outputDir, filename+"_results.csv")
+		filepath := filepath.Join(outputDir, safeBase+"_results.csv")
 		file, err := os.Create(filepath)
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
@@ -349,15 +366,18 @@ func writeCSV(outputDir, filename string, data ExportData) {
 		defer writer.Flush()
 
 		// Header
-		writer.Write([]string{
+		writeRecord(writer, []string{
 			"id", "anonymous_id", "result_type", "language", "source", "channel",
 			"region", "device_type", "browser_lang", "hour_of_day",
 			"created_date", "created_hour", "dimension_scores_json",
 		})
 
 		for _, r := range data.QuizResults {
-			scoresJSON, _ := json.Marshal(r.DimensionScores)
-			writer.Write([]string{
+			scoresJSON, err := json.Marshal(r.DimensionScores)
+			if err != nil {
+				log.Fatalf("Failed to encode dimension scores: %v", err)
+			}
+			writeRecord(writer, []string{
 				fmt.Sprintf("%d", r.ID),
 				r.AnonymousID,
 				r.ResultTypeCode,
@@ -378,7 +398,7 @@ func writeCSV(outputDir, filename string, data ExportData) {
 
 	// Write chat sessions CSV
 	if len(data.ChatSessions) > 0 {
-		filepath := filepath.Join(outputDir, filename+"_chats.csv")
+		filepath := filepath.Join(outputDir, safeBase+"_chats.csv")
 		file, err := os.Create(filepath)
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
@@ -388,14 +408,14 @@ func writeCSV(outputDir, filename string, data ExportData) {
 		writer := csv.NewWriter(file)
 		defer writer.Flush()
 
-		writer.Write([]string{
+		writeRecord(writer, []string{
 			"id", "anonymous_id", "message_count", "user_messages", "ai_messages",
 			"duration_secs", "glowtype_code", "language", "region", "device_type",
 			"hour_of_day", "has_crisis_flag", "started_date", "started_hour",
 		})
 
 		for _, s := range data.ChatSessions {
-			writer.Write([]string{
+			writeRecord(writer, []string{
 				fmt.Sprintf("%d", s.ID),
 				s.AnonymousID,
 				fmt.Sprintf("%d", s.MessageCount),
@@ -417,7 +437,7 @@ func writeCSV(outputDir, filename string, data ExportData) {
 
 	// Write usage stats CSV
 	if len(data.UsageStats) > 0 {
-		filepath := filepath.Join(outputDir, filename+"_stats.csv")
+		filepath := filepath.Join(outputDir, safeBase+"_stats.csv")
 		file, err := os.Create(filepath)
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
@@ -427,10 +447,10 @@ func writeCSV(outputDir, filename string, data ExportData) {
 		writer := csv.NewWriter(file)
 		defer writer.Flush()
 
-		writer.Write([]string{"date", "quiz_completed", "share_generated", "ai_chats_started", "ai_insight_used"})
+		writeRecord(writer, []string{"date", "quiz_completed", "share_generated", "ai_chats_started", "ai_insight_used"})
 
 		for _, s := range data.UsageStats {
-			writer.Write([]string{
+			writeRecord(writer, []string{
 				s.Date,
 				fmt.Sprintf("%d", s.QuizCompleted),
 				fmt.Sprintf("%d", s.ShareGenerated),
@@ -443,7 +463,7 @@ func writeCSV(outputDir, filename string, data ExportData) {
 
 	// Write distribution CSV
 	if len(data.GlowtypeDistribution) > 0 {
-		filepath := filepath.Join(outputDir, filename+"_distribution.csv")
+		filepath := filepath.Join(outputDir, safeBase+"_distribution.csv")
 		file, err := os.Create(filepath)
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
@@ -453,10 +473,10 @@ func writeCSV(outputDir, filename string, data ExportData) {
 		writer := csv.NewWriter(file)
 		defer writer.Flush()
 
-		writer.Write([]string{"date", "type_code", "count"})
+		writeRecord(writer, []string{"date", "type_code", "count"})
 
 		for _, d := range data.GlowtypeDistribution {
-			writer.Write([]string{
+			writeRecord(writer, []string{
 				d.Date,
 				d.TypeCode,
 				fmt.Sprintf("%d", d.Count),
