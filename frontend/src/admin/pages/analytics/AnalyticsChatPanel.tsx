@@ -37,6 +37,7 @@ export default function AnalyticsChatPanel({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const initialQuestionSentRef = useRef(false);
 
   // Detect language
   const isZh = typeof navigator !== 'undefined' && navigator.language.startsWith('zh');
@@ -55,10 +56,67 @@ export default function AnalyticsChatPanel({
 
   // Handle initial question from [?] button
   useEffect(() => {
-    if (isOpen && initialQuestion && messages.length === 0) {
-      handleSend(initialQuestion);
+    if (isOpen && initialQuestion && messages.length === 0 && !initialQuestionSentRef.current) {
+      initialQuestionSentRef.current = true;
+      // Trigger send after a short delay to ensure component is ready
+      const timer = setTimeout(() => {
+        const userMessage: ChatMessage = { role: 'user', content: initialQuestion };
+        setMessages([userMessage]);
+        setLoading(true);
+
+        const token = localStorage.getItem('adminToken');
+        fetch(`${getApiBaseUrl()}/admin/analytics/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            messages: [userMessage],
+            context: {
+              currentView,
+              analyticsData: analyticsData ? {
+                summary: analyticsData.summary,
+                reliability: {
+                  cronbachAlpha: analyticsData.reliability.cronbachAlpha,
+                  spearmanBrown: analyticsData.reliability.spearmanBrown,
+                  sampleSize: analyticsData.reliability.sampleSize,
+                  hasSufficientSample: analyticsData.reliability.hasSufficientSample,
+                  itemTotalCorrelations: analyticsData.reliability.itemTotalCorrelations,
+                },
+                dimensionStats: Object.fromEntries(
+                  Object.entries(analyticsData.dimensionStats).map(([k, v]) => [
+                    k,
+                    { mean: v.mean, stdDev: v.stdDev, min: v.min, max: v.max, median: v.median },
+                  ])
+                ),
+              } : null,
+              language: isZh ? 'zh-CN' : 'en',
+            },
+          }),
+        })
+          .then(res => res.json())
+          .then(data => {
+            setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+            if (data.suggestions?.length > 0) {
+              setSuggestions(data.suggestions);
+            }
+          })
+          .catch(() => {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: isZh ? '抱歉，获取回复时出现错误。请稍后再试。' : 'Sorry, there was an error getting a response. Please try again.'
+            }]);
+          })
+          .finally(() => setLoading(false));
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, initialQuestion]);
+    // Reset ref when panel closes
+    if (!isOpen) {
+      initialQuestionSentRef.current = false;
+    }
+  }, [isOpen, initialQuestion, messages.length, currentView, analyticsData, isZh]);
 
   const handleSend = async (text?: string) => {
     const messageText = text || input.trim();
@@ -99,7 +157,7 @@ export default function AnalyticsChatPanel({
       if (data.suggestions && data.suggestions.length > 0) {
         setSuggestions(data.suggestions);
       }
-    } catch (error) {
+    } catch {
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: isZh
@@ -161,7 +219,7 @@ export default function AnalyticsChatPanel({
       if (data.suggestions && data.suggestions.length > 0) {
         setSuggestions(data.suggestions);
       }
-    } catch (error) {
+    } catch {
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: isZh
