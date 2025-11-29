@@ -909,7 +909,7 @@ export const useAdminApi = () => {
     verify2FA: (code: string) =>
       apiCall<Verify2FAResponse>('/admin/2fa/verify', { method: 'POST', body: JSON.stringify({ code }) }),
     disable2FA: (code: string) =>
-      apiCall<{ success: boolean; message: string }>('/admin/2fa', { method: 'DELETE', body: JSON.stringify({ code }) }),
+      apiCall<{ success: boolean; message: string; token?: string; expiresAt?: number }>('/admin/2fa', { method: 'DELETE', body: JSON.stringify({ code }) }),
     regenerateRecoveryCodes: (code: string) =>
       apiCall<{ success: boolean; recoveryCodes: string[]; message: string }>('/admin/2fa/recovery/regenerate', {
         method: 'POST',

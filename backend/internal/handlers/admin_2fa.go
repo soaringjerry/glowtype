@@ -331,7 +331,23 @@ func Disable2FAHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to disable 2FA"})
 		return
 	}
-	_ = database.GetDB().Model(&user).Update("token_version", gorm.Expr("token_version + 1"))
+	if err := database.GetDB().Model(&user).Update("token_version", gorm.Expr("token_version + 1")).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update token version"})
+		return
+	}
+
+	// Reload user to get new token_version
+	if err := database.GetDB().First(&user, user.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reload user"})
+		return
+	}
+
+	// Generate new token with updated token_version
+	newToken, tokenExp, err := services.GenerateAdminToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate new token"})
+		return
+	}
 
 	// Audit log metadata
 	c.Set("auditMetadata", map[string]any{
@@ -339,8 +355,10 @@ func Disable2FAHandler(c *gin.Context) {
 	})
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "2FA disabled successfully",
+		"success":   true,
+		"message":   "2FA disabled successfully",
+		"token":     newToken,
+		"expiresAt": tokenExp.Unix(),
 	})
 }
 

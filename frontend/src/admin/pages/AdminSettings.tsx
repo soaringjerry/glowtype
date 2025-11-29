@@ -109,8 +109,12 @@ export default function AdminSettings() {
   const handleDisable2FA = async () => {
     if (!disableCode.trim()) return;
     setDisabling2FA(true);
-    const result = await api.disable2FA(disableCode.trim());
+    const result = await api.disable2FA(disableCode.trim()) as { success: boolean; token?: string } | null;
     if (result?.success) {
+      // Update token if a new one was returned (token_version changed)
+      if (result.token) {
+        updateToken(result.token);
+      }
       setShowDisableConfirm(false);
       setDisableCode('');
       await load2FAData();
