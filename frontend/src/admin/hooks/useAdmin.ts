@@ -157,6 +157,8 @@ export interface Verify2FAResponse {
   success: boolean;
   recoveryCodes: string[];
   message: string;
+  token?: string;
+  expiresAt?: number;
 }
 
 export interface TrustedDevice {
@@ -642,6 +644,12 @@ export const useAdminAuth = () => {
     setError(null);
   }, []);
 
+  // Update token without changing user (for 2FA setup completion)
+  const updateToken = useCallback((newToken: string) => {
+    storage.set(ADMIN_TOKEN_KEY, newToken);
+    setToken(newToken);
+  }, []);
+
   const isAuthenticated = !!token && !!currentUser;
 
   return {
@@ -661,6 +669,7 @@ export const useAdminAuth = () => {
     authenticate2FA,
     cancel2FA,
     needs2FASetup,
+    updateToken,
   };
 };
 

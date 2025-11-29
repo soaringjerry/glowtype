@@ -115,10 +115,8 @@ func Setup2FAHandler(c *gin.Context) {
 	}
 
 	// Store encrypted secret (but don't enable 2FA yet until verified)
-	if err := database.GetDB().Model(&user).Updates(map[string]any{
-		"two_factor_secret": encrypted,
-		"token_version":     gorm.Expr("token_version + 1"),
-	}).Error; err != nil {
+	// Note: Don't increment token_version here - only on successful verification
+	if err := database.GetDB().Model(&user).Update("two_factor_secret", encrypted).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save 2FA secret"})
 		return
 	}
@@ -215,7 +213,7 @@ func Verify2FAHandler(c *gin.Context) {
 		return
 	}
 
-	// Enable 2FA
+	// Enable 2FA and invalidate old tokens
 	now := time.Now()
 	if err := database.GetDB().Model(&user).Updates(map[string]interface{}{
 		"two_factor_enabled":     true,
@@ -226,10 +224,25 @@ func Verify2FAHandler(c *gin.Context) {
 		return
 	}
 
+	// Reload user to get new token_version
+	if err := database.GetDB().First(&user, user.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reload user"})
+		return
+	}
+
+	// Generate new token with updated token_version
+	newToken, tokenExp, err := services.GenerateAdminToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate new token"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":       true,
 		"recoveryCodes": plainCodes,
 		"message":       "2FA enabled successfully. Save your recovery codes in a safe place.",
+		"token":         newToken,
+		"expiresAt":     tokenExp.Unix(),
 	})
 }
 

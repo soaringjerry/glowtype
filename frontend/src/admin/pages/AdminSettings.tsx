@@ -18,12 +18,12 @@ import {
   Calendar,
   Globe,
 } from 'lucide-react';
-import { useAdminApi, useAdminAuth, type TwoFactorStatus, type TrustedDevice } from '../hooks/useAdmin';
+import { useAdminApi, useAdminAuth, type TwoFactorStatus, type TrustedDevice, type Verify2FAResponse } from '../hooks/useAdmin';
 import { TwoFactorSetup } from '../components/TwoFactorSetup';
 
 export default function AdminSettings() {
   const { t } = useTranslation('admin');
-  const { currentUser } = useAdminAuth();
+  const { currentUser, updateToken } = useAdminAuth();
   const api = useAdminApi();
 
   // 2FA State
@@ -91,8 +91,12 @@ export default function AdminSettings() {
 
   // Verify 2FA Setup
   const handleVerify2FA = async (code: string) => {
-    const result = await api.verify2FA(code);
+    const result = await api.verify2FA(code) as Verify2FAResponse | null;
     if (result?.success) {
+      // Update token if a new one was returned (token_version changed)
+      if (result.token) {
+        updateToken(result.token);
+      }
       setShowSetup(false);
       setSetupData(null);
       await load2FAData();
