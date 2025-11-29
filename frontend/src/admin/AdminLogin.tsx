@@ -18,8 +18,9 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await login(username, password);
-    if (success) {
+    const result = await login(username, password);
+    // Only call onLogin if login completed (no 2FA required)
+    if (result.success && !result.requiresTwoFA) {
       onLogin();
     }
   };
