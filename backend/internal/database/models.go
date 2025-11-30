@@ -538,8 +538,9 @@ type AnalyticsCacheDB struct {
 	SummaryData       datatypes.JSON `gorm:"type:json" json:"summaryData"`
 	DimensionStats    datatypes.JSON `gorm:"type:json" json:"dimensionStats"`
 	ReliabilityStats  datatypes.JSON `gorm:"type:json" json:"reliabilityStats"`
-	ValidityStats     datatypes.JSON `gorm:"type:json" json:"validityStats"`     // For future validity analysis
-	AdvancedStats     datatypes.JSON `gorm:"type:json" json:"advancedStats"`     // Skewness, kurtosis, etc.
+	ValidityStats       datatypes.JSON `gorm:"type:json" json:"validityStats"`       // AVE, CR, HTMT validity analysis
+	GroupComparisonData datatypes.JSON `gorm:"type:json" json:"groupComparisonData"` // t-test, ANOVA group comparisons
+	AdvancedStats       datatypes.JSON `gorm:"type:json" json:"advancedStats"`       // Skewness, kurtosis, etc.
 	TrendData         datatypes.JSON `gorm:"type:json" json:"trendData"`
 	SegmentData       datatypes.JSON `gorm:"type:json" json:"segmentData"`
 	CorrelationMatrix datatypes.JSON `gorm:"type:json" json:"correlationMatrix"`

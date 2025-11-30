@@ -93,6 +93,16 @@ func (s *AnalyticsCacheService) SaveCache(req AnalyticsRequest, data *AnalyticsR
 		return fmt.Errorf("failed to marshal correlation matrix: %w", err)
 	}
 
+	validityJSON, err := json.Marshal(data.Validity)
+	if err != nil {
+		return fmt.Errorf("failed to marshal validity: %w", err)
+	}
+
+	groupComparisonJSON, err := json.Marshal(data.GroupComparison)
+	if err != nil {
+		return fmt.Errorf("failed to marshal group comparison: %w", err)
+	}
+
 	// Determine date range type
 	dateRangeType := req.Preset
 	if dateRangeType == "" {
@@ -104,21 +114,23 @@ func (s *AnalyticsCacheService) SaveCache(req AnalyticsRequest, data *AnalyticsR
 	}
 
 	cache := database.AnalyticsCacheDB{
-		CacheKey:          cacheKey,
-		DateRangeType:     dateRangeType,
-		StartDate:         data.Summary.DateRange.Start,
-		EndDate:           data.Summary.DateRange.End,
-		SummaryData:       summaryJSON,
-		DimensionStats:    dimensionJSON,
-		ReliabilityStats:  reliabilityJSON,
-		TrendData:         trendJSON,
-		SegmentData:       segmentJSON,
-		CorrelationMatrix: correlationJSON,
-		SampleCount:       data.Summary.TotalResponses,
-		LastResultID:      lastResultID,
-		ComputedAt:        time.Now(),
-		ExpiresAt:         time.Now().Add(time.Hour * CacheExpiryHours),
-		IsStale:           false,
+		CacheKey:            cacheKey,
+		DateRangeType:       dateRangeType,
+		StartDate:           data.Summary.DateRange.Start,
+		EndDate:             data.Summary.DateRange.End,
+		SummaryData:         summaryJSON,
+		DimensionStats:      dimensionJSON,
+		ReliabilityStats:    reliabilityJSON,
+		ValidityStats:       validityJSON,
+		GroupComparisonData: groupComparisonJSON,
+		TrendData:           trendJSON,
+		SegmentData:         segmentJSON,
+		CorrelationMatrix:   correlationJSON,
+		SampleCount:         data.Summary.TotalResponses,
+		LastResultID:        lastResultID,
+		ComputedAt:          time.Now(),
+		ExpiresAt:           time.Now().Add(time.Hour * CacheExpiryHours),
+		IsStale:             false,
 	}
 
 	if req.TenantID != nil {
@@ -182,6 +194,20 @@ func (s *AnalyticsCacheService) UnmarshalCache(cache *database.AnalyticsCacheDB)
 
 	if err := json.Unmarshal(cache.CorrelationMatrix, &response.CorrelationMatrix); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal correlation matrix: %w", err)
+	}
+
+	// Unmarshal validity stats (may be empty for old caches)
+	if len(cache.ValidityStats) > 0 {
+		if err := json.Unmarshal(cache.ValidityStats, &response.Validity); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal validity stats: %w", err)
+		}
+	}
+
+	// Unmarshal group comparison data (may be empty for old caches)
+	if len(cache.GroupComparisonData) > 0 {
+		if err := json.Unmarshal(cache.GroupComparisonData, &response.GroupComparison); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal group comparison: %w", err)
+		}
 	}
 
 	// Add constants (not cached, always fresh)
