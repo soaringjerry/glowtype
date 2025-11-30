@@ -252,6 +252,8 @@ export interface ReliabilityStats {
       sampleSize: number;
       hasSufficientSample?: boolean;
       itemTotalCorrelations?: Record<string, number>;
+      questionCount?: number;
+      validQuestionCount?: number;
     }
   >;
 }

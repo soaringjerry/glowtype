@@ -216,6 +216,8 @@ type DimReliability struct {
 	SpearmanBrown         float64            `json:"spearmanBrown"`
 	SampleSize            int                `json:"sampleSize"`
 	HasSufficientSample   bool               `json:"hasSufficientSample"`
+	QuestionCount         int                `json:"questionCount"`      // Total questions in dimension
+	ValidQuestionCount    int                `json:"validQuestionCount"` // Questions with n complete responses
 }
 
 // TrendData contains time-based trend information
@@ -555,10 +557,22 @@ func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB,
 	stats.ByDimension = make(map[string]DimReliability)
 	for dimKey, dimItems := range dimItemScores {
 		dTotals := dimTotalScores[dimKey]
+		questionCount := len(dimItems)
+
+		// Count questions with complete responses (len == sampleSize)
+		validQuestionCount := 0
+		for _, scores := range dimItems {
+			if len(scores) == len(dTotals) {
+				validQuestionCount++
+			}
+		}
+
 		if len(dTotals) < minReliabilitySample {
 			stats.ByDimension[dimKey] = DimReliability{
-				SampleSize:          len(dTotals),
+				SampleSize:         len(dTotals),
 				HasSufficientSample: false,
+				QuestionCount:      questionCount,
+				ValidQuestionCount: validQuestionCount,
 			}
 			continue
 		}
@@ -577,6 +591,8 @@ func (s *AnalyticsService) calculateReliability(results []database.QuizResultDB,
 			SpearmanBrown:         sb,
 			SampleSize:            len(dTotals),
 			HasSufficientSample:   true,
+			QuestionCount:         questionCount,
+			ValidQuestionCount:    validQuestionCount,
 		}
 	}
 

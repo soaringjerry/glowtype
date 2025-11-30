@@ -489,11 +489,12 @@ Please provide actionable specific recommendations.`,
               <p className="text-sm font-medium text-gray-700 mb-3">{isZh ? '分维度信度（Cronbach\'s α）' : 'Reliability by Dimension (Cronbach\'s α)'}</p>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {dimensionReliabilityEntries.map(([dimKey, relData]) => {
-                  const rel = relData as { hasSufficientSample?: boolean; sampleSize: number; cronbachAlpha: number; spearmanBrown: number };
+                  const rel = relData as { hasSufficientSample?: boolean; sampleSize: number; cronbachAlpha: number; spearmanBrown: number; questionCount?: number; validQuestionCount?: number };
                   const dimReady = rel.hasSufficientSample ?? rel.sampleSize >= minReliabilitySample;
                   const alphaColor = !dimReady ? 'text-gray-400' : rel.cronbachAlpha >= 0.8 ? 'text-green-600' : rel.cronbachAlpha >= 0.7 ? 'text-blue-600' : rel.cronbachAlpha >= 0.6 ? 'text-yellow-600' : 'text-red-600';
+                  const hasIncompleteData = rel.questionCount !== undefined && rel.validQuestionCount !== undefined && rel.validQuestionCount < rel.questionCount;
                   return (
-                    <div key={dimKey} className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100">
+                    <div key={dimKey} className={`p-3 rounded-xl border ${hasIncompleteData ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100'}`}>
                       <p className="text-sm font-semibold text-gray-800 truncate" title={dimKey}>{dimKey}</p>
                       <div className="mt-2">
                         {dimReady ? (
@@ -506,6 +507,11 @@ Please provide actionable specific recommendations.`,
                         )}
                       </div>
                       <p className="text-[10px] text-gray-400 mt-1">N={rel.sampleSize}</p>
+                      {hasIncompleteData && (
+                        <p className="text-[10px] text-amber-600 mt-1" title={isZh ? `${rel.questionCount}个题目中只有${rel.validQuestionCount}个有完整响应` : `Only ${rel.validQuestionCount} of ${rel.questionCount} questions have complete responses`}>
+                          ⚠️ Q: {rel.validQuestionCount}/{rel.questionCount}
+                        </p>
+                      )}
                     </div>
                   );
                 })}
