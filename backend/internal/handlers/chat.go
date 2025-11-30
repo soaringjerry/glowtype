@@ -104,7 +104,7 @@ func (h *ChatHandler) TrackChatAnalytics(c *gin.Context) {
 
 	// Extract anonymized info from request
 	anonInfo := utils.ExtractAnonymizedInfo(c.Request)
-	baseTime := time.Now().UTC().Truncate(time.Hour) // coarse timestamp for privacy
+	baseTime := time.Now().UTC().Truncate(time.Minute) // coarse timestamp for privacy
 
 	// Generate session ID if not provided
 	sessionID := req.SessionID

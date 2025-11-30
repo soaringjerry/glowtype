@@ -141,13 +141,15 @@ func (s *QuizService) ScoreQuizWithMeta(req models.QuizScoreRequest, meta models
 func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *ScoringResult, language string, meta models.RequestMeta) {
 	answersJSON, _ := json.Marshal(answers)
 	scoresJSON, _ := json.Marshal(result.DimensionScores)
+	now := time.Now().UTC()
+	createdAt := now.Truncate(time.Minute) // coarse timestamp for storage
 
 	// Generate hash of answers for deduplication
 	answersHash := hashAnswers(answersJSON)
 
 	// Check for duplicate: same answers hash within last 30 seconds
 	var recentCount int64
-	cutoffTime := time.Now().Add(-30 * time.Second)
+	cutoffTime := now.Add(-2 * time.Minute) // broader window to tolerate minute-level truncation
 	s.db.Model(&database.QuizResultDB{}).
 		Where("answers_hash = ? AND created_at > ?", answersHash, cutoffTime).
 		Count(&recentCount)
@@ -172,7 +174,7 @@ func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *Sc
 		HourOfDay:   meta.HourOfDay,
 		Channel:     meta.Channel,
 		EntryPoint:  meta.EntryPoint,
-		UserAgent:   meta.UserAgent,
+		CreatedAt:   createdAt,
 	}
 
 	if err := s.db.Create(&quizResult).Error; err != nil {
