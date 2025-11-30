@@ -61,9 +61,9 @@ export default function Analytics() {
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (force = false) => {
     setLoading(true);
-    const params: AnalyticsRequest = {};
+    const params: AnalyticsRequest = { force };
     if (preset === 'custom' && customStart && customEnd) {
       params.startDate = customStart;
       params.endDate = customEnd;
@@ -272,8 +272,9 @@ Please provide actionable specific recommendations.`,
             </div>
           )}
           <button
-            onClick={loadData}
+            onClick={() => loadData(true)}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+            title={isZh ? '强制刷新，重新计算数据' : 'Force refresh, recompute data'}
           >
             <RefreshCw className="w-4 h-4" />
             {isZh ? '刷新' : 'Refresh'}

@@ -212,6 +212,7 @@ export interface AnalyticsRequest {
   startDate?: string;
   endDate?: string;
   preset?: '30d' | '90d' | 'all';
+  force?: boolean; // Bypass cache and force recomputation
 }
 
 export interface AnalyticsSummary {
@@ -877,6 +878,7 @@ export const useAdminApi = () => {
     if (params?.startDate) query.set('start_date', params.startDate);
     if (params?.endDate) query.set('end_date', params.endDate);
     if (params?.preset) query.set('preset', params.preset);
+    if (params?.force) query.set('force', 'true');
     const qs = query.toString();
     return apiCall<AnalyticsResponse>(`/admin/stats/analytics${qs ? `?${qs}` : ''}`);
   };

@@ -14,6 +14,7 @@ import (
 //   - start_date: YYYY-MM-DD (optional)
 //   - end_date: YYYY-MM-DD (optional)
 //   - preset: "30d", "90d", "all" (optional, defaults to 30d)
+//   - force: "true" to bypass cache and force recomputation
 func GetAnalyticsHandler(c *gin.Context) {
 	db := database.GetDB()
 	analyticsService := services.NewAnalyticsService(db)
@@ -31,7 +32,18 @@ func GetAnalyticsHandler(c *gin.Context) {
 		}
 	}
 
-	analytics, err := analyticsService.GetAnalytics(req)
+	// Check for force refresh flag
+	forceRefresh := c.Query("force") == "true"
+
+	var analytics *services.AnalyticsResponse
+	var err error
+
+	if forceRefresh {
+		analytics, err = analyticsService.GetAnalyticsForceRefresh(req)
+	} else {
+		analytics, err = analyticsService.GetAnalytics(req)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate analytics"})
 		return
