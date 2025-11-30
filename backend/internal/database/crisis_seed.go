@@ -44,7 +44,7 @@ func EnsureDefaultCrisisConfig(db *gorm.DB) {
 	}
 
 	// Ensure settings exist
-	GetCrisisSettings(db, nil)
+	_, _ = GetCrisisSettings(db, nil)
 }
 
 // SeedCrisisKeywords populates default crisis keywords

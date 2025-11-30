@@ -52,7 +52,9 @@ func NewCrisisConfigLoader(db *gorm.DB) *CrisisConfigLoader {
 	}
 
 	// Initial load
-	loader.Reload()
+	if err := loader.Reload(); err != nil {
+		log.Printf("[CrisisConfigLoader] Initial load error: %v", err)
+	}
 
 	return loader
 }
@@ -73,7 +75,9 @@ func (l *CrisisConfigLoader) CheckAndReload() bool {
 	if needsReload {
 		log.Printf("[CrisisConfigLoader] Config version changed %d -> %d, reloading...",
 			l.currentVersion, settings.ConfigVersion)
-		l.Reload()
+		if err := l.Reload(); err != nil {
+			log.Printf("[CrisisConfigLoader] Reload error: %v", err)
+		}
 		return true
 	}
 

@@ -127,7 +127,9 @@ func (s *ResourceService) loadDefaults() {
 }
 
 // LoadConfig loads resources from a JSON config file
+// Note: This is a legacy method kept for compatibility. Use NewResourceServiceWithDB instead.
 func (s *ResourceService) LoadConfig(path string) error {
+	// #nosec G304 - path is from trusted internal config, not user input
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err

@@ -255,7 +255,9 @@ func (d *CrisisDetector) loadDefaults() {
 }
 
 // LoadConfig loads keywords from a JSON config file
+// Deprecated: Use NewCrisisDetectorWithDB for database-backed config with hot-reload
 func (d *CrisisDetector) LoadConfig(path string) error {
+	// #nosec G304 - path is from trusted internal config, not user input
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err

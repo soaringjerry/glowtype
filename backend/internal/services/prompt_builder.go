@@ -268,7 +268,9 @@ func (p *PromptBuilder) loadDefaultForbidden() {
 }
 
 // LoadGuidance loads guidance from config file
+// Note: This is a legacy method kept for compatibility. Use NewPromptBuilderWithDB instead.
 func (p *PromptBuilder) LoadGuidance(path string) error {
+	// #nosec G304 - path is from trusted internal config, not user input
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -288,7 +290,9 @@ func (p *PromptBuilder) LoadGuidance(path string) error {
 }
 
 // LoadForbidden loads forbidden phrases from config file
+// Note: This is a legacy method kept for compatibility. Use NewPromptBuilderWithDB instead.
 func (p *PromptBuilder) LoadForbidden(path string) error {
+	// #nosec G304 - path is from trusted internal config, not user input
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
