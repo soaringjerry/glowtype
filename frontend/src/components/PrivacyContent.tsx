@@ -51,15 +51,29 @@ export const PrivacyContentZh = () => {
 
 我们建议您不要在聊天中分享敏感的个人身份信息，如真实姓名、身份证号、住址、财务信息等。
 
-（三）地理位置信息
+（三）危机检测与支持资源
+
+为了保护用户安全，我们的AI聊天系统会对对话内容进行实时分析，以识别可能需要支持的情绪信号。当检测到用户可能需要帮助时，系统会温和地提供心理支持热线等专业资源信息。
+
+关于危机检测，请注意：
+
+我们不会存储用于危机检测的原始聊天内容。检测仅在会话期间实时进行，不会创建可追溯到个人的永久记录。
+
+我们会记录匿名的统计事件数据，用于研究和改进服务。此类数据仅包含：事件发生的大致时间、触发类别（如"情绪低落"等宽泛分类）、用户的光格类型、语言偏好等。这些数据不包含任何聊天内容或可识别个人身份的信息。
+
+这些匿名统计数据可能被用于学术研究，以帮助更好地理解青少年情绪健康趋势。任何研究成果仅以汇总统计形式发布，绝不涉及个人数据。
+
+您可以选择不使用AI聊天功能。危机检测旨在帮助提供支持，而非监控或评判。如果您不希望收到支持资源提示，可以直接忽略，系统会尊重您的选择。
+
+（四）地理位置信息
 
 我们可能通过您的IP地址推断您的大致地理位置，精确度仅到城市级别。我们会使用受信任的GeoIP服务进行查询，以防止滥用并做匿名的地区趋势分析；查询后不会存储您的精确IP，这是在匿名化与滥用防护之间的权衡。我们不收集精确的GPS位置或可以精确定位您具体位置的信息。
 
-（四）基础统计信息
+（五）基础统计信息
 
 我们可能收集粗略的年龄段信息，仅用于匿名汇总统计分析，以改进服务质量和进行趋势研究。
 
-（五）技术日志
+（六）技术日志
 
 与大多数网站一样，我们的服务器会自动记录标准技术日志，可能包括IP地址、浏览器类型、访问时间和页面请求等。这些信息用于维护服务稳定性和安全性。
 
@@ -265,15 +279,29 @@ If we launch a feature in the future that allows users to view conversation hist
 
 We recommend that you do not share sensitive personally identifiable information in chat, such as your real name, ID number, address, financial information, etc.
 
-(3) Geographic Location Information
+(3) Crisis Detection and Support Resources
+
+To protect user safety, our AI chat system analyzes conversation content in real-time to identify emotional signals that may indicate a need for support. When the system detects that a user may need help, it will gently offer information about professional resources such as mental health hotlines.
+
+Please note the following about crisis detection:
+
+We do not store the original chat content used for crisis detection. Detection occurs only in real-time during the session and does not create permanent records traceable to any individual.
+
+We record anonymous statistical event data for research and service improvement. Such data includes only: approximate time of the event, trigger category (broad categories such as "low mood"), user's Glowtype, language preference, etc. This data does not contain any chat content or personally identifiable information.
+
+This anonymous statistical data may be used for academic research to help better understand trends in youth emotional health. Any research findings are published only in aggregated statistical form and never involve individual data.
+
+You can choose not to use the AI chat feature. Crisis detection is designed to help provide support, not to monitor or judge. If you do not wish to receive support resource suggestions, you can simply ignore them, and the system will respect your choice.
+
+(4) Geographic Location Information
 
 We may infer your approximate geographic location through your IP address, accurate only to the city level. We use a trusted GeoIP service to do this so we can prevent abuse and run anonymous regional trend analysis; after lookup, your exact IP is not retained. We do not collect precise GPS locations or information that can pinpoint your specific location.
 
-(4) Basic Statistical Information
+(5) Basic Statistical Information
 
 We may collect rough age range information, used only for anonymous aggregated statistical analysis to improve service quality and conduct trend research.
 
-(5) Technical Logs
+(6) Technical Logs
 
 Like most websites, our servers automatically record standard technical logs, which may include IP address, browser type, access time, and page requests. This information is used to maintain service stability and security.
 

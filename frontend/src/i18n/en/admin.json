@@ -3,6 +3,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "analytics": "Data Analytics",
+    "crisis": "Crisis Analytics",
     "adminUsers": "Admin Accounts",
     "dimensions": "Dimensions",
     "questions": "Quiz Questions",
@@ -12,6 +13,7 @@
     "results": "Quiz Results",
     "prompts": "AI Prompts",
     "aiSettings": "AI Settings",
+    "crisisConfig": "Crisis Config",
     "glowpedia": "Glowpedia",
     "audit": "Audit Log",
     "settings": "Settings",
@@ -681,5 +683,56 @@
     "confirmSaved": "I have saved the recovery codes in a safe place and understand they will only be shown once",
     "done": "Done",
     "setupError": "Setup failed, please try again"
+  },
+  "crisis": {
+    "title": "Crisis Configuration",
+    "subtitle": "Configure crisis detection and response settings",
+    "configVersion": "Version",
+    "confirmResetAll": "Reset all crisis config to defaults?",
+    "tabs": {
+      "overview": "Overview",
+      "keywords": "Keywords",
+      "patterns": "Exclude Patterns",
+      "resources": "Resources",
+      "phrases": "Forbidden Phrases",
+      "guidance": "Glowtype Guidance",
+      "settings": "Settings"
+    },
+    "filter": {
+      "allLevels": "All Levels",
+      "allLanguages": "All Languages",
+      "allCountries": "All Countries",
+      "allGlowtypes": "All Glowtypes"
+    },
+    "overview": {
+      "keywords": "Keywords",
+      "patterns": "Exclude Patterns",
+      "resources": "Resources",
+      "phrases": "Forbidden Phrases",
+      "guidance": "Glowtype Guidance",
+      "hotReloadNote": "Hot Reload Enabled",
+      "hotReloadDesc": "Changes made here will take effect immediately without server restart."
+    },
+    "keyword": {
+      "keyword": "Keyword",
+      "level": "Level",
+      "language": "Language",
+      "category": "Category",
+      "slang": "Slang"
+    },
+    "settings": {
+      "detection": "Detection Settings",
+      "enableKeyword": "Enable keyword detection",
+      "enablePattern": "Enable pattern detection",
+      "enableML": "Enable ML detection (future)",
+      "session": "Session Settings",
+      "sessionTTL": "Session TTL (minutes)",
+      "maxHistory": "Max history messages",
+      "maxResourceShows": "Max resource shows per session",
+      "alerts": "Level 3 Alert Settings",
+      "enableL3Alert": "Enable Level 3 alerts",
+      "alertEmail": "Alert email",
+      "alertWebhook": "Alert webhook URL"
+    }
   }
 }

@@ -8,12 +8,13 @@ A comprehensive guide for using the Glowtype administration panel.
 
 1. [Getting Started](#1-getting-started)
 2. [Dashboard](#2-dashboard)
-3. [Content Management](#3-content-management)
-4. [Quiz Configuration](#4-quiz-configuration)
-5. [AI Configuration](#5-ai-configuration)
-6. [User Management](#6-user-management)
-7. [Analytics & Reports](#7-analytics--reports)
-8. [Personal Settings](#8-personal-settings)
+3. [Crisis Detection](#3-crisis-detection)
+4. [Content Management](#4-content-management)
+5. [Quiz Configuration](#5-quiz-configuration)
+6. [AI Configuration](#6-ai-configuration)
+7. [User Management](#7-user-management)
+8. [Analytics & Reports](#8-analytics--reports)
+9. [Personal Settings](#9-personal-settings)
 
 ---
 
@@ -41,6 +42,9 @@ The admin panel has a sidebar with the following sections:
 | Section | Description | Permission Required |
 |---------|-------------|---------------------|
 | Dashboard | Overview statistics | `stats.view` |
+| Analytics | Advanced analytics | `stats.view` |
+| Crisis Analytics | Crisis detection stats | `stats.view` |
+| Crisis Config | Crisis detection settings | superadmin only |
 | Dimensions | Personality dimensions | `dimensions.write` |
 | Questions | Quiz questions | `questions.write` |
 | Glowtypes | Result types | `glowtypes.write` |
@@ -49,7 +53,6 @@ The admin panel has a sidebar with the following sections:
 | AI Settings | AI provider config | superadmin only |
 | Glowpedia | Content management | `content.write` |
 | Results | Quiz results | `results.view` |
-| Analytics | Advanced analytics | `stats.view` |
 | Accounts | Admin users | `admin.manage` |
 | Audit Logs | Operation logs | `audit.view` |
 
@@ -97,9 +100,136 @@ Shows quiz completions by hour of day (0-23), useful for understanding user acti
 
 ---
 
-## 3. Content Management
+## 3. Crisis Detection
 
-### 3.1 Glowpedia (Light Sticks)
+Glowtype includes a multi-level crisis detection system for teen mental health support. This feature requires **superadmin** access.
+
+### 3.1 Crisis Analytics
+
+View statistics about crisis detection events:
+
+- **Total Sessions**: Sessions with any crisis signal detected
+- **By Level**: Breakdown of Level 1/2/3 detections
+- **Top Triggers**: Most frequently detected keywords
+- **Trends**: Detection trends over time
+
+### 3.2 Crisis Configuration (Superadmin Only)
+
+Access via **Crisis Config** in the sidebar.
+
+#### Overview Tab
+
+Displays current configuration status:
+- Config version (auto-increments on updates)
+- Count of keywords, patterns, resources, etc.
+- Hot-reload indicator
+
+#### Keywords Tab
+
+Manage crisis detection keywords by level:
+
+| Level | Description | Action |
+|-------|-------------|--------|
+| Level 1 | Low concern (sadness, stress) | Monitor, gentle support |
+| Level 2 | Moderate risk (hopelessness) | Show resources |
+| Level 3 | High risk (explicit self-harm) | Show resources + alert |
+
+**Add Keyword**:
+1. Click "Add Keyword"
+2. Enter keyword text
+3. Select level (1-3)
+4. Select language (en/zh/all)
+5. Save
+
+**Filters**: Filter by level or language to manage large keyword lists.
+
+#### Exclude Patterns Tab
+
+Regex patterns to reduce false positives:
+
+```
+# Examples:
+(?i)(used to|in the past).{0,15}(want|wanted).{0,10}(die|suicide)
+(?i)(新闻|报道|看到).{0,10}(自杀|死)
+```
+
+These patterns help exclude:
+- Past tense mentions
+- Third-person references
+- News/media discussions
+
+#### Resources Tab
+
+Manage crisis helpline resources by country:
+
+| Field | Description |
+|-------|-------------|
+| Country | Target region (global, CN, US, etc.) |
+| Name | Organization name (en/zh) |
+| Phone | Contact number |
+| Hours | Operating hours |
+| Description | Brief description |
+
+#### Phrases Tab
+
+Forbidden phrases that AI should never use in crisis responses.
+
+#### Guidance Tab
+
+Level-specific AI behavior guidance:
+
+| Level | Typical Guidance |
+|-------|------------------|
+| Level 1 | Empathetic listening, validate feelings |
+| Level 2 | Express concern, gently suggest resources |
+| Level 3 | Prioritize safety, show resources prominently |
+
+Can be customized per Glowtype for personalized responses.
+
+#### Settings Tab
+
+Global crisis detection settings:
+
+| Setting | Description |
+|---------|-------------|
+| Enable Keyword Detection | Toggle keyword matching |
+| Enable Pattern Detection | Toggle exclude patterns |
+| Session TTL | How long to maintain crisis context |
+| Max History | Messages to analyze for context |
+| Level 3 Alert | Enable notifications for high-risk |
+| Alert Email | Email for Level 3 notifications |
+| Alert Webhook | Slack/Discord webhook URL |
+
+### 3.3 Level 3 Alerts
+
+When enabled, Level 3 detections trigger immediate notifications:
+
+**Webhook Format** (Slack/Discord):
+- Session ID
+- Glowtype
+- Language
+- Trigger keywords
+- Message preview
+- Timestamp
+
+**Email Format**:
+- Same information as webhook
+- Requires SMTP configuration (see DEVELOPMENT.md)
+
+### 3.4 Hot Reload
+
+All crisis configuration changes take effect **immediately** without server restart:
+
+1. Admin makes change in Crisis Config
+2. Config version increments automatically
+3. Services detect version change before next detection
+4. New config is loaded automatically
+
+---
+
+## 4. Content Management
+
+### 4.1 Glowpedia (Light Sticks)
 
 Glowpedia is the in-app content library with supportive messages organized by chapters.
 
@@ -152,9 +282,9 @@ Glowpedia is the in-app content library with supportive messages organized by ch
 
 ---
 
-## 4. Quiz Configuration
+## 5. Quiz Configuration
 
-### 4.1 Dimensions
+### 5.1 Dimensions
 
 Personality dimensions are the scoring axes (like MBTI's E-I, S-N, etc.)
 
@@ -174,7 +304,7 @@ Personality dimensions are the scoring axes (like MBTI's E-I, S-N, etc.)
 - Use 3-5 dimensions for balanced results
 - Set thresholds based on expected score ranges
 
-### 4.2 Questions
+### 5.2 Questions
 
 Quiz questions with multilingual options and scoring.
 
@@ -206,7 +336,7 @@ Quiz questions with multilingual options and scoring.
 - Export questions as JSON for backup
 - Import questions from JSON to bulk update
 
-### 4.3 Glowtypes
+### 5.3 Glowtypes
 
 Result types with styling and multilingual content.
 
@@ -235,7 +365,7 @@ Result types with styling and multilingual content.
 - Test styles on both light and dark backgrounds
 - Keep gradients subtle for readability
 
-### 4.4 Scoring Rules
+### 5.4 Scoring Rules
 
 Rules that map dimension scores to Glowtypes.
 
@@ -276,9 +406,9 @@ Rules that map dimension scores to Glowtypes.
 
 ---
 
-## 5. AI Configuration
+## 6. AI Configuration
 
-### 5.1 AI Prompts
+### 6.1 AI Prompts
 
 System prompts control AI behavior in chat and insights.
 
@@ -305,7 +435,7 @@ System prompts control AI behavior in chat and insights.
 - Keep crisis detection prompt sensitive but not overly broad
 - Test prompts thoroughly before deploying
 
-### 5.2 AI Settings (Superadmin Only)
+### 6.2 AI Settings (Superadmin Only)
 
 Configure the AI provider and rate limits.
 
@@ -333,9 +463,9 @@ Configure the AI provider and rate limits.
 
 ---
 
-## 6. User Management
+## 7. User Management
 
-### 6.1 Admin Accounts (Superadmin Only)
+### 7.1 Admin Accounts (Superadmin Only)
 
 Manage administrator accounts.
 
@@ -365,7 +495,7 @@ Manage administrator accounts.
 3. Save
 4. User can no longer login
 
-### 6.2 Managing User 2FA
+### 7.2 Managing User 2FA
 
 **Force 2FA**:
 1. Edit user
@@ -379,7 +509,7 @@ Manage administrator accounts.
 3. Confirm
 4. User can login with password only and re-setup 2FA
 
-### 6.3 Custom Permissions
+### 7.3 Custom Permissions
 
 Override role defaults with custom permissions:
 
@@ -392,9 +522,9 @@ When custom permissions are set, they take precedence over role defaults.
 
 ---
 
-## 7. Analytics & Reports
+## 8. Analytics & Reports
 
-### 7.1 Quiz Results
+### 8.1 Quiz Results
 
 View individual quiz submissions (anonymous).
 
@@ -414,7 +544,7 @@ View individual quiz submissions (anonymous).
 - Device
 - Timestamp
 
-### 7.2 Advanced Analytics
+### 8.2 Advanced Analytics
 
 **Date Range Selection**:
 1. Go to **Analytics**
@@ -435,11 +565,11 @@ View individual quiz submissions (anonymous).
 
 ---
 
-## 8. Personal Settings
+## 9. Personal Settings
 
 Access via your username dropdown > "Settings"
 
-### 8.1 Change Password
+### 9.1 Change Password
 
 1. Enter current password
 2. Enter new password
@@ -450,7 +580,7 @@ Access via your username dropdown > "Settings"
 - Minimum 8 characters
 - Different from current password
 
-### 8.2 Two-Factor Authentication
+### 9.2 Two-Factor Authentication
 
 See [SECURITY.md](./SECURITY.md) for detailed 2FA instructions.
 
@@ -459,7 +589,7 @@ See [SECURITY.md](./SECURITY.md) for detailed 2FA instructions.
 - **Disable 2FA**: Enter current code to confirm
 - **Regenerate Recovery Codes**: Invalidates old codes
 
-### 8.3 Trusted Devices
+### 9.3 Trusted Devices
 
 View and manage devices that skip 2FA:
 

@@ -1,0 +1,122 @@
+{
+  "level3": {
+    "en": [
+      "suicide",
+      "kill myself",
+      "want to die",
+      "self harm",
+      "self-harm",
+      "overdose",
+      "end it all",
+      "end my life",
+      "cut myself",
+      "hang myself",
+      "jump off",
+      "slit my wrists"
+    ],
+    "zh": [
+      "自杀",
+      "想死",
+      "不想活",
+      "自残",
+      "割腕",
+      "吃药",
+      "结束一切",
+      "跳楼",
+      "上吊",
+      "想死掉",
+      "活不下去",
+      "去死"
+    ]
+  },
+  "level2": {
+    "en": [
+      "no hope",
+      "hopeless",
+      "worthless",
+      "no one cares",
+      "nobody cares",
+      "burden",
+      "give up",
+      "can't go on",
+      "what's the point",
+      "no reason to live",
+      "better off without me",
+      "disappear",
+      "no way out"
+    ],
+    "zh": [
+      "绝望",
+      "没人在乎",
+      "我是累赘",
+      "跟你说也没用",
+      "撑不下去",
+      "活着没意思",
+      "没有希望",
+      "算了吧",
+      "没人理解我",
+      "消失掉",
+      "无路可走",
+      "没有出路"
+    ]
+  },
+  "level1": {
+    "en": [
+      "so sad",
+      "hate my life",
+      "feel empty",
+      "overwhelming",
+      "exhausted",
+      "can't take it",
+      "stressed out",
+      "breaking down",
+      "falling apart",
+      "can't cope"
+    ],
+    "zh": [
+      "好累",
+      "好难过",
+      "讨厌自己",
+      "压力好大",
+      "心里空空的",
+      "受不了了",
+      "快崩溃了",
+      "太难了",
+      "撑不住",
+      "好烦"
+    ]
+  },
+  "slangMappings": {
+    "离开蓝星": "想死",
+    "去跳河": "自杀",
+    "18+版本": "不想长大",
+    "摆烂到底": "放弃",
+    "永远离开": "自杀",
+    "leave this world": "suicide",
+    "check out": "suicide",
+    "end the pain": "self-harm"
+  },
+  "excludePatterns": [
+    "(?i)(以前|过去|曾经).{0,10}(想过|有过).{0,10}(自杀|死)",
+    "(?i)(朋友|他|她|同学|别人).{0,10}(想|说).{0,10}(死|自杀)",
+    "(?i)(新闻|报道|看到|听说).{0,10}(自杀|死)",
+    "(?i)(used to|in the past|before).{0,15}(want|wanted).{0,10}(die|suicide)",
+    "(?i)(friend|someone|they).{0,10}(said|told|mentioned).{0,10}(suicide|die)",
+    "(?i)(news|article|read about).{0,10}(suicide|died)"
+  ],
+  "declineKeywords": [
+    "不想打电话",
+    "别再说了",
+    "不要再提",
+    "别再提了",
+    "不需要热线",
+    "不用了",
+    "别提热线",
+    "don't want to call",
+    "stop mentioning",
+    "don't mention",
+    "no hotline",
+    "don't need help",
+    "stop suggesting"
+  ]
+}

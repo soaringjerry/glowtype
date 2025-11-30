@@ -51,6 +51,13 @@ func InitDB(cfg config.Config) *gorm.DB {
 		&ScoringRuleDB{},
 		&QuizResultDB{},
 		&ChatSessionDB{},
+		&CrisisEventDB{},
+		&CrisisKeywordDB{},
+		&CrisisExcludePatternDB{},
+		&CrisisResourceDB{},
+		&CrisisForbiddenPhraseDB{},
+		&CrisisGlowtypeGuidanceDB{},
+		&CrisisSettingsDB{},
 		&AIPromptDB{},
 		&BookChapterDB{},
 		&GlowStickDB{},
@@ -81,6 +88,9 @@ func InitDB(cfg config.Config) *gorm.DB {
 
 	// Always ensure default Glowpedia content exists (supports upgrades)
 	EnsureDefaultGlowpedia(db)
+
+	// Always ensure default crisis config exists (supports upgrades)
+	EnsureDefaultCrisisConfig(db)
 
 	// Auto-seed if SEED_DB=true
 	// SEED_DB_FORCE=true will clear existing data and re-seed

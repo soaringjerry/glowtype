@@ -1,0 +1,89 @@
+{
+  "globalFallback": [
+    {
+      "name": "International Association for Suicide Prevention",
+      "url": "https://www.iasp.info/resources/Crisis_Centres/",
+      "type": "directory",
+      "i18n": {
+        "en": "Find your local crisis center",
+        "zh": "查找当地危机中心"
+      }
+    },
+    {
+      "name": "Befrienders Worldwide",
+      "url": "https://www.befrienders.org/find-a-helpline",
+      "type": "directory",
+      "i18n": {
+        "en": "Find a helpline near you",
+        "zh": "查找附近的帮助热线"
+      }
+    }
+  ],
+  "byCountry": {
+    "CN": [
+      {"name": "全国心理援助热线", "phone": "400-161-9995", "type": "hotline", "region": "CN"},
+      {"name": "北京心理危机研究与干预中心", "phone": "010-82951332", "type": "hotline", "region": "CN"},
+      {"name": "希望24热线", "phone": "400-161-9995", "type": "hotline", "region": "CN"}
+    ],
+    "SG": [
+      {"name": "Samaritans of Singapore (SOS)", "phone": "1-767", "type": "hotline", "region": "SG"},
+      {"name": "IMH Helpline", "phone": "6389-2222", "type": "hotline", "region": "SG"},
+      {"name": "Tinkle Friend", "phone": "1800-274-4788", "type": "hotline", "region": "SG"}
+    ],
+    "US": [
+      {"name": "988 Suicide & Crisis Lifeline", "phone": "988", "type": "hotline", "region": "US"},
+      {"name": "Crisis Text Line", "phone": "Text HOME to 741741", "type": "text", "region": "US"},
+      {"name": "Trevor Project (LGBTQ+)", "phone": "1-866-488-7386", "type": "hotline", "region": "US"}
+    ],
+    "UK": [
+      {"name": "Samaritans", "phone": "116 123", "type": "hotline", "region": "UK"},
+      {"name": "SHOUT", "phone": "Text SHOUT to 85258", "type": "text", "region": "UK"},
+      {"name": "Childline", "phone": "0800 1111", "type": "hotline", "region": "UK"}
+    ],
+    "TW": [
+      {"name": "生命線", "phone": "1925", "type": "hotline", "region": "TW"},
+      {"name": "安心專線", "phone": "1980", "type": "hotline", "region": "TW"},
+      {"name": "張老師專線", "phone": "1980", "type": "hotline", "region": "TW"}
+    ],
+    "HK": [
+      {"name": "撒瑪利亞防止自殺會", "phone": "2389 2222", "type": "hotline", "region": "HK"},
+      {"name": "香港撒瑪利亞防止自殺會", "phone": "2382 0000", "type": "hotline", "region": "HK"},
+      {"name": "利民會", "phone": "2382 2007", "type": "hotline", "region": "HK"}
+    ],
+    "MY": [
+      {"name": "Befrienders", "phone": "03-7956 8145", "type": "hotline", "region": "MY"},
+      {"name": "MIASA", "phone": "03-7932 1100", "type": "hotline", "region": "MY"}
+    ],
+    "AU": [
+      {"name": "Lifeline", "phone": "13 11 14", "type": "hotline", "region": "AU"},
+      {"name": "Kids Helpline", "phone": "1800 55 1800", "type": "hotline", "region": "AU"},
+      {"name": "Beyond Blue", "phone": "1300 22 4636", "type": "hotline", "region": "AU"}
+    ],
+    "CA": [
+      {"name": "Canada Suicide Prevention", "phone": "1-833-456-4566", "type": "hotline", "region": "CA"},
+      {"name": "Kids Help Phone", "phone": "1-800-668-6868", "type": "hotline", "region": "CA"}
+    ],
+    "JP": [
+      {"name": "いのちの電話", "phone": "0570-783-556", "type": "hotline", "region": "JP"},
+      {"name": "よりそいホットライン", "phone": "0120-279-338", "type": "hotline", "region": "JP"}
+    ],
+    "KR": [
+      {"name": "자살예방상담전화", "phone": "1393", "type": "hotline", "region": "KR"},
+      {"name": "정신건강위기상담전화", "phone": "1577-0199", "type": "hotline", "region": "KR"}
+    ]
+  },
+  "byLanguage": {
+    "zh": [
+      {"name": "全国心理援助热线", "phone": "400-161-9995", "type": "hotline"}
+    ],
+    "en": [
+      {"name": "988 Suicide & Crisis Lifeline", "phone": "988", "type": "hotline"}
+    ],
+    "ja": [
+      {"name": "いのちの電話", "phone": "0570-783-556", "type": "hotline"}
+    ],
+    "ko": [
+      {"name": "자살예방상담전화", "phone": "1393", "type": "hotline"}
+    ]
+  }
+}

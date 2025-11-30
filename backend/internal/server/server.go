@@ -195,6 +195,7 @@ func New(cfg config.Config) *gin.Engine {
 			stats.GET("/stats/glowtypes", handlers.GetGlowtypeDistribution)
 			stats.GET("/stats/enhanced", handlers.GetEnhancedStatsHandler)
 			stats.GET("/stats/analytics", handlers.GetAnalyticsHandler)
+			stats.GET("/stats/crisis", handlers.GetCrisisAnalyticsHandler)
 
 			// Analytics AI Chat (uses same permission as stats)
 			analyticsChatHandler := handlers.NewAnalyticsChatHandler(chatService)
@@ -231,6 +232,51 @@ func New(cfg config.Config) *gin.Engine {
 			reset.POST("/rules/reset", handlers.ResetRulesHandler)
 			reset.POST("/prompts/reset-all", handlers.ResetPromptsHandler)
 			reset.POST("/glowpedia/reset", handlers.ResetGlowpediaHandler)
+		}
+
+		// Crisis Configuration (superadmin only for now)
+		crisis := admin.Group("/crisis")
+		crisis.Use(handlers.RequireSuperAdmin())
+		{
+			// Overview and settings
+			crisis.GET("/overview", handlers.GetCrisisConfigOverview)
+			crisis.GET("/settings", handlers.GetCrisisSettingsHandler)
+			crisis.PUT("/settings", handlers.UpdateCrisisSettingsHandler)
+			crisis.GET("/version", handlers.GetCrisisConfigVersion)
+
+			// Keywords CRUD
+			crisis.GET("/keywords", handlers.ListCrisisKeywords)
+			crisis.POST("/keywords", handlers.CreateCrisisKeyword)
+			crisis.POST("/keywords/bulk", handlers.BulkCreateCrisisKeywords)
+			crisis.PUT("/keywords/:id", handlers.UpdateCrisisKeyword)
+			crisis.DELETE("/keywords/:id", handlers.DeleteCrisisKeyword)
+
+			// Exclude patterns CRUD
+			crisis.GET("/patterns", handlers.ListCrisisExcludePatterns)
+			crisis.POST("/patterns", handlers.CreateCrisisExcludePattern)
+			crisis.PUT("/patterns/:id", handlers.UpdateCrisisExcludePattern)
+			crisis.DELETE("/patterns/:id", handlers.DeleteCrisisExcludePattern)
+
+			// Resources CRUD
+			crisis.GET("/resources", handlers.ListCrisisResources)
+			crisis.POST("/resources", handlers.CreateCrisisResource)
+			crisis.PUT("/resources/:id", handlers.UpdateCrisisResource)
+			crisis.DELETE("/resources/:id", handlers.DeleteCrisisResource)
+
+			// Forbidden phrases CRUD
+			crisis.GET("/phrases", handlers.ListCrisisForbiddenPhrases)
+			crisis.POST("/phrases", handlers.CreateCrisisForbiddenPhrase)
+			crisis.PUT("/phrases/:id", handlers.UpdateCrisisForbiddenPhrase)
+			crisis.DELETE("/phrases/:id", handlers.DeleteCrisisForbiddenPhrase)
+
+			// Glowtype guidance CRUD
+			crisis.GET("/guidance", handlers.ListCrisisGlowtypeGuidance)
+			crisis.POST("/guidance", handlers.CreateCrisisGlowtypeGuidance)
+			crisis.PUT("/guidance/:id", handlers.UpdateCrisisGlowtypeGuidance)
+			crisis.DELETE("/guidance/:id", handlers.DeleteCrisisGlowtypeGuidance)
+
+			// Reset to defaults
+			crisis.POST("/reset", handlers.ResetCrisisConfigHandler)
 		}
 	}
 

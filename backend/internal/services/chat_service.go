@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -30,6 +31,13 @@ type ChatService struct {
 	db         *gorm.DB
 
 	rateLimiter *ipRateLimiter
+
+	// New components for emotion companion features
+	sessionStore   *SessionStore
+	crisisDetector *CrisisDetector
+	resourceSvc    *ResourceService
+	promptBuilder  *PromptBuilder
+	alertService   *CrisisAlertService
 }
 
 // aiConfig holds the effective AI configuration
@@ -85,15 +93,34 @@ func NewChatService(cfg config.Config, db *gorm.DB) *ChatService {
 		log.Printf("[ChatService] WARNING: provider=openai but OPENAI_API_KEY is empty!")
 	}
 
+	// Initialize new components with database-backed configuration (supports hot-reload)
+	sessionStore := NewSessionStore(SessionTTL)
+
+	// Use database-backed crisis detector for hot-reload support
+	crisisDetector := NewCrisisDetectorWithDB(db)
+
+	// ResourceService and PromptBuilder now use the shared config loader
+	configLoader := crisisDetector.GetConfigLoader()
+	resourceSvc := NewResourceServiceWithDB(configLoader)
+	promptBuilder := NewPromptBuilderWithDB(configLoader)
+	alertService := NewCrisisAlertService(db, configLoader)
+
+	log.Printf("[ChatService] Emotion companion components initialized with DB-backed config (hot-reload enabled)")
+
 	return &ChatService{
-		sessions:    make(map[string]time.Time),
-		provider:    provider,
-		envAPIKey:   apiKey,
-		envBaseURL:  baseURL,
-		envModel:    model,
-		client:      &http.Client{Timeout: 30 * time.Second},
-		db:          db,
-		rateLimiter: newIPRateLimiter(),
+		sessions:       make(map[string]time.Time),
+		provider:       provider,
+		envAPIKey:      apiKey,
+		envBaseURL:     baseURL,
+		envModel:       model,
+		client:         &http.Client{Timeout: 30 * time.Second},
+		db:             db,
+		rateLimiter:    newIPRateLimiter(),
+		sessionStore:   sessionStore,
+		crisisDetector: crisisDetector,
+		resourceSvc:    resourceSvc,
+		promptBuilder:  promptBuilder,
+		alertService:   alertService,
 	}
 }
 
@@ -142,12 +169,24 @@ func (s *ChatService) getEffectiveConfig() aiConfig {
 	}
 }
 
-func (s *ChatService) CreateSession(_ models.ChatSessionRequest) models.ChatSessionResponse {
+func (s *ChatService) CreateSession(req models.ChatSessionRequest) models.ChatSessionResponse {
 	id := uuid.New().String()
 
 	s.mu.Lock()
 	s.sessions[id] = time.Now()
 	s.mu.Unlock()
+
+	// Store rich context in SessionStore
+	sessionCtx := &SessionContext{
+		GlowtypeCode:    req.GlowtypeCode,
+		GlowtypeName:    req.GlowtypeID, // GlowtypeID is the localized name
+		DimensionScores: req.DimensionScores,
+		Language:        req.Language,
+	}
+	s.sessionStore.Create(id, sessionCtx)
+
+	log.Printf("[ChatService] Session created: id=%s, glowtype=%s, lang=%s",
+		id, req.GlowtypeCode, req.Language)
 
 	return models.ChatSessionResponse{SessionID: id}
 }
@@ -157,33 +196,130 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 	_, exists := s.sessions[req.SessionID]
 	s.mu.Unlock()
 
+	// Get session context (may be nil for anonymous sessions)
+	sessionCtx, hasSessionCtx := s.sessionStore.Get(req.SessionID)
+	if hasSessionCtx {
+		s.sessionStore.Touch(req.SessionID)
+	}
+
 	// Very lightweight safety guardrail: if no session, still respond but hint.
 	var prefix string
-	if !exists {
+	if !exists && !hasSessionCtx {
 		prefix = "This is a temporary anonymous chat. "
 		if req.Language == "zh-CN" {
 			prefix = "这是一个临时的匿名聊天窗口。"
 		}
 	}
 
+	// Increment message count
+	messageIndex := 0
+	if hasSessionCtx {
+		messageIndex = s.sessionStore.IncrementMessageCount(req.SessionID)
+	}
+
+	// Convert models.ChatHistoryItem to services.ChatHistoryItem for crisis detection
+	var history []ChatHistoryItem
+	for _, h := range req.History {
+		history = append(history, ChatHistoryItem{Role: h.Role, Content: h.Content})
+	}
+
+	// Run crisis detection
+	crisisResult := s.crisisDetector.Detect(context.Background(), req.Message, history)
+
+	// Check if user is declining resources
+	if s.crisisDetector.DetectsResourceDecline(req.Message) {
+		s.sessionStore.SetResourceDeclined(req.SessionID)
+		log.Printf("[ChatService] User declined resources: session=%s", req.SessionID)
+	}
+
+	// Update session with crisis level
+	if hasSessionCtx && crisisResult.Level > 0 {
+		s.sessionStore.SetCrisisLevel(req.SessionID, crisisResult.Level)
+	}
+
+	// Determine if we should show resources
+	var resources []models.CrisisResource
+	showResources := crisisResult.Level >= CrisisLevelMid &&
+		crisisResult.NeedsResponse &&
+		s.sessionStore.ShouldShowResources(req.SessionID)
+
+	if showResources {
+		// Get appropriate resources
+		region := "" // Could be extracted from user agent or settings in future
+		svcResources := s.resourceSvc.GetResources(req.Language, region, crisisResult.Level)
+
+		// Convert to models.CrisisResource
+		for _, r := range svcResources {
+			resources = append(resources, models.CrisisResource{
+				Name:   r.Name,
+				Phone:  r.Phone,
+				URL:    r.URL,
+				Region: r.Region,
+			})
+		}
+
+		// Record that resources were shown
+		s.sessionStore.RecordResourceShown(req.SessionID, messageIndex)
+	}
+
+	// Log crisis event for research (anonymous)
+	if crisisResult.Level >= CrisisLevelMid && s.db != nil {
+		s.logCrisisEvent(req.SessionID, sessionCtx, crisisResult, messageIndex)
+	}
+
+	// Send Level 3 alert if configured
+	if crisisResult.Level == CrisisLevelHigh && s.alertService != nil {
+		glowtypeCode := ""
+		if hasSessionCtx {
+			glowtypeCode = sessionCtx.GlowtypeCode
+		}
+		s.alertService.SendLevel3Alert(CrisisAlertPayload{
+			SessionID:       req.SessionID,
+			Level:           crisisResult.Level,
+			Triggers:        crisisResult.Triggers,
+			TriggerCategory: crisisResult.TriggerCategory,
+			Message:         req.Message,
+			Glowtype:        glowtypeCode,
+			Language:        req.Language,
+			DetectedAt:      time.Now(),
+		})
+	}
+
 	// Get effective AI config (DB first, then env fallback)
 	cfg := s.getEffectiveConfig()
 
+	// Build personalized system prompt
+	glowtypeCtx := GlowtypeContext{
+		Language: req.Language,
+	}
+	resourcesDeclined := false
+	if hasSessionCtx {
+		glowtypeCtx.Code = sessionCtx.GlowtypeCode
+		glowtypeCtx.LocalizedName = sessionCtx.GlowtypeName
+		glowtypeCtx.DimensionScores = sessionCtx.DimensionScores
+		resourcesDeclined = sessionCtx.ResourceDeclined
+	}
+
+	systemPrompt := s.promptBuilder.BuildSystemPrompt(glowtypeCtx, crisisResult.Level, resourcesDeclined)
+
 	// Provider-backed AI reply
 	if cfg.provider == "openai" && cfg.apiKey != "" {
-		aiReply, err := s.callOpenAIChat(cfg, req.Message, req.Language)
+		aiReply, err := s.callOpenAIWithSystem(cfg, systemPrompt, req.Message, history)
 		if err != nil {
 			log.Printf("[ChatService] Reply: OpenAI call failed: %v", err)
 		} else if aiReply != "" {
 			return models.ChatMessageResponse{
 				Reply:        aiReply,
 				SafetyNotice: safetyNotice(req.Language),
+				CrisisLevel:  crisisResult.Level,
+				Resources:    resources,
 			}
 		}
 	} else {
 		log.Printf("[ChatService] Reply: skipping AI (provider=%q, hasKey=%v)", cfg.provider, cfg.apiKey != "")
 	}
 
+	// Fallback response
 	reply := fmt.Sprintf("%sI hear that you are going through something difficult. This space is for gentle reflection, not diagnosis.", prefix)
 	if req.Language == "zh-CN" || req.Language == "zh" {
 		reply = fmt.Sprintf("%s听起来你最近不太容易。这里是一个轻松聊聊情绪的地方，不是专业诊断。", prefix)
@@ -192,7 +328,62 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 	return models.ChatMessageResponse{
 		Reply:        reply,
 		SafetyNotice: safetyNotice(req.Language),
+		CrisisLevel:  crisisResult.Level,
+		Resources:    resources,
 	}
+}
+
+// logCrisisEvent logs a crisis event to the database for research purposes
+func (s *ChatService) logCrisisEvent(sessionID string, ctx *SessionContext, result CrisisResult, messageIndex int) {
+	glowtypeCode := ""
+	language := ""
+	totalMessages := 0
+
+	if ctx != nil {
+		glowtypeCode = ctx.GlowtypeCode
+		language = ctx.Language
+		totalMessages = ctx.MessageCount
+	}
+
+	event := database.CrisisEventDB{
+		SessionID:       sessionID,
+		GlowtypeCode:    glowtypeCode,
+		Language:        language,
+		RiskLevel:       result.Level,
+		TriggerCategory: result.TriggerCategory,
+		Via:             result.Via,
+		MessageIndex:    messageIndex,
+		TotalMessages:   totalMessages,
+	}
+
+	if err := s.db.Create(&event).Error; err != nil {
+		log.Printf("[ChatService] Failed to log crisis event: %v", err)
+	} else {
+		log.Printf("[ChatService] Crisis event logged: level=%d, category=%s, via=%s",
+			result.Level, result.TriggerCategory, result.Via)
+	}
+}
+
+// callOpenAIWithSystem calls OpenAI with a custom system prompt and conversation history
+func (s *ChatService) callOpenAIWithSystem(cfg aiConfig, systemPrompt, message string, history []ChatHistoryItem) (string, error) {
+	messages := []openAIMessage{
+		{Role: "system", Content: systemPrompt},
+	}
+
+	// Add conversation history (limited to recent messages)
+	maxHistory := 10
+	start := 0
+	if len(history) > maxHistory {
+		start = len(history) - maxHistory
+	}
+	for _, h := range history[start:] {
+		messages = append(messages, openAIMessage{Role: h.Role, Content: h.Content})
+	}
+
+	// Add current user message
+	messages = append(messages, openAIMessage{Role: "user", Content: message})
+
+	return s.callOpenAI(cfg, messages)
 }
 
 // GenerateInsight returns a concise insight via provider (OpenAI) if configured, otherwise a static fallback.

@@ -43,12 +43,24 @@ const callBackendInsight = async (prompt: string, systemInstruction: string, lan
   }
 };
 
-const startChatSession = async (lang: string) => {
+interface ChatSessionOptions {
+  language: string;
+  glowtypeCode?: string;
+  glowtypeId?: string; // Localized name
+  dimensionScores?: Record<string, number>;
+}
+
+const startChatSession = async (options: ChatSessionOptions) => {
   try {
     const res = await fetch(`${getApiBaseUrl()}/chat/session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ language: lang }),
+      body: JSON.stringify({
+        language: options.language,
+        glowtypeCode: options.glowtypeCode,
+        glowtypeId: options.glowtypeId,
+        dimensionScores: options.dimensionScores,
+      }),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -58,19 +70,55 @@ const startChatSession = async (lang: string) => {
   }
 };
 
-const sendChatMessage = async (sessionId: string, message: string, lang: string) => {
+interface ChatHistoryItem {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface CrisisResource {
+  name: string;
+  phone?: string;
+  url?: string;
+  region?: string;
+}
+
+interface ChatMessageResult {
+  reply: string;
+  crisisLevel: number;
+  resources: CrisisResource[];
+}
+
+const sendChatMessage = async (
+  sessionId: string,
+  message: string,
+  lang: string,
+  history?: ChatHistoryItem[]
+): Promise<ChatMessageResult> => {
   try {
     const res = await fetch(`${getApiBaseUrl()}/chat/message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, message, language: lang }),
+      body: JSON.stringify({
+        sessionId,
+        message,
+        language: lang,
+        history: history || [],
+      }),
     });
     if (!res.ok) throw new Error(`API Error: ${res.status}`);
     const data = await res.json();
-    return data.reply as string;
+    return {
+      reply: data.reply || '',
+      crisisLevel: data.crisisLevel || 0,
+      resources: data.resources || [],
+    };
   } catch (error) {
     console.error("Chat API Error:", error);
-    return lang === 'zh' ? '抱歉，稍后再试。' : "Sorry, please try again later.";
+    return {
+      reply: lang === 'zh' ? '抱歉，稍后再试。' : "Sorry, please try again later.",
+      crisisLevel: 0,
+      resources: [],
+    };
   }
 };
 
@@ -790,11 +838,19 @@ interface ChatViewProps {
   onEnd: () => void;
   lang: 'en' | 'zh';
   onCrisis: () => void;
+  glowtypeCode?: string;
 }
 
-const ChatView = ({ onEnd, lang, onCrisis }: ChatViewProps) => {
+interface ChatMessage {
+  id: number;
+  text: string;
+  sender: 'user' | 'bot';
+  resources?: CrisisResource[];
+}
+
+const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
   const t = TRANSLATIONS[lang].chat;
-  const [messages, setMessages] = useState<Array<{id: number, text: string, sender: string}>>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 1, text: t.intro, sender: 'bot' }
   ]);
   const [input, setInput] = useState("");
@@ -805,26 +861,39 @@ const ChatView = ({ onEnd, lang, onCrisis }: ChatViewProps) => {
   useEffect(() => { endOfMsgRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
 
   useEffect(() => {
-    startChatSession(lang).then((id) => {
+    startChatSession({ language: lang, glowtypeCode }).then((id) => {
       if (id) setSessionId(id);
     });
-  }, [lang]);
+  }, [lang, glowtypeCode]);
+
+  // Build conversation history for API (exclude intro message, limit to last 10)
+  const buildHistory = (): ChatHistoryItem[] => {
+    return messages
+      .slice(1) // Skip intro
+      .slice(-10) // Last 10 messages
+      .map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text,
+      })) as ChatHistoryItem[];
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     const userMessage = input.trim();
-    const newMsg = { id: Date.now(), text: userMessage, sender: 'user' };
+    const newMsg: ChatMessage = { id: Date.now(), text: userMessage, sender: 'user' };
     setMessages(prev => [...prev, newMsg]);
     setInput("");
     setIsTyping(true);
 
-    // Build conversation history for context (last 10 messages)
-    if (!sessionId) {
-      const newSession = await startChatSession(lang);
+    // Ensure session exists
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      const newSession = await startChatSession({ language: lang, glowtypeCode });
       if (newSession) {
         setSessionId(newSession);
+        activeSessionId = newSession;
       } else {
         setIsTyping(false);
         setMessages(prev => [...prev, { id: Date.now() + 1, text: lang === 'zh' ? '暂时无法连接，请稍后再试。' : 'Unable to connect right now, please try again later.', sender: 'bot' }]);
@@ -832,11 +901,52 @@ const ChatView = ({ onEnd, lang, onCrisis }: ChatViewProps) => {
       }
     }
 
-    const botResponseText = await sendChatMessage(sessionId || '', userMessage, lang);
+    const history = buildHistory();
+    const result = await sendChatMessage(activeSessionId, userMessage, lang, history);
 
     setIsTyping(false);
-    setMessages(prev => [...prev, { id: Date.now() + 1, text: botResponseText, sender: 'bot' }]);
+
+    const botMsg: ChatMessage = {
+      id: Date.now() + 1,
+      text: result.reply,
+      sender: 'bot',
+      resources: result.resources?.length > 0 ? result.resources : undefined,
+    };
+    setMessages(prev => [...prev, botMsg]);
   };
+
+  // Render resource card
+  const ResourceCard = ({ resources }: { resources: CrisisResource[] }) => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-xl"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Heart size={14} className="text-rose-500" />
+        <span className="text-xs font-bold text-rose-700">
+          {lang === 'zh' ? '支持资源' : 'Support Resources'}
+        </span>
+      </div>
+      <div className="space-y-2">
+        {resources.slice(0, 3).map((r, i) => (
+          <div key={i} className="flex items-center justify-between text-xs">
+            <span className="text-rose-800 font-medium">{r.name}</span>
+            {r.phone && (
+              <a href={`tel:${r.phone}`} className="px-2 py-1 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-colors">
+                {r.phone}
+              </a>
+            )}
+            {r.url && !r.phone && (
+              <a href={r.url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-colors flex items-center gap-1">
+                {lang === 'zh' ? '访问' : 'Visit'} <ExternalLink size={10} />
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#FDFCFE] relative z-50">
@@ -886,6 +996,10 @@ const ChatView = ({ onEnd, lang, onCrisis }: ChatViewProps) => {
               }`}>
                 {msg.text}
               </div>
+              {/* Show crisis resources if available for this message */}
+              {msg.sender === 'bot' && msg.resources && msg.resources.length > 0 && (
+                <ResourceCard resources={msg.resources} />
+              )}
             </div>
           </motion.div>
         ))}
@@ -1285,7 +1399,7 @@ const MainApp = () => {
           {view === 'landing' && (<motion.div key="landing" exit={{ opacity: 0, y: -20 }} className="absolute w-full top-0"><HeroView onStart={() => setView('quiz')} onViewSafety={() => setView('safety')} lang={lang} /></motion.div>)}
           {view === 'quiz' && (<motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><QuizView onComplete={handleQuizComplete} lang={lang} /></motion.div>)}
           {view === 'result' && (<motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute w-full top-0"><ResultView onChat={() => { trackEvent('ai_chat_start'); setView('chat'); }} onHelp={() => setView('crisis')} lang={lang} resultType={resultType} apiPrompts={apiPrompts} /></motion.div>)}
-          {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} /></motion.div>)}
+          {view === 'chat' && (<motion.div key="chat" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25 }} className="fixed inset-0 z-50 bg-white"><ChatView onEnd={() => setView('result')} lang={lang} onCrisis={() => setView('crisis')} glowtypeCode={resultType || undefined} /></motion.div>)}
           {view === 'safety' && (<motion.div key="safety" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute w-full top-0 z-30"><SafetyView onBack={() => setView('landing')} lang={lang} /></motion.div>)}
           {view === 'learn' && (<motion.div key="learn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><LearnView onBack={() => setView('landing')} lang={lang} userType={resultType} /></motion.div>)}
           {view === 'terms' && (<motion.div key="terms" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="absolute w-full top-0 z-30"><TermsView onBack={() => { setView('landing'); window.history.pushState({}, '', '/'); }} lang={lang} /></motion.div>)}

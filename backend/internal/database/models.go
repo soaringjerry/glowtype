@@ -265,6 +265,201 @@ func (ChatSessionDB) TableName() string {
 	return "chat_sessions"
 }
 
+// ============ Crisis Events (for research) ============
+
+// CrisisEventDB logs crisis detection events for research (NO message content)
+// This data is anonymized and used for improving crisis detection systems
+type CrisisEventDB struct {
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	TenantID *uint  `gorm:"index" json:"tenantId"`
+
+	// Anonymous identifiers
+	SessionID string `gorm:"index;not null" json:"sessionId"` // Anonymous session
+
+	// User context (anonymized)
+	GlowtypeCode string `gorm:"index" json:"glowtypeCode"` // User's light type
+	Language     string `json:"language"`
+	Region       string `gorm:"index" json:"region"` // Derived from IP (anonymized)
+	DeviceType   string `json:"deviceType"`
+
+	// Crisis detection results
+	RiskLevel       int    `gorm:"index" json:"riskLevel"`       // 1, 2, or 3
+	TriggerCategory string `json:"triggerCategory"`              // hopelessness/self-harm/isolation
+	Via             string `json:"via"`                          // keyword/pattern/ml_model
+
+	// Conversation context (NO content)
+	MessageIndex  int `json:"messageIndex"`  // Which message triggered detection
+	TotalMessages int `json:"totalMessages"` // Total messages in session at time of event
+
+	// Timing
+	CreatedAt time.Time `gorm:"index" json:"createdAt"`
+}
+
+func (CrisisEventDB) TableName() string {
+	return "crisis_events"
+}
+
+// ============ Crisis Configuration (Admin-configurable, Hot-reloadable) ============
+
+// CrisisKeywordDB stores crisis detection keywords
+type CrisisKeywordDB struct {
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	TenantID *uint  `gorm:"index" json:"tenantId"`
+	Level    int    `gorm:"index;not null" json:"level"`    // 1, 2, or 3
+	Language string `gorm:"index;not null" json:"language"` // en, zh
+	Keyword  string `gorm:"not null" json:"keyword"`
+	Category string `json:"category"` // hopelessness, self-harm, isolation
+	IsSlang  bool   `gorm:"default:false" json:"isSlang"`
+	SlangFor string `json:"slangFor"` // If slang, what it maps to
+	IsActive bool   `gorm:"default:true" json:"isActive"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (CrisisKeywordDB) TableName() string {
+	return "crisis_keywords"
+}
+
+// CrisisExcludePatternDB stores patterns to exclude from crisis detection
+type CrisisExcludePatternDB struct {
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	TenantID    *uint  `gorm:"index" json:"tenantId"`
+	Pattern     string `gorm:"not null" json:"pattern"`           // Regex or simple pattern
+	PatternType string `gorm:"default:contains" json:"patternType"` // contains, regex, prefix, suffix
+	Description string `json:"description"`                       // e.g., "Past tense - was feeling"
+	Language    string `gorm:"index" json:"language"`             // en, zh, or empty for all
+	IsActive    bool   `gorm:"default:true" json:"isActive"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (CrisisExcludePatternDB) TableName() string {
+	return "crisis_exclude_patterns"
+}
+
+// CrisisResourceDB stores crisis helpline resources by region
+type CrisisResourceDB struct {
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	TenantID *uint  `gorm:"index" json:"tenantId"`
+	Country  string `gorm:"index;not null" json:"country"` // CN, US, SG, etc.
+	Language string `gorm:"index" json:"language"`         // For language-specific resources
+	Name     string `gorm:"not null" json:"name"`
+	NameZh   string `json:"nameZh"`
+	Phone    string `json:"phone"`
+	URL      string `json:"url"`
+	Hours    string `json:"hours"`    // e.g., "24/7", "9am-9pm"
+	Priority int    `gorm:"default:0" json:"priority"` // Higher = shown first
+	IsActive bool   `gorm:"default:true" json:"isActive"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (CrisisResourceDB) TableName() string {
+	return "crisis_resources"
+}
+
+// CrisisForbiddenPhraseDB stores phrases AI should never say
+type CrisisForbiddenPhraseDB struct {
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	TenantID    *uint  `gorm:"index" json:"tenantId"`
+	Language    string `gorm:"index;not null" json:"language"` // en, zh
+	Phrase      string `gorm:"not null" json:"phrase"`
+	Alternative string `json:"alternative"` // Suggested alternative
+	Category    string `json:"category"`    // diagnosis, dismissive, toxic_positivity
+	IsActive    bool   `gorm:"default:true" json:"isActive"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (CrisisForbiddenPhraseDB) TableName() string {
+	return "crisis_forbidden_phrases"
+}
+
+// CrisisGlowtypeGuidanceDB stores per-glowtype AI guidance
+type CrisisGlowtypeGuidanceDB struct {
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	TenantID     *uint  `gorm:"index" json:"tenantId"`
+	GlowtypeCode string `gorm:"index;not null" json:"glowtypeCode"` // radiant-nebula, etc.
+	Language     string `gorm:"index;not null" json:"language"`     // en, zh
+	FieldType    string `gorm:"index;not null" json:"fieldType"`    // energyStyle, expressionStyle, metaphor, selfCareTip
+	Content      string `gorm:"type:text;not null" json:"content"`
+	DisplayOrder int    `gorm:"default:0" json:"displayOrder"`
+	IsActive     bool   `gorm:"default:true" json:"isActive"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (CrisisGlowtypeGuidanceDB) TableName() string {
+	return "crisis_glowtype_guidance"
+}
+
+// CrisisSettingsDB stores global crisis detection settings
+type CrisisSettingsDB struct {
+	ID       uint  `gorm:"primaryKey" json:"id"`
+	TenantID *uint `gorm:"index" json:"tenantId"`
+
+	// Detection settings
+	SessionTTLMinutes         int  `gorm:"default:60" json:"sessionTTLMinutes"`
+	MaxHistoryMessages        int  `gorm:"default:10" json:"maxHistoryMessages"`
+	MaxResourceShowsPerSession int  `gorm:"default:2" json:"maxResourceShowsPerSession"`
+	EnableKeywordDetection    bool `gorm:"default:true" json:"enableKeywordDetection"`
+	EnablePatternDetection    bool `gorm:"default:true" json:"enablePatternDetection"`
+	EnableMLDetection         bool `gorm:"default:false" json:"enableMLDetection"`
+
+	// Alert settings
+	Level3AlertEnabled  bool   `gorm:"default:false" json:"level3AlertEnabled"`
+	Level3AlertEmail    string `json:"level3AlertEmail"`
+	Level3AlertWebhook  string `json:"level3AlertWebhook"` // Slack/Discord webhook
+	DailyDigestEnabled  bool   `gorm:"default:false" json:"dailyDigestEnabled"`
+	DailyDigestEmail    string `json:"dailyDigestEmail"`
+
+	// Version tracking for hot-reload
+	ConfigVersion int       `gorm:"default:1" json:"configVersion"`
+	UpdatedAt     time.Time `json:"updatedAt"`
+}
+
+func (CrisisSettingsDB) TableName() string {
+	return "crisis_settings"
+}
+
+// GetCrisisSettings returns the singleton crisis settings record
+func GetCrisisSettings(db *gorm.DB, tenantID *uint) (*CrisisSettingsDB, error) {
+	var settings CrisisSettingsDB
+	query := db.Where("tenant_id IS NULL")
+	if tenantID != nil {
+		query = db.Where("tenant_id = ?", *tenantID)
+	}
+
+	err := query.First(&settings).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			settings = CrisisSettingsDB{
+				TenantID:                   tenantID,
+				SessionTTLMinutes:          60,
+				MaxHistoryMessages:         10,
+				MaxResourceShowsPerSession: 2,
+				EnableKeywordDetection:     true,
+				EnablePatternDetection:     true,
+				EnableMLDetection:          false,
+				Level3AlertEnabled:         false,
+				DailyDigestEnabled:         false,
+				ConfigVersion:              1,
+			}
+			if err := db.Create(&settings).Error; err != nil {
+				return nil, err
+			}
+			return &settings, nil
+		}
+		return nil, err
+	}
+	return &settings, nil
+}
+
 // AnswerRecord is the Go struct for parsing Answers JSON
 type AnswerRecord struct {
 	QuestionID  string `json:"questionId"`

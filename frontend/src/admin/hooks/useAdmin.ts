@@ -472,6 +472,100 @@ export interface AISettingsUpdate {
   rateLimitBurst?: number;
 }
 
+// Crisis Configuration Types
+export interface CrisisConfigOverview {
+  keywords: number;
+  excludePatterns: number;
+  resources: number;
+  forbiddenPhrases: number;
+  glowtypeGuidance: number;
+  configVersion: number;
+}
+
+export interface CrisisSettings {
+  id: number;
+  tenantId?: number;
+  sessionTTLMinutes: number;
+  maxHistoryMessages: number;
+  maxResourceShowsPerSession: number;
+  enableKeywordDetection: boolean;
+  enablePatternDetection: boolean;
+  enableMLDetection: boolean;
+  level3AlertEnabled: boolean;
+  level3AlertEmail: string;
+  level3AlertWebhook: string;
+  dailyDigestEnabled: boolean;
+  dailyDigestEmail: string;
+  configVersion: number;
+  updatedAt: string;
+}
+
+export interface CrisisKeyword {
+  id: number;
+  tenantId?: number;
+  level: number;
+  language: string;
+  keyword: string;
+  category: string;
+  isSlang: boolean;
+  slangFor: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrisisExcludePattern {
+  id: number;
+  tenantId?: number;
+  pattern: string;
+  patternType: string;
+  description: string;
+  language: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrisisResource {
+  id: number;
+  tenantId?: number;
+  country: string;
+  name: string;
+  nameZh: string;
+  phone: string;
+  url: string;
+  hours: string;
+  priority: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrisisForbiddenPhrase {
+  id: number;
+  tenantId?: number;
+  language: string;
+  phrase: string;
+  alternative: string;
+  category: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrisisGlowtypeGuidance {
+  id: number;
+  tenantId?: number;
+  glowtypeCode: string;
+  language: string;
+  fieldType: string;
+  content: string;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Import/Export types
 export type ImportMode = 'merge' | 'replace';
 
@@ -1044,5 +1138,88 @@ export const useAdminApi = () => {
         method: 'PUT',
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       }),
+
+    // Crisis Configuration (superadmin only)
+    getCrisisOverview: () => apiCall<CrisisConfigOverview>('/admin/crisis/overview'),
+    getCrisisSettings: () => apiCall<CrisisSettings>('/admin/crisis/settings'),
+    updateCrisisSettings: (data: Partial<CrisisSettings>) =>
+      apiCall<CrisisSettings>('/admin/crisis/settings', { method: 'PUT', body: JSON.stringify(data) }),
+    getCrisisConfigVersion: () => apiCall<{ version: number }>('/admin/crisis/version'),
+
+    // Crisis Keywords
+    listCrisisKeywords: (params?: { level?: number; language?: string; active?: boolean }) => {
+      const query = new URLSearchParams();
+      if (params?.level) query.set('level', params.level.toString());
+      if (params?.language) query.set('language', params.language);
+      if (params?.active !== undefined) query.set('active', params.active.toString());
+      const qs = query.toString();
+      return apiCall<CrisisKeyword[]>(`/admin/crisis/keywords${qs ? `?${qs}` : ''}`);
+    },
+    createCrisisKeyword: (data: Partial<CrisisKeyword>) =>
+      apiCall<CrisisKeyword>('/admin/crisis/keywords', { method: 'POST', body: JSON.stringify(data) }),
+    updateCrisisKeyword: (id: number, data: Partial<CrisisKeyword>) =>
+      apiCall<CrisisKeyword>(`/admin/crisis/keywords/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCrisisKeyword: (id: number) =>
+      apiCall<{ message: string }>(`/admin/crisis/keywords/${id}`, { method: 'DELETE' }),
+
+    // Crisis Exclude Patterns
+    listCrisisPatterns: () => apiCall<CrisisExcludePattern[]>('/admin/crisis/patterns'),
+    createCrisisPattern: (data: Partial<CrisisExcludePattern>) =>
+      apiCall<CrisisExcludePattern>('/admin/crisis/patterns', { method: 'POST', body: JSON.stringify(data) }),
+    updateCrisisPattern: (id: number, data: Partial<CrisisExcludePattern>) =>
+      apiCall<CrisisExcludePattern>(`/admin/crisis/patterns/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCrisisPattern: (id: number) =>
+      apiCall<{ message: string }>(`/admin/crisis/patterns/${id}`, { method: 'DELETE' }),
+
+    // Crisis Resources
+    listCrisisResources: (country?: string) => {
+      const query = country ? `?country=${country}` : '';
+      return apiCall<CrisisResource[]>(`/admin/crisis/resources${query}`);
+    },
+    createCrisisResource: (data: Partial<CrisisResource>) =>
+      apiCall<CrisisResource>('/admin/crisis/resources', { method: 'POST', body: JSON.stringify(data) }),
+    updateCrisisResource: (id: number, data: Partial<CrisisResource>) =>
+      apiCall<CrisisResource>(`/admin/crisis/resources/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCrisisResource: (id: number) =>
+      apiCall<{ message: string }>(`/admin/crisis/resources/${id}`, { method: 'DELETE' }),
+
+    // Crisis Forbidden Phrases
+    listCrisisPhrases: (language?: string) => {
+      const query = language ? `?language=${language}` : '';
+      return apiCall<CrisisForbiddenPhrase[]>(`/admin/crisis/phrases${query}`);
+    },
+    createCrisisPhrase: (data: Partial<CrisisForbiddenPhrase>) =>
+      apiCall<CrisisForbiddenPhrase>('/admin/crisis/phrases', { method: 'POST', body: JSON.stringify(data) }),
+    updateCrisisPhrase: (id: number, data: Partial<CrisisForbiddenPhrase>) =>
+      apiCall<CrisisForbiddenPhrase>(`/admin/crisis/phrases/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCrisisPhrase: (id: number) =>
+      apiCall<{ message: string }>(`/admin/crisis/phrases/${id}`, { method: 'DELETE' }),
+
+    // Crisis Glowtype Guidance
+    listCrisisGuidance: (params?: { glowtypeCode?: string; language?: string }) => {
+      const query = new URLSearchParams();
+      if (params?.glowtypeCode) query.set('glowtypeCode', params.glowtypeCode);
+      if (params?.language) query.set('language', params.language);
+      const qs = query.toString();
+      return apiCall<CrisisGlowtypeGuidance[]>(`/admin/crisis/guidance${qs ? `?${qs}` : ''}`);
+    },
+    createCrisisGuidance: (data: Partial<CrisisGlowtypeGuidance>) =>
+      apiCall<CrisisGlowtypeGuidance>('/admin/crisis/guidance', { method: 'POST', body: JSON.stringify(data) }),
+    updateCrisisGuidance: (id: number, data: Partial<CrisisGlowtypeGuidance>) =>
+      apiCall<CrisisGlowtypeGuidance>(`/admin/crisis/guidance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCrisisGuidance: (id: number) =>
+      apiCall<{ message: string }>(`/admin/crisis/guidance/${id}`, { method: 'DELETE' }),
+
+    // Crisis Reset
+    resetCrisisConfig: (options: { all?: boolean; keywords?: boolean; patterns?: boolean; resources?: boolean; phrases?: boolean; guidance?: boolean }) => {
+      const query = new URLSearchParams();
+      if (options.all) query.set('all', 'true');
+      if (options.keywords) query.set('keywords', 'true');
+      if (options.patterns) query.set('patterns', 'true');
+      if (options.resources) query.set('resources', 'true');
+      if (options.phrases) query.set('phrases', 'true');
+      if (options.guidance) query.set('guidance', 'true');
+      return apiCall<{ message: string; results: Record<string, number> }>(`/admin/crisis/reset?${query.toString()}`, { method: 'POST' });
+    },
   };
 };

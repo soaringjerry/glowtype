@@ -1,0 +1,80 @@
+{
+  "glowtypes": {
+    "radiant-nebula": {
+      "code": "radiant-nebula",
+      "energyStyle": "You get energy from connecting with others and social interaction. Being around people recharges you.",
+      "expressionStyle": "You express emotions openly and enjoy sharing your thoughts and feelings with others.",
+      "metaphors": [
+        "You're like a warm sun - your light reaches everyone around you, bringing warmth wherever you go.",
+        "Your energy is like a flowing river - vibrant, full of life, and naturally drawing others in.",
+        "Think of yourself as a star in a constellation - shining brightest when connected to others.",
+        "你就像温暖的阳光——你的光芒能照到周围每一个人。",
+        "你的能量像流动的河流——充满活力，自然地吸引着身边的人。"
+      ],
+      "selfCareTips": [
+        "Remember to save some alone time for yourself - even sunshine needs moments of rest.",
+        "When you feel overwhelmed, it's okay to dim your light temporarily to recharge.",
+        "Your energy for others is a gift, but remember to keep some for yourself too.",
+        "允许自己真正休息一下，而不是一直\"撑着\"。",
+        "当你觉得能量耗尽时，暂时安静下来也是一种照顾自己的方式。"
+      ]
+    },
+    "quiet-comet": {
+      "code": "quiet-comet",
+      "energyStyle": "You recharge through solitude and prefer your own space. Being alone helps you restore your energy.",
+      "expressionStyle": "You keep emotions close and have a rich inner world. You process things deeply before sharing.",
+      "metaphors": [
+        "You're like a comet - moving through your own orbit, deep and mysterious, with hidden beauty.",
+        "Your inner world is like a vast ocean - calm on the surface but full of incredible depth beneath.",
+        "Think of yourself as a quiet moon - influencing the world around you without needing to be loud.",
+        "你就像一颗彗星——在自己的轨道上运行，深邃而神秘。",
+        "你的内心世界像深海——表面平静，但里面藏着无限深度。"
+      ],
+      "selfCareTips": [
+        "Your need for alone time is completely valid - it's how you recharge and process.",
+        "Try sharing just one small thing with someone you trust - you don't have to share everything at once.",
+        "It's okay to take your time before responding. Your thoughtfulness is a strength.",
+        "可以尝试只分享一件小事给你信任的人，而不是一次说完所有。",
+        "你需要独处的时间是完全正常的——这是你恢复能量的方式。"
+      ]
+    },
+    "hidden-aurora": {
+      "code": "hidden-aurora",
+      "energyStyle": "You enjoy solitude but have a lot to express inside. You're an introvert with a creative soul.",
+      "expressionStyle": "You may express better through creative outlets like writing, art, or music rather than talking.",
+      "metaphors": [
+        "You're like an aurora - beautiful colors hidden until the right moment, then you light up the sky.",
+        "Your creativity is like underground rivers - powerful and flowing even when unseen by others.",
+        "Think of yourself as a rare gem - your brilliance shows to those who take the time to look.",
+        "你就像极光——美丽的色彩隐藏着，等到合适的时刻才会绽放。",
+        "你的创造力像地下河——即使看不见，依然强大而流动。"
+      ],
+      "selfCareTips": [
+        "Find your own way to express - writing, art, or music can be powerful outlets for what's inside.",
+        "You don't have to be face-to-face to share what's inside. Your creations speak for you.",
+        "Give yourself permission to express in ways that feel comfortable to you.",
+        "找到适合你的表达方式，不一定要面对面，写作或创作也是很好的出口。",
+        "允许自己用感觉舒适的方式来表达，不需要遵循别人的规则。"
+      ]
+    },
+    "warm-ember": {
+      "code": "warm-ember",
+      "energyStyle": "You enjoy being around others but aren't always verbal. You like company but don't need to fill silence.",
+      "expressionStyle": "You show care through actions more than words. Your presence itself is comforting to others.",
+      "metaphors": [
+        "You're like a warm ember - steady warmth that people feel without seeing the flame.",
+        "Your presence is like a cozy blanket - comforting without needing words.",
+        "Think of yourself as a lighthouse - guiding and supporting through quiet consistency.",
+        "你就像温暖的余烬——稳定的温暖，人们感受得到却看不见火焰。",
+        "你的存在就像一条舒适的毯子——不需要言语就能让人安心。"
+      ],
+      "selfCareTips": [
+        "Try telling people how you feel in simple words - they'll be happy to know what you're thinking.",
+        "Your actions speak loudly - but sometimes words can create even deeper connections.",
+        "It's okay to express care verbally sometimes. The people around you would love to hear it.",
+        "试着用简单的话告诉身边的人你的感受，他们会很高兴知道你在想什么。",
+        "你的行动已经说明了很多——但有时候言语可以创造更深的连接。"
+      ]
+    }
+  }
+}

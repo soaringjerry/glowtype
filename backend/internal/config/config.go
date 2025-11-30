@@ -17,6 +17,7 @@ type Config struct {
 	OpenAIModel    string
 	TrustedProxies string
 	DBPath         string
+	ConfigDir      string // Directory for JSON config files (crisis, prompts, etc.)
 
 	BackupEnabled       bool
 	BackupDir           string
@@ -27,6 +28,7 @@ type Config struct {
 
 const (
 	DefaultDBPath                = "/data/glowtype.db"
+	DefaultConfigDir             = "./config"
 	defaultBackupDir             = "/data/backup"
 	defaultBackupIntervalMinutes = 60
 	defaultBackupMaxTotalBytes   = int64(5 * 1024 * 1024 * 1024) // 5 GiB
@@ -48,6 +50,7 @@ func Load() Config {
 		// Default "auto,cloudflare" tries to recover real client IP when behind Cloudflare while staying safe elsewhere.
 		TrustedProxies: getEnv("TRUSTED_PROXIES", "auto,cloudflare"),
 		DBPath:         getEnv("DB_PATH", DefaultDBPath),
+		ConfigDir:      getEnv("CONFIG_DIR", DefaultConfigDir),
 
 		BackupEnabled:       getEnvBool("BACKUP_ENABLED", true),
 		BackupDir:           getEnv("BACKUP_DIR", defaultBackupDir),

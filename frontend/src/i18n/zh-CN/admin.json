@@ -3,6 +3,8 @@
   "nav": {
     "dashboard": "仪表盘",
     "analytics": "数据分析",
+    "crisis": "危机分析",
+    "crisisConfig": "危机配置",
     "adminUsers": "管理员账户",
     "dimensions": "维度管理",
     "questions": "题目管理",
@@ -681,5 +683,56 @@
     "confirmSaved": "我已将恢复码保存在安全的地方，并了解这些恢复码只会显示一次",
     "done": "完成",
     "setupError": "设置失败，请重试"
+  },
+  "crisis": {
+    "title": "危机配置",
+    "subtitle": "配置危机检测和响应设置",
+    "configVersion": "版本",
+    "confirmResetAll": "确定要重置所有危机配置到默认值吗？",
+    "tabs": {
+      "overview": "概览",
+      "keywords": "关键词",
+      "patterns": "排除模式",
+      "resources": "资源",
+      "phrases": "禁用语",
+      "guidance": "光格指导",
+      "settings": "设置"
+    },
+    "filter": {
+      "allLevels": "所有级别",
+      "allLanguages": "所有语言",
+      "allCountries": "所有国家",
+      "allGlowtypes": "所有光格"
+    },
+    "overview": {
+      "keywords": "关键词",
+      "patterns": "排除模式",
+      "resources": "资源",
+      "phrases": "禁用语",
+      "guidance": "光格指导",
+      "hotReloadNote": "热更新已启用",
+      "hotReloadDesc": "此处所做的更改将立即生效，无需重启服务器。"
+    },
+    "keyword": {
+      "keyword": "关键词",
+      "level": "级别",
+      "language": "语言",
+      "category": "分类",
+      "slang": "俚语"
+    },
+    "settings": {
+      "detection": "检测设置",
+      "enableKeyword": "启用关键词检测",
+      "enablePattern": "启用模式检测",
+      "enableML": "启用 ML 检测（未来功能）",
+      "session": "会话设置",
+      "sessionTTL": "会话有效期（分钟）",
+      "maxHistory": "最大历史消息数",
+      "maxResourceShows": "每会话最大资源展示次数",
+      "alerts": "Level 3 告警设置",
+      "enableL3Alert": "启用 Level 3 告警",
+      "alertEmail": "告警邮箱",
+      "alertWebhook": "告警 Webhook URL"
+    }
   }
 }

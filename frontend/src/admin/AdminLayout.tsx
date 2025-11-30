@@ -38,6 +38,8 @@ import Glowpedia from './pages/Glowpedia';
 import AdminUsers from './pages/AdminUsers';
 import AuditLogs from './pages/AuditLogs';
 import Analytics from './pages/Analytics';
+import CrisisAnalytics from './pages/CrisisAnalytics';
+import CrisisConfig from './pages/CrisisConfig';
 import AISettings from './pages/AISettings';
 import AdminSettings from './pages/AdminSettings';
 
@@ -72,6 +74,7 @@ export default function AdminLayout() {
     const items: Array<{ path: string; labelKey: string; icon: any; perm: AdminPermission }> = [
       { path: '/admin', labelKey: 'nav.dashboard', icon: LayoutDashboard, perm: 'stats.view' },
       { path: '/admin/analytics', labelKey: 'nav.analytics', icon: TrendingUp, perm: 'stats.view' },
+      { path: '/admin/crisis', labelKey: 'nav.crisis', icon: Shield, perm: 'stats.view' },
       { path: '/admin/users', labelKey: 'nav.adminUsers', icon: Shield, perm: 'admin.manage' },
       { path: '/admin/dimensions', labelKey: 'nav.dimensions', icon: Compass, perm: 'dimensions.write' },
       { path: '/admin/questions', labelKey: 'nav.questions', icon: HelpCircle, perm: 'questions.write' },
@@ -85,7 +88,7 @@ export default function AdminLayout() {
     ];
     // Filter by permission, then add superadmin-only items
     const filtered = items.filter((item) => userHasPermission(currentUser, item.perm));
-    // AI Settings is superadmin-only (no permission, just role check)
+    // AI Settings and Crisis Config are superadmin-only
     if (currentUser?.role === 'superadmin') {
       // Insert after prompts
       const promptsIdx = filtered.findIndex((item) => item.path === '/admin/prompts');
@@ -95,6 +98,16 @@ export default function AdminLayout() {
         icon: Cpu,
         perm: 'admin.manage' as AdminPermission, // Just for type, not used for filtering
       });
+      // Insert after crisis analytics
+      const crisisIdx = filtered.findIndex((item) => item.path === '/admin/crisis');
+      if (crisisIdx >= 0) {
+        filtered.splice(crisisIdx + 1, 0, {
+          path: '/admin/crisis-config',
+          labelKey: 'nav.crisisConfig',
+          icon: Settings2,
+          perm: 'admin.manage' as AdminPermission,
+        });
+      }
     }
     return filtered;
   }, [currentUser, needs2FASetup]);
@@ -236,6 +249,8 @@ export default function AdminLayout() {
           <Routes>
             <Route path="/admin" element={<Protected perm="stats.view"><Dashboard /></Protected>} />
             <Route path="/admin/analytics" element={<Protected perm="stats.view"><Analytics /></Protected>} />
+            <Route path="/admin/crisis" element={<Protected perm="stats.view"><CrisisAnalytics /></Protected>} />
+            <Route path="/admin/crisis-config" element={<SuperadminOnly><CrisisConfig /></SuperadminOnly>} />
             <Route path="/admin/users" element={<Protected perm="admin.manage"><AdminUsers /></Protected>} />
             <Route path="/admin/dimensions" element={<Protected perm="dimensions.write"><Dimensions /></Protected>} />
             <Route path="/admin/questions" element={<Protected perm="questions.write"><Questions /></Protected>} />
