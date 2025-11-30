@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
@@ -13,23 +13,7 @@ import {
   Activity,
   BarChart3,
 } from 'lucide-react';
-import { getApiBaseUrl } from '../../api/baseUrl';
-
-const ADMIN_TOKEN_KEY = 'admin_token';
-const DEVICE_TOKEN_KEY = 'admin_device_token';
-
-const getAuthHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = {};
-  const token = localStorage.getItem(ADMIN_TOKEN_KEY);
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  const deviceToken = localStorage.getItem(DEVICE_TOKEN_KEY);
-  if (deviceToken) {
-    headers['X-Device-Token'] = deviceToken;
-  }
-  return headers;
-};
+import { useAdminApi } from '../hooks/useAdmin';
 
 interface CrisisAnalyticsData {
   summary: {
@@ -62,6 +46,7 @@ type TrendView = 'daily' | 'weekly';
 
 export default function CrisisAnalytics() {
   const { i18n } = useTranslation('admin');
+  const api = useAdminApi();
   const [data, setData] = useState<CrisisAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,26 +55,27 @@ export default function CrisisAnalytics() {
 
   const isZh = i18n.language.startsWith('zh');
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/admin/stats/crisis?preset=${preset}`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to fetch data');
-      const result = await res.json();
-      setData(result);
+      const result = await api.getCrisisAnalytics(preset);
+      if (result) {
+        setData(result);
+      } else {
+        setError(isZh ? '加载数据失败' : 'Failed to load data');
+      }
     } catch {
       setError(isZh ? '加载数据失败' : 'Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [preset, isZh]);
+  };
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset]);
 
   const getLevelColor = (level: number) => {
     switch (level) {

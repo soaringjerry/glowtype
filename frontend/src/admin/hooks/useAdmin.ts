@@ -1002,6 +1002,11 @@ export const useAdminApi = () => {
     return apiCall<AnalyticsResponse>(`/admin/stats/analytics${qs ? `?${qs}` : ''}`);
   };
 
+  // Crisis Analytics
+  const getCrisisAnalytics = (preset: string = '30d') => {
+    return apiCall<any>(`/admin/stats/crisis?preset=${preset}`);
+  };
+
   // Quiz Results
   const listQuizResults = (params?: { limit?: number; typeCode?: string }) => {
     const query = new URLSearchParams();
@@ -1074,6 +1079,7 @@ export const useAdminApi = () => {
     getGlowtypeDistribution,
     getEnhancedStats,
     getAnalytics,
+    getCrisisAnalytics,
     // Results
     listQuizResults,
     // Glowpedia
