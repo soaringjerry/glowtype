@@ -436,6 +436,7 @@ func (p *PromptBuilder) buildUnderstandingLayer(ctx GlowtypeContext) string {
 		sb.WriteString(fmt.Sprintf("- 表达风格: %s\n\n", guidance.ExpressionStyle))
 
 		sb.WriteString("### 个性化指南\n")
+		sb.WriteString(fmt.Sprintf("- 如果用户问起他们的 Glowtype/光格是什么，告诉他们：\"你的光格是 %s\"\n", ctx.LocalizedName))
 		sb.WriteString("- 使用与用户光格匹配的天体/宇宙隐喻\n")
 		sb.WriteString("- 认可他们独特的情绪处理方式\n")
 		sb.WriteString("- 强调他们的特质不是缺陷，而是独特之处\n\n")
@@ -461,6 +462,7 @@ func (p *PromptBuilder) buildUnderstandingLayer(ctx GlowtypeContext) string {
 		sb.WriteString(fmt.Sprintf("- Expression Style: %s\n\n", guidance.ExpressionStyle))
 
 		sb.WriteString("### Personalization Guidelines\n")
+		sb.WriteString(fmt.Sprintf("- If the user asks about their Glowtype, tell them: \"Your Glowtype is %s\"\n", ctx.LocalizedName))
 		sb.WriteString("- Use cosmic/celestial metaphors that resonate with their Glowtype\n")
 		sb.WriteString("- Acknowledge their unique way of processing emotions\n")
 		sb.WriteString("- Emphasize their traits are not flaws, but unique strengths\n\n")
