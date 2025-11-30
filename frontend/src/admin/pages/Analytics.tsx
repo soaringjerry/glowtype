@@ -9,8 +9,6 @@ import {
   RefreshCw,
   Calendar,
   Sparkles,
-  AlertCircle,
-  CheckCircle,
   Globe,
   Smartphone,
   Languages,
@@ -191,17 +189,6 @@ Please provide actionable specific recommendations.`,
     }
   };
 
-  const reliabilityLevel = useMemo(() => {
-    if (!data) return { level: 'unknown', color: 'gray' };
-    if (!reliabilityReady) return { level: isZh ? '样本不足' : 'Insufficient sample', color: 'gray' };
-    const alpha = data.reliability.cronbachAlpha;
-    if (alpha >= 0.9) return { level: isZh ? '优秀' : 'Excellent', color: 'green' };
-    if (alpha >= 0.8) return { level: isZh ? '良好' : 'Good', color: 'blue' };
-    if (alpha >= 0.7) return { level: isZh ? '可接受' : 'Acceptable', color: 'yellow' };
-    if (alpha >= 0.6) return { level: isZh ? '存疑' : 'Questionable', color: 'orange' };
-    return { level: isZh ? '较差' : 'Poor', color: 'red' };
-  }, [data, isZh, reliabilityReady]);
-
   const trendData = useMemo(() => {
     if (!data) return [];
     switch (trendView) {
@@ -322,36 +309,27 @@ Please provide actionable specific recommendations.`,
 
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-3">
-            <div className={`w-10 h-10 rounded-xl bg-${reliabilityLevel.color}-500 flex items-center justify-center`}>
-              {reliabilityLevel.color === 'green' || reliabilityLevel.color === 'blue' ? (
-                <CheckCircle className="w-5 h-5 text-white" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-white" />
-              )}
+            <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
+              <Calculator className="w-5 h-5 text-white" />
             </div>
-            <span className="text-sm text-gray-500">Cronbach's Alpha</span>
+            <span className="text-sm text-gray-500">{isZh ? '维度数' : 'Dimensions'}</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{reliabilityReady ? data.reliability.cronbachAlpha.toFixed(3) : '--'}</p>
-          <p className={`text-xs mt-1 ${reliabilityReady ? `text-${reliabilityLevel.color}-600` : 'text-gray-500'} font-medium`}>
-            {reliabilityLevel.level}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-1">
-            {isZh
-              ? `样本量 N=${reliabilitySampleSize}（需≥${minReliabilitySample} 才具有统计意义）`
-              : `Sample N=${reliabilitySampleSize} (need ≥${minReliabilitySample} for meaningful reliability)`}
+          <p className="text-3xl font-bold text-gray-900">{dimEntries.length}</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {isZh ? '分维度计算信度' : 'Reliability per dimension'}
           </p>
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-white" />
+              <Users className="w-5 h-5 text-white" />
             </div>
-            <span className="text-sm text-gray-500">{isZh ? '分半信度' : 'Split-Half'}</span>
+            <span className="text-sm text-gray-500">{isZh ? '样本量' : 'Sample Size'}</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{reliabilityReady ? data.reliability.spearmanBrown.toFixed(3) : '--'}</p>
+          <p className="text-3xl font-bold text-gray-900">{reliabilitySampleSize}</p>
           <p className="text-xs text-gray-400 mt-1">
-            {isZh ? 'Spearman-Brown（样本达标后计算）' : 'Spearman-Brown (shown when sample adequate)'}
+            {isZh ? `建议 N≥${minReliabilitySample}` : `Recommend N≥${minReliabilitySample}`}
           </p>
         </div>
       </div>
