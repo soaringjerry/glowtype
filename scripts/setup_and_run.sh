@@ -5,6 +5,29 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "=== Glowtype.me – setup & run (Docker) ==="
 
+CLEAN_PRIVACY=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cleanup-privacy)
+      CLEAN_PRIVACY=1
+      shift
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Usage: scripts/setup_and_run.sh [--cleanup-privacy]
+  --cleanup-privacy   Before starting services, run a privacy cleanup on the SQLite
+                      volume (drop stored User-Agent fields, truncate timestamps to minute).
+EOF
+      exit 0
+      ;;
+    *)
+      echo "[WARN] Unknown argument: $1"
+      shift
+      ;;
+  esac
+done
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "[ERROR] Docker is not installed or not in PATH."
   echo "Please install Docker first, then re-run scripts/setup_and_run.sh."
@@ -166,6 +189,19 @@ echo "[STEP] Stopping any existing containers to avoid conflicts..."
   cd "${ROOT_DIR}"
   ${COMPOSE_CMD} down --remove-orphans 2>/dev/null || true
 )
+
+if [ "${CLEAN_PRIVACY}" = "1" ]; then
+  echo "[STEP] Running privacy cleanup on persisted DB (volume: glowtype-data)..."
+  docker run --rm -v glowtype-data:/data alpine:3.20 sh -c "
+    apk add --no-cache sqlite >/dev/null &&
+    sqlite3 /data/glowtype.db \"
+      UPDATE quiz_results SET user_agent = '' WHERE user_agent IS NOT NULL AND user_agent != '';
+      UPDATE quiz_results SET created_at = strftime('%Y-%m-%d %H:%M:00', created_at);
+      UPDATE chat_sessions SET started_at = strftime('%Y-%m-%d %H:%M:00', started_at);
+      UPDATE chat_sessions SET ended_at   = strftime('%Y-%m-%d %H:%M:00', ended_at);
+    \""
+  echo "[INFO] Privacy cleanup completed."
+fi
 
 echo "[STEP] Starting services in the background..."
 (
