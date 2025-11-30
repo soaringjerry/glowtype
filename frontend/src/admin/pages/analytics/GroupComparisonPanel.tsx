@@ -1,4 +1,5 @@
-import { GitCompare, Smartphone, Languages, HelpCircle, AlertCircle } from 'lucide-react';
+import { GitCompare, Smartphone, Languages, HelpCircle, AlertCircle, Bug } from 'lucide-react';
+import { useState } from 'react';
 import type { GroupComparisonData } from '../../hooks/useAdmin';
 
 interface GroupComparisonPanelProps {
@@ -49,8 +50,10 @@ function formatLanguageName(name: string): string {
 }
 
 export default function GroupComparisonPanel({ groupComparison, isZh, onAskAI }: GroupComparisonPanelProps) {
+  const [showDebug, setShowDebug] = useState(false);
   const hasDeviceData = Object.keys(groupComparison.byDevice ?? {}).length > 0;
   const hasLanguageData = Object.keys(groupComparison.byLanguage ?? {}).length > 0;
+  const debug = groupComparison.debug;
 
   return (
     <div id="groupComparison" className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -64,16 +67,27 @@ export default function GroupComparisonPanel({ groupComparison, isZh, onAskAI }:
             <p className="text-sm text-gray-500">{isZh ? 't检验、ANOVA 和效应量' : 't-test, ANOVA & Effect Size'}</p>
           </div>
         </div>
-        <button
-          onClick={() => onAskAI(
-            isZh ? '请解释群组对比分析结果，t检验和Cohen\'s d代表什么？' : 'Please explain the group comparison results. What do t-test and Cohen\'s d mean?',
-            'groupComparison'
+        <div className="flex items-center gap-2">
+          {debug && (
+            <button
+              onClick={() => setShowDebug(!showDebug)}
+              className={`p-2 rounded-lg transition-colors ${showDebug ? 'bg-blue-50 text-blue-500' : 'hover:bg-gray-50 text-gray-400'}`}
+              title={isZh ? '显示调试信息' : 'Show debug info'}
+            >
+              <Bug className="w-5 h-5" />
+            </button>
           )}
-          className="p-2 hover:bg-rose-50 rounded-lg transition-colors group"
-          title={isZh ? '询问AI关于群组对比' : 'Ask AI about group comparison'}
-        >
-          <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-rose-500" />
-        </button>
+          <button
+            onClick={() => onAskAI(
+              isZh ? '请解释群组对比分析结果，t检验和Cohen\'s d代表什么？' : 'Please explain the group comparison results. What do t-test and Cohen\'s d mean?',
+              'groupComparison'
+            )}
+            className="p-2 hover:bg-rose-50 rounded-lg transition-colors group"
+            title={isZh ? '询问AI关于群组对比' : 'Ask AI about group comparison'}
+          >
+            <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-rose-500" />
+          </button>
+        </div>
       </div>
 
       {!hasDeviceData && !hasLanguageData ? (
@@ -208,6 +222,88 @@ export default function GroupComparisonPanel({ groupComparison, isZh, onAskAI }:
               ? '* p < 0.05 为显著；Cohen\'s d: 0.2小, 0.5中, 0.8大'
               : '* p < 0.05 is significant; Cohen\'s d: 0.2=small, 0.5=medium, 0.8=large'}
           </p>
+        </div>
+      )}
+
+      {/* Debug Info Panel */}
+      {showDebug && debug && (
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+          <h4 className="text-sm font-medium text-blue-800 mb-3">
+            {isZh ? '调试信息' : 'Debug Info'}
+          </h4>
+
+          <div className="space-y-3 text-xs">
+            {/* Basic stats */}
+            <div className="flex gap-4">
+              <div>
+                <span className="text-blue-600">{isZh ? '总记录数' : 'Total Results'}:</span>
+                <span className="ml-1 font-mono text-blue-800">{debug.totalResults}</span>
+              </div>
+              <div>
+                <span className="text-blue-600">{isZh ? 'JSON解析错误' : 'Parse Errors'}:</span>
+                <span className={`ml-1 font-mono ${debug.parseErrors > 0 ? 'text-red-600 font-bold' : 'text-blue-800'}`}>
+                  {debug.parseErrors}
+                </span>
+              </div>
+            </div>
+
+            {/* Language counts */}
+            <div>
+              <span className="text-blue-600">{isZh ? '按语言统计' : 'By Language'}:</span>
+              <div className="mt-1 font-mono text-blue-800">
+                {Object.entries(debug.languageCounts ?? {}).map(([lang, count]) => (
+                  <span key={lang} className="mr-3">
+                    {formatLanguageName(lang)}: {count}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Dimensions by language */}
+            <div>
+              <span className="text-blue-600">{isZh ? '每个语言组的维度样本数' : 'Dimension samples per language'}:</span>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-blue-200">
+                      <th className="py-1 pr-4 text-blue-700">{isZh ? '维度' : 'Dimension'}</th>
+                      {Object.keys(debug.languageCounts ?? {}).map(lang => (
+                        <th key={lang} className="py-1 px-2 text-blue-700">{formatLanguageName(lang)}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Get all dimensions */}
+                    {(() => {
+                      const allDims = new Set<string>();
+                      Object.values(debug.dimensionsByLang ?? {}).forEach(dimMap => {
+                        Object.keys(dimMap).forEach(dim => allDims.add(dim));
+                      });
+                      return Array.from(allDims).sort().map(dim => (
+                        <tr key={dim} className="border-b border-blue-100">
+                          <td className="py-1 pr-4 font-medium text-blue-800">{dim}</td>
+                          {Object.keys(debug.languageCounts ?? {}).map(lang => {
+                            const count = debug.dimensionsByLang?.[lang]?.[dim] ?? 0;
+                            const isLow = count < groupComparison.minSample;
+                            return (
+                              <td key={lang} className={`py-1 px-2 font-mono ${isLow ? 'text-red-600 font-bold' : 'text-blue-800'}`}>
+                                {count}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-blue-600">
+                {isZh
+                  ? `* 红色数字表示低于最小阈值 (${groupComparison.minSample})`
+                  : `* Red numbers are below minimum threshold (${groupComparison.minSample})`}
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

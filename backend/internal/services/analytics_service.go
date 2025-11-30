@@ -65,6 +65,15 @@ type GroupComparisonData struct {
 	ByLanguage         map[string]DimensionComparison `json:"byLanguage"`         // zh-CN vs en per dimension
 	MinSample          int                            `json:"minSample"`          // Minimum sample per group required
 	ExcludedDimensions []ExcludedDimensionInfo        `json:"excludedDimensions"` // Dimensions excluded and why
+	Debug              *GroupComparisonDebug          `json:"debug,omitempty"`    // Debug info for troubleshooting
+}
+
+// GroupComparisonDebug contains diagnostic info for troubleshooting
+type GroupComparisonDebug struct {
+	TotalResults       int                       `json:"totalResults"`
+	ParseErrors        int                       `json:"parseErrors"`
+	LanguageCounts     map[string]int            `json:"languageCounts"`     // How many results per language
+	DimensionsByLang   map[string]map[string]int `json:"dimensionsByLang"`   // lang -> dim -> count
 }
 
 // ExcludedDimensionInfo explains why a dimension was excluded from group comparison
@@ -1418,7 +1427,16 @@ func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResul
 		ExcludedDimensions: []ExcludedDimensionInfo{},
 	}
 
+	// Initialize debug info
+	debug := &GroupComparisonDebug{
+		TotalResults:     len(results),
+		ParseErrors:      0,
+		LanguageCounts:   make(map[string]int),
+		DimensionsByLang: make(map[string]map[string]int),
+	}
+
 	if len(results) < minGroupComparisonSample*2 {
+		data.Debug = debug
 		return data
 	}
 
@@ -1431,6 +1449,7 @@ func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResul
 	for _, r := range results {
 		var dimScores map[string]float64
 		if err := json.Unmarshal(r.DimensionScores, &dimScores); err != nil {
+			debug.ParseErrors++
 			continue
 		}
 
@@ -1461,6 +1480,19 @@ func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResul
 		for dim, score := range dimScores {
 			langScores[lang][dim] = append(langScores[lang][dim], score)
 		}
+
+		// Track debug info
+		debug.LanguageCounts[lang]++
+	}
+
+	// Build dimensionsByLang for debug
+	for lang, dimMap := range langScores {
+		if debug.DimensionsByLang[lang] == nil {
+			debug.DimensionsByLang[lang] = make(map[string]int)
+		}
+		for dim, scores := range dimMap {
+			debug.DimensionsByLang[lang][dim] = len(scores)
+		}
 	}
 
 	// Compare by device (mobile vs desktop)
@@ -1473,6 +1505,7 @@ func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResul
 
 	// Merge excluded dimensions (prioritize language exclusions as they're more common)
 	data.ExcludedDimensions = langResult.Excluded
+	data.Debug = debug
 
 	return data
 }

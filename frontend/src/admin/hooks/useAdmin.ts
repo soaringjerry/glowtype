@@ -363,11 +363,19 @@ export interface ExcludedDimensionInfo {
   groupCounts: Record<string, number>;
 }
 
+export interface GroupComparisonDebug {
+  totalResults: number;
+  parseErrors: number;
+  languageCounts: Record<string, number>;
+  dimensionsByLang: Record<string, Record<string, number>>;
+}
+
 export interface GroupComparisonData {
   byDevice: Record<string, DimensionComparison>;
   byLanguage: Record<string, DimensionComparison>;
   minSample: number;
   excludedDimensions?: ExcludedDimensionInfo[];
+  debug?: GroupComparisonDebug;
 }
 
 export interface AnalyticsResponse {
