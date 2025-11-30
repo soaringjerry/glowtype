@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
@@ -14,6 +14,22 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { getApiBaseUrl } from '../../api/baseUrl';
+
+const ADMIN_TOKEN_KEY = 'admin_token';
+const DEVICE_TOKEN_KEY = 'admin_device_token';
+
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const deviceToken = localStorage.getItem(DEVICE_TOKEN_KEY);
+  if (deviceToken) {
+    headers['X-Device-Token'] = deviceToken;
+  }
+  return headers;
+};
 
 interface CrisisAnalyticsData {
   summary: {
@@ -54,15 +70,12 @@ export default function CrisisAnalytics() {
 
   const isZh = i18n.language.startsWith('zh');
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('admin_token');
       const res = await fetch(`${getApiBaseUrl()}/admin/stats/crisis?preset=${preset}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Failed to fetch data');
       const result = await res.json();
@@ -72,12 +85,11 @@ export default function CrisisAnalytics() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [preset, isZh]);
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preset]);
+  }, [loadData]);
 
   const getLevelColor = (level: number) => {
     switch (level) {
