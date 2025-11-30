@@ -182,6 +182,7 @@ func (s *ChatService) CreateSession(req models.ChatSessionRequest) models.ChatSe
 		GlowtypeName:    req.GlowtypeID, // GlowtypeID is the localized name
 		DimensionScores: req.DimensionScores,
 		Language:        req.Language,
+		IsTest:          req.IsTest,
 	}
 	s.sessionStore.Create(id, sessionCtx)
 
@@ -338,11 +339,13 @@ func (s *ChatService) logCrisisEvent(sessionID string, ctx *SessionContext, resu
 	glowtypeCode := ""
 	language := ""
 	totalMessages := 0
+	isTest := false
 
 	if ctx != nil {
 		glowtypeCode = ctx.GlowtypeCode
 		language = ctx.Language
 		totalMessages = ctx.MessageCount
+		isTest = ctx.IsTest
 	}
 
 	event := database.CrisisEventDB{
@@ -354,6 +357,7 @@ func (s *ChatService) logCrisisEvent(sessionID string, ctx *SessionContext, resu
 		Via:             result.Via,
 		MessageIndex:    messageIndex,
 		TotalMessages:   totalMessages,
+		IsTest:          isTest,
 	}
 
 	if err := s.db.Create(&event).Error; err != nil {

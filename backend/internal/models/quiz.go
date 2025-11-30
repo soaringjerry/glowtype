@@ -46,6 +46,7 @@ type QuizScoreRequest struct {
 	QuizSessionId string       `json:"quizSessionId"` // Idempotency key to prevent duplicate records
 	Language      string       `json:"language"`
 	Answers       []QuizAnswer `json:"answers"`
+	IsTest        bool         `json:"isTest,omitempty"` // Mark as test data (admin sessions)
 }
 
 type QuizScoreResponse struct {
@@ -63,5 +64,6 @@ type RequestMeta struct {
 	Channel     string // Traffic source channel
 	EntryPoint  string // Specific campaign/source
 	UserAgent   string // Raw UA for backup parsing
+	IsTest      bool   // Mark as test data (admin sessions)
 }
 

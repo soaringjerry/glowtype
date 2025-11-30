@@ -174,6 +174,7 @@ func (s *QuizService) saveQuizResult(answers []database.AnswerRecord, result *Sc
 		HourOfDay:   meta.HourOfDay,
 		Channel:     meta.Channel,
 		EntryPoint:  meta.EntryPoint,
+		IsTest:      meta.IsTest,
 		CreatedAt:   createdAt,
 	}
 

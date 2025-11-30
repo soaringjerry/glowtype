@@ -6,6 +6,7 @@ type ChatSessionRequest struct {
 	GlowtypeID      string             `json:"glowtypeId"`
 	GlowtypeCode    string             `json:"glowtypeCode,omitempty"`    // NEW: e.g., "radiant-nebula"
 	DimensionScores map[string]float64 `json:"dimensionScores,omitempty"` // NEW: e.g., {"energy": 2.5, "expression": -1.5}
+	IsTest          bool               `json:"isTest,omitempty"`          // Mark as test data (admin sessions)
 }
 
 // ChatSessionResponse is the response when creating a session

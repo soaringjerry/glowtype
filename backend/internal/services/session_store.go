@@ -44,6 +44,9 @@ type SessionContext struct {
 	ResourceShownCount int  `json:"resourceShownCount"` // Times resources shown this session
 	ResourceShownAt    *int `json:"resourceShownAt"`    // Message index when last shown
 	ResourceDeclined   bool `json:"resourceDeclined"`   // User said "stop mentioning"
+
+	// Test data marking
+	IsTest bool `json:"isTest"` // Mark as test data (admin sessions)
 }
 
 // SessionStore manages in-memory session contexts with automatic cleanup

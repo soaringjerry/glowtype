@@ -27,6 +27,18 @@ import AdminLayout from './admin/AdminLayout';
 import { getApiBaseUrl } from './api/baseUrl';
 import { LearnView } from './views/LearnView';
 
+// Helper to detect if admin is logged in (for test data marking)
+const isAdminLoggedIn = (): boolean => {
+  try {
+    return !!(
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('admin_token')) ||
+      (typeof localStorage !== 'undefined' && localStorage.getItem('admin_token'))
+    );
+  } catch {
+    return false;
+  }
+};
+
 const callBackendInsight = async (prompt: string, systemInstruction: string, lang: string) => {
   try {
     const response = await fetch(`${getApiBaseUrl()}/chat/insight`, {
@@ -60,6 +72,7 @@ const startChatSession = async (options: ChatSessionOptions) => {
         glowtypeCode: options.glowtypeCode,
         glowtypeId: options.glowtypeId,
         dimensionScores: options.dimensionScores,
+        isTest: isAdminLoggedIn(),
       }),
     });
     if (!res.ok) return null;
@@ -540,7 +553,8 @@ const QuizView = ({ onComplete, lang }: QuizViewProps) => {
           answers: Object.entries(newAnswers).map(([questionId, optionId]) => ({
             questionId,
             optionId
-          }))
+          })),
+          isTest: isAdminLoggedIn()
         };
         const res = await fetch(`${window.location.origin}/api/v1/quiz/score`, {
           method: 'POST',

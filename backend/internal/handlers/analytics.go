@@ -15,14 +15,16 @@ import (
 //   - end_date: YYYY-MM-DD (optional)
 //   - preset: "30d", "90d", "all" (optional, defaults to 30d)
 //   - force: "true" to bypass cache and force recomputation
+//   - exclude_test: "true" to exclude test data from analytics
 func GetAnalyticsHandler(c *gin.Context) {
 	db := database.GetDB()
 	analyticsService := services.NewAnalyticsService(db)
 
 	req := services.AnalyticsRequest{
-		StartDate: c.Query("start_date"),
-		EndDate:   c.Query("end_date"),
-		Preset:    c.DefaultQuery("preset", "30d"),
+		StartDate:   c.Query("start_date"),
+		EndDate:     c.Query("end_date"),
+		Preset:      c.DefaultQuery("preset", "30d"),
+		ExcludeTest: c.Query("exclude_test") == "true",
 	}
 
 	// Check for tenant context if needed

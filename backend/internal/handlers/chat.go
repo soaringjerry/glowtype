@@ -91,6 +91,7 @@ type ChatAnalyticsRequest struct {
 	GlowtypeCode     string `json:"glowtypeCode"`     // User's glowtype if known
 	Language         string `json:"language"`         // Session language
 	HasCrisisContent bool   `json:"hasCrisisContent"` // Whether crisis keywords were detected
+	IsTest           bool   `json:"isTest"`           // Mark as test data (admin sessions)
 }
 
 // TrackChatAnalytics records an anonymous chat session for analytics
@@ -125,6 +126,7 @@ func (h *ChatHandler) TrackChatAnalytics(c *gin.Context) {
 		DeviceType:        anonInfo.DeviceType,
 		HourOfDay:         anonInfo.HourOfDay,
 		HasCrisisKeywords: req.HasCrisisContent,
+		IsTest:            req.IsTest,
 		StartedAt:         baseTime,
 		EndedAt:           baseTime,
 	}

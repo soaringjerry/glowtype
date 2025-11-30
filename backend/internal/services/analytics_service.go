@@ -33,10 +33,11 @@ func NewAnalyticsService(db *gorm.DB) *AnalyticsService {
 
 // AnalyticsRequest contains parameters for analytics queries
 type AnalyticsRequest struct {
-	StartDate string // YYYY-MM-DD
-	EndDate   string // YYYY-MM-DD
-	Preset    string // "30d", "90d", "all"
-	TenantID  *uint
+	StartDate   string // YYYY-MM-DD
+	EndDate     string // YYYY-MM-DD
+	Preset      string // "30d", "90d", "all"
+	TenantID    *uint
+	ExcludeTest bool // Exclude test data from analytics
 }
 
 // AnalyticsConstants contains shared constants for frontend/backend consistency
@@ -279,6 +280,11 @@ func (s *AnalyticsService) computeAndCacheAnalytics(req AnalyticsRequest) (*Anal
 		query = query.Where("tenant_id = ? OR tenant_id IS NULL", *req.TenantID)
 	} else {
 		query = query.Where("tenant_id IS NULL")
+	}
+
+	// Exclude test data if requested
+	if req.ExcludeTest {
+		query = query.Where("is_test = ?", false)
 	}
 
 	// Fetch all results for analysis

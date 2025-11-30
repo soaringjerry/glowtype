@@ -223,6 +223,9 @@ type QuizResultDB struct {
 	EntryPoint string `json:"entryPoint"`           // Specific campaign/source: "homepage", "blog_post_1", "ad_campaign_q1"
 	Referrer   string `json:"referrer"`             // HTTP referer (if available)
 
+	// Test data marking (admin sessions auto-marked)
+	IsTest bool `gorm:"default:false;index" json:"isTest"`
+
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -252,6 +255,9 @@ type ChatSessionDB struct {
 
 	// Flags for research
 	HasCrisisKeywords bool `json:"hasCrisisKeywords"` // Whether crisis keywords were detected
+
+	// Test data marking (admin sessions auto-marked)
+	IsTest bool `gorm:"default:false;index" json:"isTest"`
 
 	StartedAt time.Time `json:"startedAt"`
 	EndedAt   time.Time `json:"endedAt"`
@@ -293,6 +299,9 @@ type CrisisEventDB struct {
 
 	// Timing
 	CreatedAt time.Time `gorm:"index" json:"createdAt"`
+
+	// Test data marking (admin sessions auto-marked)
+	IsTest bool `gorm:"default:false;index" json:"isTest"`
 }
 
 func (CrisisEventDB) TableName() string {

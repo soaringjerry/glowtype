@@ -46,6 +46,7 @@ func (h *QuizHandler) ScoreQuiz(c *gin.Context) {
 		Channel:     c.Query("channel"),   // UTM channel parameter
 		EntryPoint:  c.Query("entry"),     // Entry point parameter
 		UserAgent:   c.Request.UserAgent(),
+		IsTest:      req.IsTest,           // Test data flag from admin sessions
 	}
 
 	resp := h.service.ScoreQuizWithMeta(req, meta)

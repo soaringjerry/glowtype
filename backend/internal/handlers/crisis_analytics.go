@@ -93,10 +93,12 @@ type CrisisInsights struct {
 // GET /api/admin/stats/crisis
 // Query params:
 //   - preset: "7d", "30d", "90d", "all" (optional, defaults to 30d)
+//   - exclude_test: "true" to exclude test data from analytics
 func GetCrisisAnalyticsHandler(c *gin.Context) {
 	db := database.GetDB()
 
 	preset := c.DefaultQuery("preset", "30d")
+	excludeTest := c.Query("exclude_test") == "true"
 	startDate := getStartDateFromPreset(preset)
 
 	// Query crisis events within date range
@@ -111,6 +113,11 @@ func GetCrisisAnalyticsHandler(c *gin.Context) {
 		}
 	} else {
 		query = query.Where("tenant_id IS NULL")
+	}
+
+	// Exclude test data if requested
+	if excludeTest {
+		query = query.Where("is_test = ?", false)
 	}
 
 	if err := query.Find(&events).Error; err != nil {
