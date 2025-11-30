@@ -163,7 +163,7 @@ Rule condition example:
 - **No IP storage**: IP is only converted to region code then discarded
 - **GeoIP lookup**: Prefers Cloudflare `CF-IPCountry` header, fallback to ip-api.com
 - **Device identification**: Extracts device type (mobile/desktop/tablet) from User-Agent
-- **Time granularity**: Only records hour level (0-23)
+- **Time granularity**: Timestamps are truncated to the minute; analytics also store derived hour-of-day (0–23) only
 
 ### 2.7 Admin Audit & RBAC
 

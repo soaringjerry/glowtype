@@ -365,7 +365,7 @@ For quiz results:
 - IP address
 - Name, email, or any PII
 - Precise location
-- Exact timestamp (only hour)
+- High-precision timestamps (created_at is truncated to the minute; only hour-of-day is retained for analytics)
 
 ---
 
