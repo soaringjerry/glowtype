@@ -303,6 +303,31 @@ export default function GroupComparisonPanel({ groupComparison, isZh, onAskAI }:
                   : `* Red numbers are below minimum threshold (${groupComparison.minSample})`}
               </p>
             </div>
+
+            {/* Records with missing dimensions */}
+            {debug.recordsWithMissingDim && debug.recordsWithMissingDim.length > 0 && (
+              <div className="mt-3 p-3 bg-red-50 rounded border border-red-200">
+                <h5 className="text-sm font-medium text-red-800 mb-2">
+                  {isZh ? '⚠️ 缺少维度的记录' : '⚠️ Records with Missing Dimensions'}
+                </h5>
+                <div className="space-y-2">
+                  {debug.recordsWithMissingDim.map((rec) => (
+                    <div key={rec.id} className="text-xs">
+                      <span className="font-mono text-red-700">ID: {rec.id}</span>
+                      <span className="text-red-600 ml-2">({formatLanguageName(rec.language)})</span>
+                      <div className="ml-4 text-red-600">
+                        {isZh ? '缺少' : 'Missing'}: <span className="font-mono font-bold">{rec.missingDims.join(', ')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-red-600">
+                  {isZh
+                    ? '这些记录的 dimension_scores 中缺少某些维度，需要检查数据'
+                    : 'These records are missing dimensions in dimension_scores - data needs investigation'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

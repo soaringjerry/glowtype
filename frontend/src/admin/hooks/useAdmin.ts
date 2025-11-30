@@ -363,11 +363,19 @@ export interface ExcludedDimensionInfo {
   groupCounts: Record<string, number>;
 }
 
+export interface MissingDimRecord {
+  id: number;
+  language: string;
+  missingDims: string[];
+  presentDims: string[];
+}
+
 export interface GroupComparisonDebug {
   totalResults: number;
   parseErrors: number;
   languageCounts: Record<string, number>;
   dimensionsByLang: Record<string, Record<string, number>>;
+  recordsWithMissingDim?: MissingDimRecord[];
 }
 
 export interface GroupComparisonData {

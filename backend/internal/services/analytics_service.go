@@ -70,10 +70,19 @@ type GroupComparisonData struct {
 
 // GroupComparisonDebug contains diagnostic info for troubleshooting
 type GroupComparisonDebug struct {
-	TotalResults       int                       `json:"totalResults"`
-	ParseErrors        int                       `json:"parseErrors"`
-	LanguageCounts     map[string]int            `json:"languageCounts"`     // How many results per language
-	DimensionsByLang   map[string]map[string]int `json:"dimensionsByLang"`   // lang -> dim -> count
+	TotalResults          int                       `json:"totalResults"`
+	ParseErrors           int                       `json:"parseErrors"`
+	LanguageCounts        map[string]int            `json:"languageCounts"`        // How many results per language
+	DimensionsByLang      map[string]map[string]int `json:"dimensionsByLang"`      // lang -> dim -> count
+	RecordsWithMissingDim []MissingDimRecord        `json:"recordsWithMissingDim"` // Records missing some dimensions
+}
+
+// MissingDimRecord identifies a record with incomplete dimensions
+type MissingDimRecord struct {
+	ID              uint     `json:"id"`
+	Language        string   `json:"language"`
+	MissingDims     []string `json:"missingDims"`
+	PresentDims     []string `json:"presentDims"`
 }
 
 // ExcludedDimensionInfo explains why a dimension was excluded from group comparison
@@ -1429,10 +1438,11 @@ func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResul
 
 	// Initialize debug info
 	debug := &GroupComparisonDebug{
-		TotalResults:     len(results),
-		ParseErrors:      0,
-		LanguageCounts:   make(map[string]int),
-		DimensionsByLang: make(map[string]map[string]int),
+		TotalResults:          len(results),
+		ParseErrors:           0,
+		LanguageCounts:        make(map[string]int),
+		DimensionsByLang:      make(map[string]map[string]int),
+		RecordsWithMissingDim: []MissingDimRecord{},
 	}
 
 	if len(results) < minGroupComparisonSample*2 {
@@ -1442,15 +1452,66 @@ func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResul
 
 	calc := NewStatisticsCalculator()
 
-	// Collect dimension scores by device type
-	deviceScores := make(map[string]map[string][]float64) // device -> dimension -> scores
-	langScores := make(map[string]map[string][]float64)   // language -> dimension -> scores
+	// First pass: collect all dimension names
+	allDimensions := make(map[string]bool)
+	parsedResults := make([]struct {
+		result    database.QuizResultDB
+		dimScores map[string]float64
+		lang      string
+	}, 0, len(results))
 
 	for _, r := range results {
 		var dimScores map[string]float64
 		if err := json.Unmarshal(r.DimensionScores, &dimScores); err != nil {
 			debug.ParseErrors++
 			continue
+		}
+		for dim := range dimScores {
+			allDimensions[dim] = true
+		}
+
+		// Determine language
+		lang := r.Language
+		if lang == "" {
+			lang = "unknown"
+		}
+		if len(lang) > 2 && (lang[:2] == "zh" || lang[:2] == "en") {
+			lang = lang[:2]
+		}
+
+		parsedResults = append(parsedResults, struct {
+			result    database.QuizResultDB
+			dimScores map[string]float64
+			lang      string
+		}{r, dimScores, lang})
+	}
+
+	// Collect dimension scores by device type
+	deviceScores := make(map[string]map[string][]float64) // device -> dimension -> scores
+	langScores := make(map[string]map[string][]float64)   // language -> dimension -> scores
+
+	for _, pr := range parsedResults {
+		r := pr.result
+		dimScores := pr.dimScores
+		lang := pr.lang
+
+		// Check for missing dimensions
+		var missingDims []string
+		var presentDims []string
+		for dim := range allDimensions {
+			if _, exists := dimScores[dim]; exists {
+				presentDims = append(presentDims, dim)
+			} else {
+				missingDims = append(missingDims, dim)
+			}
+		}
+		if len(missingDims) > 0 {
+			debug.RecordsWithMissingDim = append(debug.RecordsWithMissingDim, MissingDimRecord{
+				ID:          r.ID,
+				Language:    lang,
+				MissingDims: missingDims,
+				PresentDims: presentDims,
+			})
 		}
 
 		// Group by device
@@ -1466,14 +1527,6 @@ func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResul
 		}
 
 		// Group by language
-		lang := r.Language
-		if lang == "" {
-			lang = "unknown"
-		}
-		// Simplify language codes
-		if len(lang) > 2 && (lang[:2] == "zh" || lang[:2] == "en") {
-			lang = lang[:2]
-		}
 		if langScores[lang] == nil {
 			langScores[lang] = make(map[string][]float64)
 		}
