@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send, Loader2, Sparkles, HelpCircle } from 'lucide-react';
 import { getApiBaseUrl } from '../../../api/baseUrl';
-import type { AnalyticsResponse } from '../../hooks/useAdmin';
+import { useAdminAuth, type AnalyticsResponse } from '../../hooks/useAdmin';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -38,9 +38,38 @@ export default function AnalyticsChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const initialQuestionSentRef = useRef(false);
+  const { getAuthHeader } = useAdminAuth();
 
   // Detect language
   const isZh = typeof navigator !== 'undefined' && navigator.language.startsWith('zh');
+
+  const buildAuthHeaders = useCallback(() => {
+    const headers: Record<string, string> = {};
+    try {
+      const token =
+        (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('admin_token')) ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('admin_token'));
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {
+      // Ignore storage access errors; request will fail with 401 if unauthenticated
+    }
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const deviceToken = localStorage.getItem('admin_device_token');
+        if (deviceToken) {
+          headers['X-Device-Token'] = deviceToken;
+        }
+      }
+    } catch {
+      // Ignore device token if storage is not accessible
+    }
+
+    // Prefer the hook-provided header (keeps parity with other admin requests)
+    return { ...headers, ...getAuthHeader() };
+  }, [getAuthHeader]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -64,12 +93,11 @@ export default function AnalyticsChatPanel({
         setMessages([userMessage]);
         setLoading(true);
 
-        const token = localStorage.getItem('admin_token');
         fetch(`${getApiBaseUrl()}/admin/analytics/chat`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            ...buildAuthHeaders(),
           },
           body: JSON.stringify({
             messages: [userMessage],
@@ -116,7 +144,7 @@ export default function AnalyticsChatPanel({
     if (!isOpen) {
       initialQuestionSentRef.current = false;
     }
-  }, [isOpen, initialQuestion, messages.length, currentView, analyticsData, isZh]);
+  }, [isOpen, initialQuestion, messages.length, currentView, analyticsData, isZh, buildAuthHeaders]);
 
   const handleSend = async (text?: string) => {
     const messageText = text || input.trim();
@@ -129,12 +157,11 @@ export default function AnalyticsChatPanel({
     setSuggestions([]);
 
     try {
-      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${getApiBaseUrl()}/admin/analytics/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...buildAuthHeaders(),
         },
         body: JSON.stringify({
           messages: [...messages, userMessage],
@@ -194,12 +221,11 @@ export default function AnalyticsChatPanel({
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const token = localStorage.getItem('admin_token');
       const response = await fetch(`${getApiBaseUrl()}/admin/analytics/quick-question`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...buildAuthHeaders(),
         },
         body: JSON.stringify({
           questionType,
