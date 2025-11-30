@@ -649,35 +649,42 @@ func (s *AnalyticsService) calculateSplitHalfReliability(itemScores map[string][
 		return 0, 0
 	}
 
-	// CRITICAL FIX: First, filter to only include questions with complete responses
-	validQIDs := make([]string, 0, len(itemScores))
-	for qID, scores := range itemScores {
-		if len(scores) == n {
-			validQIDs = append(validQIDs, qID)
+	// Get all question IDs and sort them
+	qIDs := make([]string, 0, len(itemScores))
+	for qID := range itemScores {
+		qIDs = append(qIDs, qID)
+	}
+	if len(qIDs) < 2 {
+		return 0, 0
+	}
+	sort.Strings(qIDs)
+
+	// Find the minimum sample size across all questions (use intersection approach)
+	minLen := n
+	for _, scores := range itemScores {
+		if len(scores) < minLen {
+			minLen = len(scores)
 		}
 	}
 
-	// Need at least 2 valid questions for split-half
-	if len(validQIDs) < 2 {
+	if minLen < 2 {
 		return 0, 0
 	}
 
-	// Sort for consistent ordering
-	sort.Strings(validQIDs)
-
 	// Split into odd/even halves based on sorted order
-	oddScores := make([]float64, n)
-	evenScores := make([]float64, n)
+	// Use only the first minLen responses from each question for alignment
+	oddScores := make([]float64, minLen)
+	evenScores := make([]float64, minLen)
 	oddCount := 0
 	evenCount := 0
 
-	for i, qID := range validQIDs {
+	for i, qID := range qIDs {
 		scores := itemScores[qID]
-		for j, score := range scores {
+		for j := 0; j < minLen; j++ {
 			if i%2 == 0 {
-				evenScores[j] += score
+				evenScores[j] += scores[j]
 			} else {
-				oddScores[j] += score
+				oddScores[j] += scores[j]
 			}
 		}
 		if i%2 == 0 {
