@@ -68,11 +68,11 @@ type GroupComparisonData struct {
 
 // DimensionComparison contains comparison stats for a single dimension
 type DimensionComparison struct {
-	Groups      []GroupStats  `json:"groups"`      // Stats for each group
-	TTest       *TTestStats   `json:"tTest"`       // For 2 groups
-	ANOVA       *ANOVAStats   `json:"anova"`       // For 3+ groups
-	EffectSize  EffectStats   `json:"effectSize"`  // Cohen's d or Eta-squared
-	Significant bool          `json:"significant"` // p < 0.05
+	Groups      []GroupStats `json:"groups"`      // Stats for each group
+	TTest       *TTestStats  `json:"tTest"`       // For 2 groups
+	ANOVA       *ANOVAStats  `json:"anova"`       // For 3+ groups
+	EffectSize  EffectStats  `json:"effectSize"`  // Cohen's d or Eta-squared
+	Significant bool         `json:"significant"` // p < 0.05
 }
 
 // GroupStats contains descriptive stats for a single group
@@ -107,38 +107,38 @@ type EffectStats struct {
 
 // ValidityStats contains validity analysis results
 type ValidityStats struct {
-	HasSufficientSample   bool                       `json:"hasSufficientSample"`
-	SampleSize            int                        `json:"sampleSize"`
-	MinSampleSize         int                        `json:"minSampleSize"`
-	ConvergentValidity    map[string]ConvergentStats `json:"convergentValidity"`    // AVE & CR by dimension
-	DiscriminantValidity  DiscriminantStats          `json:"discriminantValidity"`  // Fornell-Larcker & HTMT
-	OverallAssessment     ValidityAssessment         `json:"overallAssessment"`     // Summary interpretation
+	HasSufficientSample  bool                       `json:"hasSufficientSample"`
+	SampleSize           int                        `json:"sampleSize"`
+	MinSampleSize        int                        `json:"minSampleSize"`
+	ConvergentValidity   map[string]ConvergentStats `json:"convergentValidity"`   // AVE & CR by dimension
+	DiscriminantValidity DiscriminantStats          `json:"discriminantValidity"` // Fornell-Larcker & HTMT
+	OverallAssessment    ValidityAssessment         `json:"overallAssessment"`    // Summary interpretation
 }
 
 // ConvergentStats contains convergent validity metrics for a dimension
 type ConvergentStats struct {
-	AVE                float64 `json:"ave"`                // Average Variance Extracted (should be > 0.5)
-	CR                 float64 `json:"cr"`                 // Composite Reliability (should be > 0.7)
-	ItemCount          int     `json:"itemCount"`          // Number of items in this dimension
-	MeetsAVEThreshold  bool    `json:"meetsAVEThreshold"`  // AVE >= 0.5
-	MeetsCRThreshold   bool    `json:"meetsCRThreshold"`   // CR >= 0.7
+	AVE               float64 `json:"ave"`               // Average Variance Extracted (should be > 0.5)
+	CR                float64 `json:"cr"`                // Composite Reliability (should be > 0.7)
+	ItemCount         int     `json:"itemCount"`         // Number of items in this dimension
+	MeetsAVEThreshold bool    `json:"meetsAVEThreshold"` // AVE >= 0.5
+	MeetsCRThreshold  bool    `json:"meetsCRThreshold"`  // CR >= 0.7
 }
 
 // DiscriminantStats contains discriminant validity metrics
 type DiscriminantStats struct {
-	FornellLarcker     map[string]map[string]float64 `json:"fornellLarcker"`     // sqrt(AVE) vs inter-correlations
-	HTMT               map[string]float64            `json:"htmt"`               // Heterotrait-Monotrait ratios
-	PassesFornellLarcker bool                        `json:"passesFornellLarcker"`
-	PassesHTMT         bool                          `json:"passesHTMT"`         // All HTMT < 0.85
+	FornellLarcker       map[string]map[string]float64 `json:"fornellLarcker"` // sqrt(AVE) vs inter-correlations
+	HTMT                 map[string]float64            `json:"htmt"`           // Heterotrait-Monotrait ratios
+	PassesFornellLarcker bool                          `json:"passesFornellLarcker"`
+	PassesHTMT           bool                          `json:"passesHTMT"` // All HTMT < 0.85
 }
 
 // ValidityAssessment provides an overall interpretation
 type ValidityAssessment struct {
-	ConvergentValid    bool   `json:"convergentValid"`    // All dimensions meet AVE > 0.5
-	DiscriminantValid  bool   `json:"discriminantValid"`  // Passes Fornell-Larcker or HTMT
-	OverallValid       bool   `json:"overallValid"`       // Both convergent and discriminant valid
-	Interpretation     string `json:"interpretation"`     // Human-readable summary (en)
-	InterpretationZh   string `json:"interpretationZh"`   // Human-readable summary (zh)
+	ConvergentValid   bool   `json:"convergentValid"`   // All dimensions meet AVE > 0.5
+	DiscriminantValid bool   `json:"discriminantValid"` // Passes Fornell-Larcker or HTMT
+	OverallValid      bool   `json:"overallValid"`      // Both convergent and discriminant valid
+	Interpretation    string `json:"interpretation"`    // Human-readable summary (en)
+	InterpretationZh  string `json:"interpretationZh"`  // Human-readable summary (zh)
 }
 
 // AnalyticsSummary provides overview metrics
@@ -407,7 +407,9 @@ func (s *AnalyticsService) getQuestionDimensionMap(tenantID *uint) map[string]st
 
 	// Load questions with primary dimension
 	var questions []database.QuizQuestionDB
-	qq := s.db.Select("question_id, primary_dimension_id").Model(&database.QuizQuestionDB{}).Where("is_active = ?", true)
+	qq := s.db.Select("question_id, primary_dimension_id, options").
+		Model(&database.QuizQuestionDB{}).
+		Where("is_active = ?", true)
 	if tenantID != nil {
 		qq = qq.Where("tenant_id = ? OR tenant_id IS NULL", *tenantID)
 	} else {
@@ -418,10 +420,43 @@ func (s *AnalyticsService) getQuestionDimensionMap(tenantID *uint) map[string]st
 		if q.PrimaryDimensionID != nil {
 			if key, ok := dimKeyByID[*q.PrimaryDimensionID]; ok {
 				result[q.QuestionID] = key
+				continue
+			}
+		}
+
+		// Fallback: derive dimension from option scores when primary dimension is missing
+		if len(q.Options) > 0 {
+			var opts []database.OptionConfig
+			if err := json.Unmarshal(q.Options, &opts); err == nil {
+				if dimKey := firstDimensionKeyFromOptions(opts); dimKey != "" {
+					result[q.QuestionID] = dimKey
+				}
 			}
 		}
 	}
 	return result
+}
+
+// firstDimensionKeyFromOptions returns a stable dimension key from option score definitions.
+// This helps legacy data where PrimaryDimensionID is not populated.
+func firstDimensionKeyFromOptions(opts []database.OptionConfig) string {
+	for _, opt := range opts {
+		if len(opt.Scores) == 0 {
+			continue
+		}
+		keys := make([]string, 0, len(opt.Scores))
+		for k := range opt.Scores {
+			if k != "" {
+				keys = append(keys, k)
+			}
+		}
+		if len(keys) == 0 {
+			continue
+		}
+		sort.Strings(keys)
+		return keys[0]
+	}
+	return ""
 }
 
 // calculateReliability performs reliability analysis
@@ -1016,7 +1051,6 @@ func percentileFromSorted(sorted []float64, p float64) float64 {
 	return sorted[lower] + frac*(sorted[upper]-sorted[lower])
 }
 
-
 func calculatePearsonCorrelation(x, y []float64) float64 {
 	if len(x) != len(y) || len(x) < 2 {
 		return 0
@@ -1076,10 +1110,10 @@ func (s *AnalyticsService) calculateValidity(results []database.QuizResultDB, te
 	hasSufficient := n >= minValiditySample
 
 	stats := ValidityStats{
-		HasSufficientSample:  hasSufficient,
-		SampleSize:           n,
-		MinSampleSize:        minValiditySample,
-		ConvergentValidity:   make(map[string]ConvergentStats),
+		HasSufficientSample: hasSufficient,
+		SampleSize:          n,
+		MinSampleSize:       minValiditySample,
+		ConvergentValidity:  make(map[string]ConvergentStats),
 		DiscriminantValidity: DiscriminantStats{
 			FornellLarcker:       make(map[string]map[string]float64),
 			HTMT:                 make(map[string]float64),
