@@ -491,13 +491,19 @@ Please provide actionable specific recommendations.`,
                 {dimensionReliabilityEntries.map(([dimKey, relData]) => {
                   const rel = relData as { hasSufficientSample?: boolean; sampleSize: number; cronbachAlpha: number; spearmanBrown: number; questionCount?: number; validQuestionCount?: number };
                   const dimReady = rel.hasSufficientSample ?? rel.sampleSize >= minReliabilitySample;
-                  const alphaColor = !dimReady ? 'text-gray-400' : rel.cronbachAlpha >= 0.8 ? 'text-green-600' : rel.cronbachAlpha >= 0.7 ? 'text-blue-600' : rel.cronbachAlpha >= 0.6 ? 'text-yellow-600' : 'text-red-600';
+                  const insufficientItems = rel.questionCount !== undefined && rel.questionCount < 2;
+                  const alphaColor = !dimReady || insufficientItems ? 'text-gray-400' : rel.cronbachAlpha >= 0.8 ? 'text-green-600' : rel.cronbachAlpha >= 0.7 ? 'text-blue-600' : rel.cronbachAlpha >= 0.6 ? 'text-yellow-600' : 'text-red-600';
                   const hasIncompleteData = rel.questionCount !== undefined && rel.validQuestionCount !== undefined && rel.validQuestionCount < rel.questionCount;
                   return (
-                    <div key={dimKey} className={`p-3 rounded-xl border ${hasIncompleteData ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100'}`}>
+                    <div key={dimKey} className={`p-3 rounded-xl border ${insufficientItems ? 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200' : hasIncompleteData ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200' : 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100'}`}>
                       <p className="text-sm font-semibold text-gray-800 truncate" title={dimKey}>{dimKey}</p>
                       <div className="mt-2">
-                        {dimReady ? (
+                        {insufficientItems ? (
+                          <>
+                            <p className="text-xl font-bold text-gray-400">α = N/A</p>
+                            <p className="text-[11px] text-gray-400 mt-1">SB = N/A</p>
+                          </>
+                        ) : dimReady ? (
                           <>
                             <p className={`text-xl font-bold ${alphaColor}`}>α = {rel.cronbachAlpha.toFixed(3)}</p>
                             <p className="text-[11px] text-gray-500 mt-1">SB = {rel.spearmanBrown.toFixed(3)}</p>
@@ -512,7 +518,7 @@ Please provide actionable specific recommendations.`,
                           <span className={hasIncompleteData ? ' text-amber-600' : ''}>
                             {' '}| Q: {rel.validQuestionCount ?? '?'}/{rel.questionCount}
                             {hasIncompleteData && ' ⚠️'}
-                            {rel.questionCount < 2 && ' ❌'}
+                            {insufficientItems && ' ❌'}
                           </span>
                         )}
                       </p>
@@ -524,6 +530,11 @@ Please provide actionable specific recommendations.`,
                 {isZh
                   ? '* α ≥ 0.8 优秀，0.7-0.8 良好，0.6-0.7 可接受，< 0.6 需改进'
                   : '* α ≥ 0.8 excellent, 0.7-0.8 good, 0.6-0.7 acceptable, < 0.6 needs improvement'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {isZh
+                  ? '* ❌ 表示该维度题目数 < 2，无法计算信度。混合测量问卷建议通过效标关联效度验证'
+                  : '* ❌ indicates < 2 items for this dimension. For mixed-measurement scales, criterion validity is recommended'}
               </p>
             </div>
           ) : (
