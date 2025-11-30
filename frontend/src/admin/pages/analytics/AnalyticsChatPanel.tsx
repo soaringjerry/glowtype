@@ -111,6 +111,17 @@ export default function AnalyticsChatPanel({
                   sampleSize: analyticsData.reliability.sampleSize,
                   hasSufficientSample: analyticsData.reliability.hasSufficientSample,
                   itemTotalCorrelations: analyticsData.reliability.itemTotalCorrelations,
+                  byDimension: analyticsData.reliability.byDimension ? Object.fromEntries(
+                    Object.entries(analyticsData.reliability.byDimension).map(([k, v]) => [
+                      k,
+                      {
+                        cronbachAlpha: v.cronbachAlpha,
+                        spearmanBrown: v.spearmanBrown,
+                        sampleSize: v.sampleSize,
+                        hasSufficientSample: v.hasSufficientSample,
+                      },
+                    ])
+                  ) : undefined,
                 } : null,
                 dimensionStats: analyticsData.dimensionStats ? Object.fromEntries(
                   Object.entries(analyticsData.dimensionStats).map(([k, v]) => [
@@ -281,6 +292,17 @@ export default function AnalyticsChatPanel({
         sampleSize: data.reliability.sampleSize,
         hasSufficientSample: data.reliability.hasSufficientSample,
         itemTotalCorrelations: data.reliability.itemTotalCorrelations,
+        byDimension: data.reliability.byDimension ? Object.fromEntries(
+          Object.entries(data.reliability.byDimension).map(([k, v]) => [
+            k,
+            {
+              cronbachAlpha: v.cronbachAlpha,
+              spearmanBrown: v.spearmanBrown,
+              sampleSize: v.sampleSize,
+              hasSufficientSample: v.hasSufficientSample,
+            },
+          ])
+        ) : undefined,
       } : null,
       dimensionStats: data.dimensionStats ? Object.fromEntries(
         Object.entries(data.dimensionStats).map(([k, v]) => [
