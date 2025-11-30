@@ -88,6 +88,39 @@ interface ChatMessageResult {
   resources: CrisisResource[];
 }
 
+// Stable ResourceCard component (outside App to prevent re-mount on input change)
+const ResourceCard = ({ resources, lang }: { resources: CrisisResource[]; lang: string }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-xl"
+  >
+    <div className="flex items-center gap-2 mb-2">
+      <Heart size={14} className="text-rose-500" />
+      <span className="text-xs font-bold text-rose-700">
+        {lang === 'zh' ? '支持资源' : 'Support Resources'}
+      </span>
+    </div>
+    <div className="space-y-2">
+      {resources.slice(0, 3).map((r, i) => (
+        <div key={i} className="flex items-center justify-between text-xs">
+          <span className="text-rose-800 font-medium">{r.name}</span>
+          {r.phone && (
+            <a href={`tel:${r.phone}`} className="px-2 py-1 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-colors">
+              {r.phone}
+            </a>
+          )}
+          {r.url && !r.phone && (
+            <a href={r.url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-colors flex items-center gap-1">
+              {lang === 'zh' ? '访问' : 'Visit'} <ExternalLink size={10} />
+            </a>
+          )}
+        </div>
+      ))}
+    </div>
+  </motion.div>
+);
+
 const sendChatMessage = async (
   sessionId: string,
   message: string,
@@ -915,39 +948,6 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
     setMessages(prev => [...prev, botMsg]);
   };
 
-  // Render resource card
-  const ResourceCard = ({ resources }: { resources: CrisisResource[] }) => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-xl"
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <Heart size={14} className="text-rose-500" />
-        <span className="text-xs font-bold text-rose-700">
-          {lang === 'zh' ? '支持资源' : 'Support Resources'}
-        </span>
-      </div>
-      <div className="space-y-2">
-        {resources.slice(0, 3).map((r, i) => (
-          <div key={i} className="flex items-center justify-between text-xs">
-            <span className="text-rose-800 font-medium">{r.name}</span>
-            {r.phone && (
-              <a href={`tel:${r.phone}`} className="px-2 py-1 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-colors">
-                {r.phone}
-              </a>
-            )}
-            {r.url && !r.phone && (
-              <a href={r.url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-colors flex items-center gap-1">
-                {lang === 'zh' ? '访问' : 'Visit'} <ExternalLink size={10} />
-              </a>
-            )}
-          </div>
-        ))}
-      </div>
-    </motion.div>
-  );
-
   return (
     <div className="flex flex-col h-[100dvh] bg-[#FDFCFE] relative z-50">
       {/* Header - Clean & Minimal */}
@@ -998,7 +998,7 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
               </div>
               {/* Show crisis resources if available for this message */}
               {msg.sender === 'bot' && msg.resources && msg.resources.length > 0 && (
-                <ResourceCard resources={msg.resources} />
+                <ResourceCard resources={msg.resources} lang={lang} />
               )}
             </div>
           </motion.div>
