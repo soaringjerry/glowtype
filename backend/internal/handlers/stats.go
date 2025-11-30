@@ -92,6 +92,7 @@ func SubmitQuizResultHandler(c *gin.Context) {
 	// Serialize JSON fields
 	answersJSON, _ := json.Marshal(req.Answers)
 	scoresJSON, _ := json.Marshal(req.DimensionScores)
+	now := time.Now().UTC().Truncate(time.Hour) // coarse timestamp to avoid high-precision storage
 
 	// Create quiz result record
 	result := database.QuizResultDB{
@@ -104,7 +105,7 @@ func SubmitQuizResultHandler(c *gin.Context) {
 		Channel:         req.Channel,
 		EntryPoint:      req.EntryPoint,
 		Referrer:        req.Referrer,
-		UserAgent:       c.GetHeader("User-Agent"),
+		CreatedAt:       now,
 	}
 
 	// Extract anonymized info
