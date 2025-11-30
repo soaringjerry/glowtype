@@ -388,7 +388,7 @@
     "unmatched": "未匹配",
     "unknown": "未知",
     "noteTitle": "数据全程匿名",
-    "noteBody": "Glowtype 不保存任何个人信息。结果仅包含分数、语言、渠道和时间戳，方便质量检查和调优。"
+    "noteBody": "Glowtype 不保存任何个人信息。结果仅包含分数、语言、渠道和粗化后的时间戳（分钟粒度），方便质量检查和调优。"
   },
   "prompts": {
     "title": "AI 提示词",

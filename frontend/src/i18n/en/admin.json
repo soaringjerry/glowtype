@@ -388,7 +388,7 @@
     "unmatched": "Unmapped",
     "unknown": "Unknown",
     "noteTitle": "Data is anonymous",
-    "noteBody": "Glowtype does not store PII. Results only include scores, language, channel and timestamps to help with QA and tuning."
+    "noteBody": "Glowtype does not store PII. Results only include scores, language, channel, and coarse timestamps (minute-level) to help with QA and tuning."
   },
   "prompts": {
     "title": "AI Prompts",
