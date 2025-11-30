@@ -504,22 +504,48 @@ Please provide actionable specific recommendations.`,
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="p-4 bg-blue-50 rounded-xl">
-              <p className="text-xs text-blue-600 mb-1">Cronbach's Alpha</p>
-              <p className="text-2xl font-bold text-blue-700">{reliabilityReady ? data.reliability.cronbachAlpha.toFixed(3) : '--'}</p>
-              <p className="text-[11px] text-blue-600 mt-1">
-                {reliabilityReady ? (isZh ? '样本达标，可解读' : 'Sample adequate for interpretation') : isZh ? '样本不足，等待更多数据' : 'Need more data for reliable alpha'}
+          {/* Per-dimension Reliability - Primary Display */}
+          {dimensionReliabilityEntries.length > 0 ? (
+            <div className="mb-6">
+              <p className="text-sm font-medium text-gray-700 mb-3">{isZh ? '分维度信度（Cronbach\'s α）' : 'Reliability by Dimension (Cronbach\'s α)'}</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {dimensionReliabilityEntries.map(([dimKey, relData]) => {
+                  const rel = relData as { hasSufficientSample?: boolean; sampleSize: number; cronbachAlpha: number; spearmanBrown: number };
+                  const dimReady = rel.hasSufficientSample ?? rel.sampleSize >= minReliabilitySample;
+                  const alphaColor = !dimReady ? 'text-gray-400' : rel.cronbachAlpha >= 0.8 ? 'text-green-600' : rel.cronbachAlpha >= 0.7 ? 'text-blue-600' : rel.cronbachAlpha >= 0.6 ? 'text-yellow-600' : 'text-red-600';
+                  return (
+                    <div key={dimKey} className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100">
+                      <p className="text-sm font-semibold text-gray-800 truncate" title={dimKey}>{dimKey}</p>
+                      <div className="mt-2">
+                        {dimReady ? (
+                          <>
+                            <p className={`text-xl font-bold ${alphaColor}`}>α = {rel.cronbachAlpha.toFixed(3)}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">SB = {rel.spearmanBrown.toFixed(3)}</p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-gray-400">{isZh ? '样本不足' : 'Insufficient'}</p>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">N={rel.sampleSize}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                {isZh
+                  ? '* α ≥ 0.8 优秀，0.7-0.8 良好，0.6-0.7 可接受，< 0.6 需改进'
+                  : '* α ≥ 0.8 excellent, 0.7-0.8 good, 0.6-0.7 acceptable, < 0.6 needs improvement'}
               </p>
             </div>
-            <div className="p-4 bg-cyan-50 rounded-xl">
-              <p className="text-xs text-cyan-600 mb-1">Spearman-Brown</p>
-              <p className="text-2xl font-bold text-cyan-700">{reliabilityReady ? data.reliability.spearmanBrown.toFixed(3) : '--'}</p>
-              <p className="text-[11px] text-cyan-600 mt-1">
-                {reliabilityReady ? (isZh ? '分半信度校正' : 'Split-half adjusted') : isZh ? '样本不足' : 'Sample too small'}
+          ) : (
+            <div className="mb-6 p-4 bg-gray-50 rounded-xl text-center">
+              <p className="text-sm text-gray-500">
+                {isZh
+                  ? `需要至少 ${minReliabilitySample} 份有效答卷才能计算分维度信度`
+                  : `Need at least ${minReliabilitySample} valid responses to calculate reliability by dimension`}
               </p>
             </div>
-          </div>
+          )}
 
           <div id="itemCorrelations">
             <div className="flex items-center justify-between mb-2">
@@ -573,35 +599,6 @@ Please provide actionable specific recommendations.`,
             )}
           </div>
 
-          {dimensionReliabilityEntries.length > 0 && (
-            <div className="mt-6">
-              <p className="text-sm font-medium text-gray-700 mb-2">{isZh ? '分维度信度' : 'Reliability by dimension'}</p>
-              <div className="space-y-2">
-                {dimensionReliabilityEntries.map(([dimKey, relData]) => {
-                  const rel = relData as { hasSufficientSample?: boolean; sampleSize: number; cronbachAlpha: number; spearmanBrown: number };
-                  const dimReady = rel.hasSufficientSample ?? rel.sampleSize >= minReliabilitySample;
-                  return (
-                    <div key={dimKey} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100">
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-800">{dimKey}</p>
-                        <p className="text-[11px] text-gray-500">{isZh ? `样本 N=${rel.sampleSize}` : `Sample N=${rel.sampleSize}`}</p>
-                      </div>
-                      <div className="text-right">
-                        {dimReady ? (
-                          <>
-                            <p className="text-sm font-bold text-blue-700">α {rel.cronbachAlpha.toFixed(3)}</p>
-                            <p className="text-[11px] text-gray-500">SB {rel.spearmanBrown.toFixed(3)}</p>
-                          </>
-                        ) : (
-                          <p className="text-xs text-gray-400">{isZh ? '样本不足' : 'Insufficient sample'}</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
