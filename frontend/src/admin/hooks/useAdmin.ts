@@ -357,10 +357,17 @@ export interface DimensionComparison {
   significant: boolean;
 }
 
+export interface ExcludedDimensionInfo {
+  dimension: string;
+  reason: string;
+  groupCounts: Record<string, number>;
+}
+
 export interface GroupComparisonData {
   byDevice: Record<string, DimensionComparison>;
   byLanguage: Record<string, DimensionComparison>;
   minSample: number;
+  excludedDimensions?: ExcludedDimensionInfo[];
 }
 
 export interface AnalyticsResponse {

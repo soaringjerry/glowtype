@@ -61,9 +61,17 @@ type AnalyticsResponse struct {
 
 // GroupComparisonData contains statistical comparisons between groups
 type GroupComparisonData struct {
-	ByDevice   map[string]DimensionComparison `json:"byDevice"`   // mobile vs desktop per dimension
-	ByLanguage map[string]DimensionComparison `json:"byLanguage"` // zh-CN vs en per dimension
-	MinSample  int                            `json:"minSample"`  // Minimum sample per group required
+	ByDevice           map[string]DimensionComparison `json:"byDevice"`           // mobile vs desktop per dimension
+	ByLanguage         map[string]DimensionComparison `json:"byLanguage"`         // zh-CN vs en per dimension
+	MinSample          int                            `json:"minSample"`          // Minimum sample per group required
+	ExcludedDimensions []ExcludedDimensionInfo        `json:"excludedDimensions"` // Dimensions excluded and why
+}
+
+// ExcludedDimensionInfo explains why a dimension was excluded from group comparison
+type ExcludedDimensionInfo struct {
+	Dimension   string            `json:"dimension"`
+	Reason      string            `json:"reason"`
+	GroupCounts map[string]int    `json:"groupCounts"` // How many samples each group has
 }
 
 // DimensionComparison contains comparison stats for a single dimension
@@ -1404,9 +1412,10 @@ const minGroupComparisonSample = 10 // Minimum sample per group for comparison
 // calculateGroupComparison performs t-tests and ANOVA for group comparisons
 func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResultDB) GroupComparisonData {
 	data := GroupComparisonData{
-		ByDevice:   make(map[string]DimensionComparison),
-		ByLanguage: make(map[string]DimensionComparison),
-		MinSample:  minGroupComparisonSample,
+		ByDevice:           make(map[string]DimensionComparison),
+		ByLanguage:         make(map[string]DimensionComparison),
+		MinSample:          minGroupComparisonSample,
+		ExcludedDimensions: []ExcludedDimensionInfo{},
 	}
 
 	if len(results) < minGroupComparisonSample*2 {
@@ -1455,17 +1464,31 @@ func (s *AnalyticsService) calculateGroupComparison(results []database.QuizResul
 	}
 
 	// Compare by device (mobile vs desktop)
-	data.ByDevice = s.compareGroups(deviceScores, calc)
+	deviceResult := s.compareGroups(deviceScores, calc)
+	data.ByDevice = deviceResult.Comparisons
 
 	// Compare by language (zh vs en)
-	data.ByLanguage = s.compareGroups(langScores, calc)
+	langResult := s.compareGroups(langScores, calc)
+	data.ByLanguage = langResult.Comparisons
+
+	// Merge excluded dimensions (prioritize language exclusions as they're more common)
+	data.ExcludedDimensions = langResult.Excluded
 
 	return data
 }
 
+// CompareGroupsResult contains both comparison results and excluded dimensions
+type CompareGroupsResult struct {
+	Comparisons map[string]DimensionComparison
+	Excluded    []ExcludedDimensionInfo
+}
+
 // compareGroups performs statistical comparison between groups for each dimension
-func (s *AnalyticsService) compareGroups(groupScores map[string]map[string][]float64, calc *StatisticsCalculator) map[string]DimensionComparison {
-	result := make(map[string]DimensionComparison)
+func (s *AnalyticsService) compareGroups(groupScores map[string]map[string][]float64, calc *StatisticsCalculator) CompareGroupsResult {
+	result := CompareGroupsResult{
+		Comparisons: make(map[string]DimensionComparison),
+		Excluded:    []ExcludedDimensionInfo{},
+	}
 
 	// Get all dimensions
 	dims := make(map[string]bool)
@@ -1481,8 +1504,13 @@ func (s *AnalyticsService) compareGroups(groupScores map[string]map[string][]flo
 		var groupData [][]float64
 		groupNames := make([]string, 0)
 
+		// Track all group counts for exclusion info
+		groupCounts := make(map[string]int)
+
 		for groupName, dimMap := range groupScores {
 			scores := dimMap[dim]
+			groupCounts[groupName] = len(scores)
+
 			if len(scores) < minGroupComparisonSample {
 				continue
 			}
@@ -1500,7 +1528,13 @@ func (s *AnalyticsService) compareGroups(groupScores map[string]map[string][]flo
 		}
 
 		if len(groups) < 2 {
-			continue // Need at least 2 groups
+			// Record why this dimension was excluded
+			result.Excluded = append(result.Excluded, ExcludedDimensionInfo{
+				Dimension:   dim,
+				Reason:      "insufficient_groups",
+				GroupCounts: groupCounts,
+			})
+			continue
 		}
 
 		comparison := DimensionComparison{
@@ -1544,7 +1578,7 @@ func (s *AnalyticsService) compareGroups(groupScores map[string]map[string][]flo
 			}
 		}
 
-		result[dim] = comparison
+		result.Comparisons[dim] = comparison
 	}
 
 	return result

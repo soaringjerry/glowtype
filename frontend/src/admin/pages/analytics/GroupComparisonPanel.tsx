@@ -1,4 +1,4 @@
-import { GitCompare, Smartphone, Languages, HelpCircle } from 'lucide-react';
+import { GitCompare, Smartphone, Languages, HelpCircle, AlertCircle } from 'lucide-react';
 import type { GroupComparisonData } from '../../hooks/useAdmin';
 
 interface GroupComparisonPanelProps {
@@ -168,6 +168,35 @@ export default function GroupComparisonPanel({ groupComparison, isZh, onAskAI }:
                         F({comp.anova.dfBetween},{comp.anova.dfWithin})={comp.anova.fStatistic.toFixed(2)}, p={comp.anova.pValue.toFixed(3)}, η²={comp.effectSize.value.toFixed(3)}
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Excluded Dimensions */}
+          {groupComparison.excludedDimensions && groupComparison.excludedDimensions.length > 0 && (
+            <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <h4 className="text-sm font-medium text-amber-800">
+                  {isZh ? '被排除的维度' : 'Excluded Dimensions'}
+                </h4>
+              </div>
+              <p className="text-xs text-amber-700 mb-2">
+                {isZh
+                  ? `以下维度因没有至少2个语言组达到 ${groupComparison.minSample} 样本阈值而被排除：`
+                  : `The following dimensions were excluded because fewer than 2 language groups met the ${groupComparison.minSample} sample threshold:`}
+              </p>
+              <div className="space-y-2">
+                {groupComparison.excludedDimensions.map((exc) => (
+                  <div key={exc.dimension} className="text-xs text-amber-800">
+                    <span className="font-medium">{exc.dimension}</span>
+                    <span className="text-amber-600 ml-2">
+                      ({Object.entries(exc.groupCounts)
+                        .map(([lang, count]) => `${formatLanguageName(lang)}: ${count}`)
+                        .join(', ')})
+                    </span>
                   </div>
                 ))}
               </div>
