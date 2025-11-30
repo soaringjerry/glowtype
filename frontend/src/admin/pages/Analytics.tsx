@@ -506,12 +506,16 @@ Please provide actionable specific recommendations.`,
                           <p className="text-sm text-gray-400">{isZh ? '样本不足' : 'Insufficient'}</p>
                         )}
                       </div>
-                      <p className="text-[10px] text-gray-400 mt-1">N={rel.sampleSize}</p>
-                      {hasIncompleteData && (
-                        <p className="text-[10px] text-amber-600 mt-1" title={isZh ? `${rel.questionCount}个题目中只有${rel.validQuestionCount}个有完整响应` : `Only ${rel.validQuestionCount} of ${rel.questionCount} questions have complete responses`}>
-                          ⚠️ Q: {rel.validQuestionCount}/{rel.questionCount}
-                        </p>
-                      )}
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        N={rel.sampleSize}
+                        {rel.questionCount !== undefined && (
+                          <span className={hasIncompleteData ? ' text-amber-600' : ''}>
+                            {' '}| Q: {rel.validQuestionCount ?? '?'}/{rel.questionCount}
+                            {hasIncompleteData && ' ⚠️'}
+                            {rel.questionCount < 2 && ' ❌'}
+                          </span>
+                        )}
+                      </p>
                     </div>
                   );
                 })}
