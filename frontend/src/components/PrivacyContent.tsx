@@ -1,7 +1,7 @@
 export const PrivacyContentZh = () => {
   const content = `**隐私政策**
 
-最后更新：2025年11月27日
+最后更新：2025年12月01日
 
 我们尽力使本政策简洁明了，避免使用过多法律术语，以帮助您了解我们收集哪些信息、如何使用这些信息，以及您有哪些选择。您应完整阅读本政策，但以下是我们希望您了解的关键要点简要摘要：
 
@@ -149,7 +149,7 @@ OpenAI、Anthropic、Google，提供AI功能的技术支持。您与AI的对话�
 
 以下是部分数据类别及其保留期限的示例：
 
-测试答案：在生成卡片后，匿名化处理用于统计分析和研究，不保留与您会话的关联。
+测试答案：在生成卡片后，我们会去标识化并用于统计分析和研究，不与任何可识别到您的身份建立关联。
 
 聊天内容：主要用于实时生成回复，若因安全或服务改进需要短期存储，将在合理期限后删除或匿名化处理。
 
@@ -215,7 +215,7 @@ OpenAI、Anthropic、Google，提供AI功能的技术支持。您与AI的对话�
 export const PrivacyContentEn = () => {
   const content = `**Privacy Policy**
 
-Last Updated: November 27, 2025
+Last Updated: December 1, 2025
 
 We have tried to keep this policy as simple and jargon-free as possible to help you understand what information we collect, how we use it, and what choices you have. You should read this policy in full, but here is a brief summary of the key points we hope you take away from it:
 
@@ -363,7 +363,7 @@ We only retain your information for as long as necessary to provide services to 
 
 Here are some examples of data categories and their retention periods:
 
-Test answers: After generating the card, anonymized for statistical analysis and research, with no retention of association with your session.
+Test answers: After generating the card, we de-identify them for statistical analysis and research, without establishing any link that can identify you.
 
 Chat content: Primarily used for real-time response generation; if short-term storage is needed for security or service improvement, it will be deleted or anonymized after a reasonable period.
 
