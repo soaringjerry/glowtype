@@ -895,6 +895,20 @@ interface ChatMessage {
   resources?: CrisisResource[];
 }
 
+interface DebugInfo {
+  sessionId: string;
+  sessionContext: {
+    glowtypeCode: string;
+    glowtypeName: string;
+    language: string;
+    messageCount: number;
+    isTest: boolean;
+  } | null;
+  systemPrompt: string;
+  guidanceLoaded: Record<string, boolean>;
+  promptLayers: Record<string, string>;
+}
+
 const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
   const t = TRANSLATIONS[lang].chat;
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -905,6 +919,11 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const endOfMsgRef = useRef<HTMLDivElement>(null);
 
+  // Debug panel state (admin only)
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
+
   useEffect(() => { endOfMsgRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
 
   useEffect(() => {
@@ -912,6 +931,46 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
       if (id) setSessionId(id);
     });
   }, [lang, glowtypeCode]);
+
+  // Keyboard shortcut for debug panel (Ctrl+Shift+D) - admin only
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        if (isAdminLoggedIn()) {
+          setShowDebug(prev => !prev);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Fetch debug info when panel is opened
+  useEffect(() => {
+    if (showDebug && sessionId && !debugInfo) {
+      const fetchDebug = async () => {
+        setDebugLoading(true);
+        try {
+          const token = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+          const res = await fetch(`${getApiBaseUrl()}/admin/chat/debug/${sessionId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setDebugInfo(data);
+          }
+        } catch (err) {
+          console.error('Failed to fetch debug info:', err);
+        } finally {
+          setDebugLoading(false);
+        }
+      };
+      fetchDebug();
+    }
+  }, [showDebug, sessionId, debugInfo]);
 
   // Build conversation history for API (exclude intro message, limit to last 10)
   const buildHistory = (): ChatHistoryItem[] => {
@@ -1056,6 +1115,93 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
           {lang === 'zh' ? 'AI 可能会出错 · 隐私保护' : 'AI can make mistakes · Private'}
         </p>
       </div>
+
+      {/* Debug Panel - Admin Only (Ctrl+Shift+D to toggle) */}
+      {showDebug && isAdminLoggedIn() && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+              <h2 className="font-bold text-gray-900">Debug Panel</h2>
+              <button onClick={() => setShowDebug(false)} className="p-2 hover:bg-gray-200 rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4 text-sm">
+              {debugLoading ? (
+                <div className="text-center text-gray-500">Loading...</div>
+              ) : debugInfo ? (
+                <>
+                  {/* Session Info */}
+                  <div className="bg-blue-50 p-4 rounded-xl">
+                    <h3 className="font-bold text-blue-800 mb-2">Session Context</h3>
+                    <div className="grid grid-cols-2 gap-2 text-blue-700">
+                      <div>Session ID: <code className="bg-blue-100 px-1 rounded">{debugInfo.sessionId}</code></div>
+                      <div>Glowtype Code: <code className="bg-blue-100 px-1 rounded">{debugInfo.sessionContext?.glowtypeCode || 'N/A'}</code></div>
+                      <div>Glowtype Name: <code className="bg-blue-100 px-1 rounded">{debugInfo.sessionContext?.glowtypeName || 'N/A'}</code></div>
+                      <div>Language: <code className="bg-blue-100 px-1 rounded">{debugInfo.sessionContext?.language || 'N/A'}</code></div>
+                      <div>Message Count: <code className="bg-blue-100 px-1 rounded">{debugInfo.sessionContext?.messageCount || 0}</code></div>
+                      <div>Is Test: <code className="bg-blue-100 px-1 rounded">{String(debugInfo.sessionContext?.isTest || false)}</code></div>
+                    </div>
+                  </div>
+
+                  {/* Frontend Props */}
+                  <div className="bg-purple-50 p-4 rounded-xl">
+                    <h3 className="font-bold text-purple-800 mb-2">Frontend Props</h3>
+                    <div className="text-purple-700">
+                      <div>glowtypeCode prop: <code className="bg-purple-100 px-1 rounded">{glowtypeCode || 'undefined'}</code></div>
+                      <div>lang prop: <code className="bg-purple-100 px-1 rounded">{lang}</code></div>
+                    </div>
+                  </div>
+
+                  {/* Guidance Loaded */}
+                  <div className="bg-green-50 p-4 rounded-xl">
+                    <h3 className="font-bold text-green-800 mb-2">Guidance Loaded</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(debugInfo.guidanceLoaded || {}).map(([code, loaded]) => (
+                        <span key={code} className={`px-2 py-1 rounded text-xs ${loaded ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                          {code}: {loaded ? '✓' : '✗'}
+                        </span>
+                      ))}
+                      {Object.keys(debugInfo.guidanceLoaded || {}).length === 0 && (
+                        <span className="text-red-600">No guidance loaded!</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Prompt Layers */}
+                  <div className="space-y-3">
+                    {['safety', 'understanding', 'guidance'].map((layer) => (
+                      <details key={layer} className="bg-gray-50 rounded-xl overflow-hidden">
+                        <summary className="p-4 cursor-pointer font-bold text-gray-800 hover:bg-gray-100">
+                          {layer.charAt(0).toUpperCase() + layer.slice(1)} Layer
+                          {debugInfo.promptLayers?.[layer] ? ` (${debugInfo.promptLayers[layer].length} chars)` : ' (empty)'}
+                        </summary>
+                        <pre className="p-4 bg-gray-900 text-gray-100 text-xs overflow-x-auto whitespace-pre-wrap max-h-60">
+                          {debugInfo.promptLayers?.[layer] || '(empty)'}
+                        </pre>
+                      </details>
+                    ))}
+                  </div>
+
+                  {/* Full System Prompt */}
+                  <details className="bg-amber-50 rounded-xl overflow-hidden">
+                    <summary className="p-4 cursor-pointer font-bold text-amber-800 hover:bg-amber-100">
+                      Full System Prompt ({debugInfo.systemPrompt?.length || 0} chars)
+                    </summary>
+                    <pre className="p-4 bg-gray-900 text-gray-100 text-xs overflow-x-auto whitespace-pre-wrap max-h-96">
+                      {debugInfo.systemPrompt || '(empty)'}
+                    </pre>
+                  </details>
+                </>
+              ) : (
+                <div className="text-center text-gray-500">
+                  {sessionId ? 'Failed to load debug info' : 'No session yet'}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -192,6 +192,50 @@ func (s *ChatService) CreateSession(req models.ChatSessionRequest) models.ChatSe
 	return models.ChatSessionResponse{SessionID: id}
 }
 
+// DebugInfo contains debug information for a chat session
+type DebugInfo struct {
+	SessionID       string                 `json:"sessionId"`
+	SessionContext  *SessionContext        `json:"sessionContext"`
+	SystemPrompt    string                 `json:"systemPrompt"`
+	GuidanceLoaded  map[string]bool        `json:"guidanceLoaded"`
+	PromptLayers    map[string]string      `json:"promptLayers"`
+}
+
+// GetDebugInfo returns debug information for a session (for admin debugging)
+func (s *ChatService) GetDebugInfo(sessionID string) *DebugInfo {
+	sessionCtx, exists := s.sessionStore.Get(sessionID)
+	if !exists {
+		return nil
+	}
+
+	// Build the context for prompt generation
+	glowtypeCtx := GlowtypeContext{
+		Language: sessionCtx.Language,
+	}
+	if sessionCtx != nil {
+		glowtypeCtx.Code = sessionCtx.GlowtypeCode
+		glowtypeCtx.LocalizedName = sessionCtx.GlowtypeName
+		glowtypeCtx.DimensionScores = sessionCtx.DimensionScores
+	}
+
+	// Get the full system prompt
+	systemPrompt := s.promptBuilder.BuildSystemPrompt(glowtypeCtx, 0, false)
+
+	// Get individual layers for debugging
+	layers := s.promptBuilder.GetPromptLayers(glowtypeCtx)
+
+	// Check which glowtype guidance is loaded
+	guidanceLoaded := s.promptBuilder.GetLoadedGuidance()
+
+	return &DebugInfo{
+		SessionID:      sessionID,
+		SessionContext: sessionCtx,
+		SystemPrompt:   systemPrompt,
+		GuidanceLoaded: guidanceLoaded,
+		PromptLayers:   layers,
+	}
+}
+
 func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageResponse {
 	s.mu.Lock()
 	_, exists := s.sessions[req.SessionID]

@@ -569,3 +569,27 @@ func (p *PromptBuilder) ContainsForbidden(text string) []string {
 	}
 	return found
 }
+
+// GetPromptLayers returns individual prompt layers for debugging
+func (p *PromptBuilder) GetPromptLayers(ctx GlowtypeContext) map[string]string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	layers := make(map[string]string)
+	layers["safety"] = p.buildSafetyLayer(ctx.Language, 0, false)
+	layers["understanding"] = p.buildUnderstandingLayer(ctx)
+	layers["guidance"] = p.buildGuidanceLayer(ctx)
+	return layers
+}
+
+// GetLoadedGuidance returns which glowtype guidance entries are loaded
+func (p *PromptBuilder) GetLoadedGuidance() map[string]bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	result := make(map[string]bool)
+	for code := range p.guidance {
+		result[code] = true
+	}
+	return result
+}

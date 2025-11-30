@@ -138,3 +138,21 @@ func (h *ChatHandler) TrackChatAnalytics(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+// DebugSession returns debug information for a chat session (admin only)
+// GET /api/chat/debug/:sessionId
+func (h *ChatHandler) DebugSession(c *gin.Context) {
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing sessionId"})
+		return
+	}
+
+	debugInfo := h.service.GetDebugInfo(sessionID)
+	if debugInfo == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, debugInfo)
+}

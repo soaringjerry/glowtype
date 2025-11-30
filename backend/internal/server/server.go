@@ -100,6 +100,9 @@ func New(cfg config.Config) *gin.Engine {
 		admin.DELETE("/2fa/devices/:id", handlers.RevokeTrustedDeviceHandler)
 		admin.DELETE("/2fa/devices", handlers.RevokeAllTrustedDevicesHandler)
 
+		// Chat debug endpoint (admin only)
+		admin.GET("/chat/debug/:sessionId", chatHandler.DebugSession)
+
 		// Admin user management
 		adminUsers := admin.Group("/")
 		adminUsers.Use(handlers.RequirePermission(handlers.PermManageAdmins))
