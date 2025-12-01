@@ -421,7 +421,8 @@ type CrisisScriptDB struct {
 	// Script config
 	Mode            string `gorm:"default:reference;not null;index" json:"mode"` // template | reference
 	Category        string `gorm:"index" json:"category"`                        // greeting, empathy, transition, resource, closing
-	TriggerKeywords string `gorm:"type:text" json:"triggerKeywords"`             // JSON array
+	TriggerKeywords string `gorm:"type:text" json:"triggerKeywords"`             // JSON array of keywords for matching boost
+	TriggerExamples string `gorm:"type:text" json:"triggerExamples"`             // JSON array of example user inputs for embedding
 
 	// Applicability
 	CrisisLevels string `json:"crisisLevels"` // JSON array: [1,2,3]

@@ -152,26 +152,22 @@ func (s *EmbeddingService) GenerateEmbedding(text string) ([]float32, error) {
 }
 
 // UpdateScriptEmbedding generates and saves embedding for a script
+// The embedding is based on TriggerExamples (what users might say), not Content (our response)
 func (s *EmbeddingService) UpdateScriptEmbedding(scriptID uint) error {
 	var script database.CrisisScriptDB
 	if err := s.db.First(&script, scriptID).Error; err != nil {
 		return fmt.Errorf("script not found: %w", err)
 	}
 
-	// Choose text based on language
-	text := script.Content
-	if strings.HasPrefix(script.Language, "zh") && script.ContentZh != "" {
-		text = script.ContentZh
+	// Build embedding text from TriggerExamples (user input examples)
+	// This is what we match against - what users might say
+	embeddingText := buildEmbeddingText(script)
+	if embeddingText == "" {
+		log.Printf("[EmbeddingService] Script %d has no trigger examples, skipping embedding", scriptID)
+		return nil
 	}
 
-	// Combine title and content for better semantic representation
-	title := script.Title
-	if strings.HasPrefix(script.Language, "zh") && script.TitleZh != "" {
-		title = script.TitleZh
-	}
-	fullText := title + "\n" + text
-
-	embedding, err := s.GenerateEmbedding(fullText)
+	embedding, err := s.GenerateEmbedding(embeddingText)
 	if err != nil {
 		return fmt.Errorf("failed to generate embedding: %w", err)
 	}
@@ -189,6 +185,40 @@ func (s *EmbeddingService) UpdateScriptEmbedding(scriptID uint) error {
 
 	log.Printf("[EmbeddingService] Updated embedding for script %d (%s)", scriptID, script.Title)
 	return nil
+}
+
+// buildEmbeddingText constructs the text for embedding generation
+// Priority: TriggerExamples > TriggerKeywords > Title (fallback)
+func buildEmbeddingText(script database.CrisisScriptDB) string {
+	var parts []string
+
+	// Primary: TriggerExamples - example user inputs
+	if script.TriggerExamples != "" {
+		var examples []string
+		if err := json.Unmarshal([]byte(script.TriggerExamples), &examples); err == nil && len(examples) > 0 {
+			parts = append(parts, examples...)
+		}
+	}
+
+	// Secondary: TriggerKeywords
+	if script.TriggerKeywords != "" {
+		var keywords []string
+		if err := json.Unmarshal([]byte(script.TriggerKeywords), &keywords); err == nil && len(keywords) > 0 {
+			parts = append(parts, keywords...)
+		}
+	}
+
+	// If we have trigger data, use it
+	if len(parts) > 0 {
+		return strings.Join(parts, "\n")
+	}
+
+	// Fallback: use title (but this is not ideal)
+	title := script.Title
+	if strings.HasPrefix(script.Language, "zh") && script.TitleZh != "" {
+		title = script.TitleZh
+	}
+	return title
 }
 
 // RefreshAllEmbeddings regenerates embeddings for all active scripts
@@ -287,6 +317,15 @@ func (s *EmbeddingService) RetrieveRelevantScripts(
 		topK = DefaultTopK
 	}
 
+	// Normalize language
+	if language == "" {
+		language = "zh"
+	}
+	langPrefix := language
+	if len(language) > 2 {
+		langPrefix = language[:2] // "zh-CN" -> "zh"
+	}
+
 	// Generate embedding for user message
 	msgEmbedding, err := s.GenerateEmbedding(message)
 	if err != nil {
@@ -303,15 +342,36 @@ func (s *EmbeddingService) RetrieveRelevantScripts(
 		return nil, nil
 	}
 
-	// Calculate similarity scores
+	// Lowercase message for keyword matching
+	msgLower := strings.ToLower(message)
+
+	// Calculate similarity scores with filtering
 	var scored []ScoredScript
 	for _, script := range scripts {
+		// Filter by language
+		if script.Language != "" && !strings.HasPrefix(script.Language, langPrefix) {
+			continue
+		}
+
+		// Filter by crisis level
+		if !scriptMatchesCrisisLevel(script.CrisisLevels, crisisLevel) {
+			continue
+		}
+
 		scriptEmb := DeserializeEmbedding(script.Embedding)
 		if scriptEmb == nil {
 			continue
 		}
 
 		score := DotProduct(msgEmbedding, scriptEmb)
+
+		// Boost score if trigger keywords match
+		if keywordBoost := calculateKeywordBoost(script.TriggerKeywords, msgLower); keywordBoost > 0 {
+			score = score + keywordBoost*0.2 // Add up to 0.2 bonus for keyword matches
+			if score > 1.0 {
+				score = 1.0
+			}
+		}
 
 		// Filter by minimum similarity threshold
 		if score < MinSimilarityScore {
@@ -336,7 +396,54 @@ func (s *EmbeddingService) RetrieveRelevantScripts(
 		result = append(result, scored[i].Script)
 	}
 
+	log.Printf("[EmbeddingService] Retrieved %d scripts for level=%d, lang=%s (from %d candidates)",
+		len(result), crisisLevel, langPrefix, len(scripts))
+
 	return result, nil
+}
+
+// scriptMatchesCrisisLevel checks if a script applies to the given crisis level
+func scriptMatchesCrisisLevel(crisisLevelsJSON string, level int) bool {
+	if crisisLevelsJSON == "" {
+		return true // No restriction, applies to all levels
+	}
+
+	var levels []int
+	if err := json.Unmarshal([]byte(crisisLevelsJSON), &levels); err != nil {
+		return true // Invalid JSON, assume applies to all
+	}
+
+	for _, l := range levels {
+		if l == level {
+			return true
+		}
+	}
+	return false
+}
+
+// calculateKeywordBoost returns a boost score (0-1) based on keyword matches
+func calculateKeywordBoost(triggerKeywordsJSON string, messageLower string) float32 {
+	if triggerKeywordsJSON == "" {
+		return 0
+	}
+
+	var keywords []string
+	if err := json.Unmarshal([]byte(triggerKeywordsJSON), &keywords); err != nil {
+		return 0
+	}
+
+	if len(keywords) == 0 {
+		return 0
+	}
+
+	matches := 0
+	for _, kw := range keywords {
+		if strings.Contains(messageLower, strings.ToLower(kw)) {
+			matches++
+		}
+	}
+
+	return float32(matches) / float32(len(keywords))
 }
 
 // HasEmbedding checks if a script has an embedding
