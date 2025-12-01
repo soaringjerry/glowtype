@@ -711,7 +711,25 @@ type AdminAuditLog struct {
 	IP         string         `json:"ip"`
 	StatusCode int            `json:"statusCode"`
 	Metadata   datatypes.JSON `gorm:"type:json" json:"metadata"`
-	CreatedAt  time.Time      `json:"createdAt"`
+	CreatedAt  time.Time      `gorm:"index" json:"createdAt"`
+
+	// === Enhanced audit fields ===
+
+	// DataDiff stores before/after field changes for write operations
+	// Format: {"field": {"before": oldValue, "after": newValue}}
+	DataDiff datatypes.JSON `gorm:"type:json" json:"dataDiff,omitempty"`
+
+	// RiskLevel indicates the sensitivity of the operation: low, medium, high, critical
+	RiskLevel string `gorm:"index;size:16;default:low" json:"riskLevel"`
+
+	// IntegrityHash is a SHA256 hash for tamper detection
+	IntegrityHash string `gorm:"size:64" json:"integrityHash"`
+
+	// ResourceType identifies the type of resource being modified (e.g., "dimension", "rule")
+	ResourceType string `gorm:"index;size:64" json:"resourceType,omitempty"`
+
+	// ResourceID is the database ID of the resource being modified
+	ResourceID *uint `gorm:"index" json:"resourceId,omitempty"`
 }
 
 func (AdminAuditLog) TableName() string {

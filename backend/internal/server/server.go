@@ -119,6 +119,11 @@ func New(cfg config.Config) *gin.Engine {
 		adminAudit.Use(handlers.RequirePermission(handlers.PermAuditView))
 		adminAudit.GET("/audit", handlers.ListAuditLogs)
 
+		// Audit integrity verification (superadmin only)
+		adminAuditVerify := admin.Group("/")
+		adminAuditVerify.Use(handlers.RequireSuperAdmin())
+		adminAuditVerify.GET("/audit/verify", handlers.VerifyAuditLogsHandler)
+
 		// Trait Dimensions CRUD
 		dimensions := admin.Group("/")
 		dimensions.Use(handlers.RequirePermission(handlers.PermDimensions))

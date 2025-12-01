@@ -209,6 +209,12 @@ export interface AdminAuditLog {
   statusCode: number;
   metadata?: any;
   createdAt: string;
+  // Enhanced audit fields
+  dataDiff?: Record<string, { before?: any; after?: any }>;
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  integrityHash: string;
+  resourceType?: string;
+  resourceId?: number;
 }
 
 // Enhanced stats types

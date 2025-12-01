@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/soaringjerry/glowtype/internal/audit"
 	"github.com/soaringjerry/glowtype/internal/database"
 	"gorm.io/gorm"
 )
@@ -65,21 +66,29 @@ func UpdateCrisisKeyword(c *gin.Context) {
 	db := database.GetDB()
 	id := c.Param("id")
 
-	var keyword database.CrisisKeywordDB
-	if err := db.First(&keyword, id).Error; err != nil {
+	var existing database.CrisisKeywordDB
+	if err := db.First(&existing, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Keyword not found"})
 		return
 	}
 
+	// Record before state for audit diff
+	audit.SetBeforeState(c, "crisis_keyword", existing.ID, existing)
+
+	var keyword database.CrisisKeywordDB
 	if err := c.ShouldBindJSON(&keyword); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	keyword.ID = existing.ID
 
 	if err := db.Save(&keyword).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state for audit diff
+	audit.SetAfterState(c, keyword)
 
 	incrementCrisisConfigVersion(db)
 	c.JSON(http.StatusOK, keyword)
@@ -89,6 +98,12 @@ func UpdateCrisisKeyword(c *gin.Context) {
 func DeleteCrisisKeyword(c *gin.Context) {
 	db := database.GetDB()
 	id := c.Param("id")
+
+	// Record before state for audit diff (delete operation)
+	var existing database.CrisisKeywordDB
+	if err := db.First(&existing, id).Error; err == nil {
+		audit.SetDeleteState(c, "crisis_keyword", existing.ID, existing)
+	}
 
 	if err := db.Delete(&database.CrisisKeywordDB{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -456,6 +471,10 @@ func UpdateCrisisSettingsHandler(c *gin.Context) {
 		return
 	}
 
+	// Record before state for audit diff (copy current state)
+	beforeState := *settings
+	audit.SetBeforeState(c, "crisis_settings", settings.ID, beforeState)
+
 	if err := c.ShouldBindJSON(settings); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -468,6 +487,9 @@ func UpdateCrisisSettingsHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state for audit diff
+	audit.SetAfterState(c, *settings)
 
 	c.JSON(http.StatusOK, settings)
 }
@@ -582,6 +604,18 @@ func ResetCrisisConfigHandler(c *gin.Context) {
 	}
 
 	incrementCrisisConfigVersion(db)
+
+	// Record audit metadata for reset operation
+	c.Set("auditMetadata", map[string]any{
+		"operation":      "reset_to_defaults",
+		"resourceType":   "crisis_config",
+		"resetKeywords":  resetKeywords,
+		"resetPatterns":  resetPatterns,
+		"resetResources": resetResources,
+		"resetPhrases":   resetPhrases,
+		"resetGuidance":  resetGuidance,
+		"results":        results,
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Reset complete",

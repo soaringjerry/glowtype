@@ -96,7 +96,14 @@
     "status": "Status",
     "ip": "IP",
     "meta": "Duration",
-    "details": "Details"
+    "details": "Details",
+    "riskLevel": "Risk",
+    "changes": "Changes",
+    "viewDiff": "View diff",
+    "diffTitle": "Change Details",
+    "noDiff": "No changes recorded for this action.",
+    "before": "Before",
+    "after": "After"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/soaringjerry/glowtype/internal/audit"
 	"github.com/soaringjerry/glowtype/internal/database"
 	"github.com/soaringjerry/glowtype/internal/services"
 	"gorm.io/gorm"
@@ -194,6 +195,7 @@ func Require2FACompletionMiddleware() gin.HandlerFunc {
 }
 
 // AdminAuditMiddleware records admin actions for accountability.
+// Enhanced with: risk level classification, before/after diff, and integrity hash.
 func AdminAuditMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -262,16 +264,60 @@ func AdminAuditMiddleware() gin.HandlerFunc {
 
 		metadata, _ := json.Marshal(payload)
 
-		entry := database.AdminAuditLog{
-			AdminID:    admin.ID,
-			Username:   admin.Username,
-			Action:     fmt.Sprintf("%s %s", c.Request.Method, path),
-			Method:     c.Request.Method,
-			Path:       path,
-			IP:         c.ClientIP(),
-			StatusCode: c.Writer.Status(),
-			Metadata:   metadata,
+		// Determine risk level based on method and path
+		riskLevel := audit.DetermineRiskLevel(c.Request.Method, path)
+
+		// Extract diff data only for write operations
+		var dataDiff []byte
+		var resourceType string
+		var resourceID *uint
+
+		if audit.IsWriteMethod(c.Request.Method) {
+			if diff := audit.ExtractDiff(c); diff != nil {
+				if len(diff.Fields) > 0 {
+					dataDiff, _ = json.Marshal(diff.Fields)
+				}
+				resourceType = diff.ResourceType
+				if diff.ResourceID > 0 {
+					rid := diff.ResourceID
+					resourceID = &rid
+				}
+			}
 		}
+
+		// Set CreatedAt explicitly for hash calculation
+		createdAt := time.Now().UTC()
+
+		entry := database.AdminAuditLog{
+			AdminID:      admin.ID,
+			Username:     admin.Username,
+			Action:       fmt.Sprintf("%s %s", c.Request.Method, path),
+			Method:       c.Request.Method,
+			Path:         path,
+			IP:           c.ClientIP(),
+			StatusCode:   c.Writer.Status(),
+			Metadata:     metadata,
+			CreatedAt:    createdAt,
+			DataDiff:     dataDiff,
+			RiskLevel:    riskLevel,
+			ResourceType: resourceType,
+			ResourceID:   resourceID,
+		}
+
+		// Generate integrity hash
+		hashInput := audit.HashInput{
+			AdminID:    entry.AdminID,
+			Username:   entry.Username,
+			Action:     entry.Action,
+			Method:     entry.Method,
+			Path:       entry.Path,
+			StatusCode: entry.StatusCode,
+			Metadata:   string(entry.Metadata),
+			DataDiff:   string(entry.DataDiff),
+			RiskLevel:  entry.RiskLevel,
+			CreatedAt:  audit.FormatCreatedAt(createdAt),
+		}
+		entry.IntegrityHash = audit.GenerateIntegrityHash(hashInput)
 
 		if err := database.GetDB().Create(&entry).Error; err != nil {
 			log.Printf("failed to write admin audit log: %v", err)
@@ -586,6 +632,9 @@ func CreateAdminUser(c *gin.Context) {
 		return
 	}
 
+	// Record create state for audit diff
+	audit.SetCreateState(c, "admin_user", admin.ID, admin)
+
 	c.Set("auditMetadata", map[string]any{
 		"createdUser": admin.Username,
 		"role":        admin.Role,
@@ -639,6 +688,9 @@ func UpdateAdminUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record before state for audit diff
+	audit.SetBeforeState(c, "admin_user", target.ID, target)
 
 	// Prevent self-lockout via role change or deactivation
 	if target.ID == current.ID {
@@ -735,6 +787,9 @@ func UpdateAdminUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state for audit diff
+	audit.SetAfterState(c, target)
 
 	var newPerms []string
 	if len(target.Permissions) > 0 {
@@ -850,6 +905,83 @@ func ListAuditLogs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, logs)
+}
+
+// VerifyAuditLogsHandler verifies the integrity of audit logs (superadmin only).
+// Supports optional query parameters: from, to (RFC3339 timestamps), limit (max 1000).
+func VerifyAuditLogsHandler(c *gin.Context) {
+	limit := 500
+	if l, err := strconv.Atoi(c.DefaultQuery("limit", "500")); err == nil && l > 0 && l <= 1000 {
+		limit = l
+	}
+
+	query := database.GetDB().Order("created_at desc").Limit(limit)
+
+	// Optional time range filtering
+	if from := c.Query("from"); from != "" {
+		if t, err := time.Parse(time.RFC3339, from); err == nil {
+			query = query.Where("created_at >= ?", t)
+		}
+	}
+	if to := c.Query("to"); to != "" {
+		if t, err := time.Parse(time.RFC3339, to); err == nil {
+			query = query.Where("created_at <= ?", t)
+		}
+	}
+
+	var logs []database.AdminAuditLog
+	if err := query.Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	valid := 0
+	tampered := 0
+	details := make([]gin.H, 0, len(logs))
+
+	for _, log := range logs {
+		hashInput := audit.HashInput{
+			AdminID:    log.AdminID,
+			Username:   log.Username,
+			Action:     log.Action,
+			Method:     log.Method,
+			Path:       log.Path,
+			StatusCode: log.StatusCode,
+			Metadata:   string(log.Metadata),
+			DataDiff:   string(log.DataDiff),
+			RiskLevel:  log.RiskLevel,
+			CreatedAt:  audit.FormatCreatedAt(log.CreatedAt),
+		}
+
+		isValid := audit.VerifyIntegrity(hashInput, log.IntegrityHash)
+		if isValid {
+			valid++
+		} else {
+			tampered++
+		}
+
+		details = append(details, gin.H{
+			"id":        log.ID,
+			"valid":     isValid,
+			"createdAt": log.CreatedAt,
+			"action":    log.Action,
+			"riskLevel": log.RiskLevel,
+		})
+	}
+
+	response := gin.H{
+		"total":    len(logs),
+		"checked":  len(logs),
+		"valid":    valid,
+		"tampered": tampered,
+	}
+
+	// Only include details if there are tampered logs or if explicitly requested
+	if tampered > 0 || c.Query("details") == "true" {
+		response["details"] = details
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func getAdminFromContext(c *gin.Context) (database.AdminUser, bool) {
@@ -1243,11 +1375,16 @@ func UpdateDimension(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var dim database.TraitDimensionDB
-	if err := database.GetDB().First(&dim, id).Error; err != nil {
+	var existing database.TraitDimensionDB
+	if err := database.GetDB().First(&existing, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Dimension not found"})
 		return
 	}
+
+	// Record before state for audit diff
+	audit.SetBeforeState(c, "dimension", id, existing)
+
+	var dim database.TraitDimensionDB
 	if err := c.ShouldBindJSON(&dim); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -1258,6 +1395,10 @@ func UpdateDimension(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state for audit diff
+	audit.SetAfterState(c, dim)
+
 	c.JSON(http.StatusOK, dim)
 }
 
@@ -1266,6 +1407,13 @@ func DeleteDimension(c *gin.Context) {
 	if !ok {
 		return
 	}
+
+	// Record before state for audit diff (delete operation)
+	var existing database.TraitDimensionDB
+	if err := database.GetDB().First(&existing, id).Error; err == nil {
+		audit.SetDeleteState(c, "dimension", id, existing)
+	}
+
 	if err := database.GetDB().Delete(&database.TraitDimensionDB{}, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1325,11 +1473,16 @@ func UpdateQuestion(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var question database.QuizQuestionDB
-	if err := database.GetDB().First(&question, id).Error; err != nil {
+	var existing database.QuizQuestionDB
+	if err := database.GetDB().First(&existing, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Question not found"})
 		return
 	}
+
+	// Record before state for audit diff
+	audit.SetBeforeState(c, "question", id, existing)
+
+	var question database.QuizQuestionDB
 	if err := c.ShouldBindJSON(&question); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -1340,6 +1493,10 @@ func UpdateQuestion(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state for audit diff
+	audit.SetAfterState(c, question)
+
 	c.JSON(http.StatusOK, question)
 }
 
@@ -1348,11 +1505,23 @@ func DeleteQuestion(c *gin.Context) {
 	if !ok {
 		return
 	}
+
+	// Record before state for audit diff (soft delete)
+	var existing database.QuizQuestionDB
+	if err := database.GetDB().First(&existing, id).Error; err == nil {
+		audit.SetBeforeState(c, "question", id, existing)
+	}
+
 	// Soft delete by setting IsActive = false
 	if err := database.GetDB().Model(&database.QuizQuestionDB{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state (soft deleted)
+	existing.IsActive = false
+	audit.SetAfterState(c, existing)
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -1709,11 +1878,16 @@ func UpdateRule(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var rule database.ScoringRuleDB
-	if err := database.GetDB().First(&rule, id).Error; err != nil {
+	var existing database.ScoringRuleDB
+	if err := database.GetDB().First(&existing, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Rule not found"})
 		return
 	}
+
+	// Record before state for audit diff
+	audit.SetBeforeState(c, "scoring_rule", id, existing)
+
+	var rule database.ScoringRuleDB
 	if err := c.ShouldBindJSON(&rule); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -1724,6 +1898,10 @@ func UpdateRule(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state for audit diff
+	audit.SetAfterState(c, rule)
+
 	c.JSON(http.StatusOK, rule)
 }
 
@@ -1732,10 +1910,22 @@ func DeleteRule(c *gin.Context) {
 	if !ok {
 		return
 	}
+
+	// Record before state for audit diff (soft delete)
+	var existing database.ScoringRuleDB
+	if err := database.GetDB().First(&existing, id).Error; err == nil {
+		audit.SetBeforeState(c, "scoring_rule", id, existing)
+	}
+
 	if err := database.GetDB().Model(&database.ScoringRuleDB{}).Where("id = ?", id).Update("is_active", false).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state (soft deleted)
+	existing.IsActive = false
+	audit.SetAfterState(c, existing)
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -1863,6 +2053,9 @@ func UpdatePrompt(c *gin.Context) {
 		}
 	}
 
+	// Record before state for audit diff
+	audit.SetBeforeState(c, "ai_prompt", prompt.ID, prompt)
+
 	// Parse update request
 	var req struct {
 		Content  string `json:"content"`
@@ -1884,6 +2077,10 @@ func UpdatePrompt(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Record after state for audit diff
+	audit.SetAfterState(c, prompt)
+
 	c.JSON(http.StatusOK, prompt)
 }
 
@@ -1996,6 +2193,9 @@ func UpdateAISettings(c *gin.Context) {
 		return
 	}
 
+	// Record before state for audit diff (sensitive fields auto-redacted)
+	audit.SetBeforeState(c, "ai_settings", settings.ID, settings)
+
 	updates := map[string]any{}
 
 	if req.Provider != nil {
@@ -2057,6 +2257,9 @@ func UpdateAISettings(c *gin.Context) {
 
 	// Reload settings
 	settings, _ = database.GetAISettings(database.GetDB())
+
+	// Record after state for audit diff
+	audit.SetAfterState(c, settings)
 
 	hasKey := settings.APIKey != ""
 	maskedKey := ""
@@ -3217,59 +3420,148 @@ func ExportDimensions(c *gin.Context) {
 // ResetDimensionsHandler resets trait dimensions to default values
 func ResetDimensionsHandler(c *gin.Context) {
 	db := database.GetDB()
+
+	// Count existing records before reset
+	var countBefore int64
+	db.Model(&database.TraitDimensionDB{}).Count(&countBefore)
+
 	if err := database.ResetDimensions(db); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset dimensions: " + err.Error()})
 		return
 	}
+
+	var countAfter int64
+	db.Model(&database.TraitDimensionDB{}).Count(&countAfter)
+
+	c.Set("auditMetadata", map[string]any{
+		"operation":      "reset_to_defaults",
+		"resourceType":   "dimensions",
+		"deletedCount":   countBefore,
+		"restoredCount":  countAfter,
+	})
 	c.JSON(http.StatusOK, gin.H{"message": "Dimensions reset to defaults successfully"})
 }
 
 // ResetQuestionsHandler resets quiz questions to default values
 func ResetQuestionsHandler(c *gin.Context) {
 	db := database.GetDB()
+
+	var countBefore int64
+	db.Model(&database.QuizQuestionDB{}).Count(&countBefore)
+
 	if err := database.ResetQuestions(db); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset questions: " + err.Error()})
 		return
 	}
+
+	var countAfter int64
+	db.Model(&database.QuizQuestionDB{}).Count(&countAfter)
+
+	c.Set("auditMetadata", map[string]any{
+		"operation":      "reset_to_defaults",
+		"resourceType":   "questions",
+		"deletedCount":   countBefore,
+		"restoredCount":  countAfter,
+	})
 	c.JSON(http.StatusOK, gin.H{"message": "Questions reset to defaults successfully"})
 }
 
 // ResetGlowtypesHandler resets glowtypes to default values
 func ResetGlowtypesHandler(c *gin.Context) {
 	db := database.GetDB()
+
+	var countBefore int64
+	db.Model(&database.GlowtypeDB{}).Count(&countBefore)
+
 	if err := database.ResetGlowtypes(db); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset glowtypes: " + err.Error()})
 		return
 	}
+
+	var countAfter int64
+	db.Model(&database.GlowtypeDB{}).Count(&countAfter)
+
+	c.Set("auditMetadata", map[string]any{
+		"operation":      "reset_to_defaults",
+		"resourceType":   "glowtypes",
+		"deletedCount":   countBefore,
+		"restoredCount":  countAfter,
+	})
 	c.JSON(http.StatusOK, gin.H{"message": "Glowtypes reset to defaults successfully"})
 }
 
 // ResetRulesHandler resets scoring rules to default values
 func ResetRulesHandler(c *gin.Context) {
 	db := database.GetDB()
+
+	var countBefore int64
+	db.Model(&database.ScoringRuleDB{}).Count(&countBefore)
+
 	if err := database.ResetRules(db); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset rules: " + err.Error()})
 		return
 	}
+
+	var countAfter int64
+	db.Model(&database.ScoringRuleDB{}).Count(&countAfter)
+
+	c.Set("auditMetadata", map[string]any{
+		"operation":      "reset_to_defaults",
+		"resourceType":   "scoring_rules",
+		"deletedCount":   countBefore,
+		"restoredCount":  countAfter,
+	})
 	c.JSON(http.StatusOK, gin.H{"message": "Scoring rules reset to defaults successfully"})
 }
 
 // ResetPromptsHandler resets AI prompts to default values
 func ResetPromptsHandler(c *gin.Context) {
 	db := database.GetDB()
+
+	var countBefore int64
+	db.Model(&database.AIPromptDB{}).Count(&countBefore)
+
 	if err := database.ResetPrompts(db); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset prompts: " + err.Error()})
 		return
 	}
+
+	var countAfter int64
+	db.Model(&database.AIPromptDB{}).Count(&countAfter)
+
+	c.Set("auditMetadata", map[string]any{
+		"operation":      "reset_to_defaults",
+		"resourceType":   "ai_prompts",
+		"deletedCount":   countBefore,
+		"restoredCount":  countAfter,
+	})
 	c.JSON(http.StatusOK, gin.H{"message": "AI prompts reset to defaults successfully"})
 }
 
 // ResetGlowpediaHandler resets Glowpedia chapters and glow sticks to default values
 func ResetGlowpediaHandler(c *gin.Context) {
 	db := database.GetDB()
+
+	var chaptersBefore, sticksBefore int64
+	db.Model(&database.BookChapterDB{}).Count(&chaptersBefore)
+	db.Model(&database.GlowStickDB{}).Count(&sticksBefore)
+
 	if err := database.ResetGlowpedia(db); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset Glowpedia: " + err.Error()})
 		return
 	}
+
+	var chaptersAfter, sticksAfter int64
+	db.Model(&database.BookChapterDB{}).Count(&chaptersAfter)
+	db.Model(&database.GlowStickDB{}).Count(&sticksAfter)
+
+	c.Set("auditMetadata", map[string]any{
+		"operation":             "reset_to_defaults",
+		"resourceType":          "glowpedia",
+		"deletedChapters":       chaptersBefore,
+		"deletedSticks":         sticksBefore,
+		"restoredChapters":      chaptersAfter,
+		"restoredSticks":        sticksAfter,
+	})
 	c.JSON(http.StatusOK, gin.H{"message": "Glowpedia reset to defaults successfully"})
 }

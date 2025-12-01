@@ -96,7 +96,14 @@
     "status": "状态",
     "ip": "IP",
     "meta": "耗时",
-    "details": "详情"
+    "details": "详情",
+    "riskLevel": "风险",
+    "changes": "变更",
+    "viewDiff": "查看变更",
+    "diffTitle": "变更详情",
+    "noDiff": "此操作没有记录变更内容。",
+    "before": "修改前",
+    "after": "修改后"
   },
   "dashboard": {
     "title": "仪表盘",
