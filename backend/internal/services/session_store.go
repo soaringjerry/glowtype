@@ -61,6 +61,7 @@ type RAGDebugInfo struct {
 	Language    string           `json:"language"`
 	CrisisLevel int              `json:"crisisLevel"`
 	Retrieved   []RAGScriptDebug `json:"retrieved"`
+	Error       string           `json:"error,omitempty"`
 }
 
 // RAGScriptDebug summarizes an individual retrieved script

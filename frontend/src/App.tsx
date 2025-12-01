@@ -918,6 +918,7 @@ interface RagDebugInfo {
   language: string;
   crisisLevel: number;
   retrieved: RagScriptDebug[];
+  error?: string;
 }
 
 interface DebugInfo {
@@ -1286,6 +1287,11 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
                           Retrieved: <code className="bg-teal-100 px-1 rounded">{debugInfo.lastRag?.retrieved?.length ?? 0}</code>
                         </span>
                       </div>
+                      {debugInfo.lastRag?.error && (
+                        <div className="text-xs text-amber-700 bg-amber-100 border border-amber-200 rounded-lg px-3 py-2">
+                          ⚠️ RAG note: {debugInfo.lastRag.error}
+                        </div>
+                      )}
                       {debugInfo.lastRag?.retrieved && debugInfo.lastRag.retrieved.length > 0 ? (
                         <div className="grid md:grid-cols-2 gap-3">
                           {debugInfo.lastRag.retrieved.map((script) => (

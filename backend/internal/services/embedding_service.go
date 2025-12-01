@@ -214,11 +214,7 @@ func buildEmbeddingText(script database.CrisisScriptDB) string {
 	}
 
 	// Fallback: use title (but this is not ideal)
-	title := script.Title
-	if strings.HasPrefix(script.Language, "zh") && script.TitleZh != "" {
-		title = script.TitleZh
-	}
-	return title
+	return script.Title
 }
 
 // RefreshAllEmbeddings regenerates embeddings for all active scripts

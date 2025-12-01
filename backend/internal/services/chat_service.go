@@ -359,6 +359,13 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 		scoredScripts, err := s.embeddingService.RetrieveRelevantScripts(req.Message, req.Language, crisisResult.Level, 3)
 		if err != nil {
 			log.Printf("[ChatService] Script retrieval failed: %v", err)
+			ragDebug = &RAGDebugInfo{
+				Message:     req.Message,
+				Language:    req.Language,
+				CrisisLevel: crisisResult.Level,
+				Retrieved:   nil,
+				Error:       err.Error(),
+			}
 		} else if len(scoredScripts) > 0 {
 			relevantScripts = make([]database.CrisisScriptDB, 0, len(scoredScripts))
 			var ragScripts []RAGScriptDebug
@@ -399,6 +406,14 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 				CrisisLevel: crisisResult.Level,
 				Retrieved:   nil,
 			}
+		}
+	} else {
+		ragDebug = &RAGDebugInfo{
+			Message:     req.Message,
+			Language:    req.Language,
+			CrisisLevel: crisisResult.Level,
+			Retrieved:   nil,
+			Error:       "embedding service disabled",
 		}
 	}
 
