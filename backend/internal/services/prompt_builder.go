@@ -357,17 +357,8 @@ func (p *PromptBuilder) buildScriptReferenceLayer(language string, scripts []dat
 		sb.WriteString("请根据对话情境自然地融入这些元素，保持你温暖陪伴者的角色。\n\n")
 
 		for i, script := range scripts {
-			sb.WriteString(fmt.Sprintf("### 参考 %d: %s\n", i+1, script.TitleZh))
-			if script.TitleZh == "" {
-				sb.WriteString(fmt.Sprintf("### 参考 %d: %s\n", i+1, script.Title))
-			}
-
-			// Use Chinese content if available, otherwise English
-			content := script.ContentZh
-			if content == "" {
-				content = script.Content
-			}
-			sb.WriteString(content)
+			sb.WriteString(fmt.Sprintf("### 参考 %d: %s\n", i+1, script.Title))
+			sb.WriteString(script.Content)
 			sb.WriteString("\n\n")
 		}
 
@@ -382,15 +373,8 @@ func (p *PromptBuilder) buildScriptReferenceLayer(language string, scripts []dat
 		sb.WriteString("Naturally incorporate these elements based on conversation context while maintaining your warm companion role.\n\n")
 
 		for i, script := range scripts {
-			title := script.Title
-			if isZH && script.TitleZh != "" {
-				title = script.TitleZh
-			}
-			sb.WriteString(fmt.Sprintf("### Reference %d: %s\n", i+1, title))
-
-			// Use English content by default
-			content := script.Content
-			sb.WriteString(content)
+			sb.WriteString(fmt.Sprintf("### Reference %d: %s\n", i+1, script.Title))
+			sb.WriteString(script.Content)
 			sb.WriteString("\n\n")
 		}
 

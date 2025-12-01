@@ -991,9 +991,6 @@ function ScriptsTab({
                   )}
                 </div>
                 <div className="font-medium text-gray-900">{s.title}</div>
-                {s.titleZh && s.titleZh !== s.title && (
-                  <div className="text-sm text-gray-600">{s.titleZh}</div>
-                )}
                 <div className="text-sm text-gray-500 mt-1 line-clamp-2">{s.content}</div>
                 {s.triggerKeywords && (
                   <div className="text-xs text-gray-400 mt-2">
@@ -1607,15 +1604,6 @@ function EditModal({
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.titleZh', 'Title (Chinese)')}</label>
-                    <input
-                      type="text"
-                      value={formData.titleZh || ''}
-                      onChange={(e) => update('titleZh', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                    />
-                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.mode', 'Mode')} *</label>
@@ -1652,15 +1640,6 @@ function EditModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.contentZh', 'Content (Chinese)')}</label>
-                    <textarea
-                      value={formData.contentZh || ''}
-                      onChange={(e) => update('contentZh', e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                    />
-                  </div>
-                  <div>
                     <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.category', 'Category')}</label>
                     <input
                       type="text"
@@ -1677,7 +1656,7 @@ function EditModal({
                         type="text"
                         value={formData.triggerKeywords || ''}
                         onChange={(e) => update('triggerKeywords', e.target.value)}
-                        placeholder="comma-separated"
+                        placeholder='["keyword1", "keyword2"]'
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg"
                       />
                     </div>
@@ -1687,10 +1666,21 @@ function EditModal({
                         type="text"
                         value={formData.crisisLevels || ''}
                         onChange={(e) => update('crisisLevels', e.target.value)}
-                        placeholder="e.g., 1,2,3"
+                        placeholder="e.g., [1,2,3]"
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.triggerExamples', 'Trigger Examples (for RAG)')}</label>
+                    <textarea
+                      value={formData.triggerExamples || ''}
+                      onChange={(e) => update('triggerExamples', e.target.value)}
+                      rows={2}
+                      placeholder='["我想死", "不想活了", "活着太累了"]'
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    />
+                    <div className="text-xs text-gray-400 mt-1">JSON array of example user inputs that should match this script</div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>

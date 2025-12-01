@@ -68,7 +68,6 @@ type RAGDebugInfo struct {
 type RAGScriptDebug struct {
 	ID              uint     `json:"id"`
 	Title           string   `json:"title"`
-	TitleZh         string   `json:"titleZh,omitempty"`
 	Language        string   `json:"language,omitempty"`
 	CrisisLevels    string   `json:"crisisLevels,omitempty"`
 	Score           float32  `json:"score"`

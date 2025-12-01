@@ -413,10 +413,8 @@ type CrisisScriptDB struct {
 	TenantID *uint `gorm:"index" json:"tenantId"`
 
 	// Basic info
-	Title     string `gorm:"not null" json:"title"`
-	TitleZh   string `json:"titleZh"`
-	Content   string `gorm:"type:text;not null" json:"content"`
-	ContentZh string `gorm:"type:text" json:"contentZh"`
+	Title   string `gorm:"not null" json:"title"`
+	Content string `gorm:"type:text;not null" json:"content"`
 
 	// Script config
 	Mode            string `gorm:"default:reference;not null;index" json:"mode"` // template | reference

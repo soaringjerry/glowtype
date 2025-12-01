@@ -383,7 +383,6 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 				ragScripts = append(ragScripts, RAGScriptDebug{
 					ID:              scored.Script.ID,
 					Title:           scored.Script.Title,
-					TitleZh:         scored.Script.TitleZh,
 					Language:        scored.Script.Language,
 					CrisisLevels:    scored.Script.CrisisLevels,
 					Score:           scored.Score,

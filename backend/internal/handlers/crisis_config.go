@@ -717,9 +717,7 @@ func UpdateCrisisScript(c *gin.Context) {
 
 	// Store old content to check if it changed
 	oldContent := oldScript.Content
-	oldContentZh := oldScript.ContentZh
 	oldTitle := oldScript.Title
-	oldTitleZh := oldScript.TitleZh
 
 	var script database.CrisisScriptDB
 	if err := c.ShouldBindJSON(&script); err != nil {
@@ -741,10 +739,7 @@ func UpdateCrisisScript(c *gin.Context) {
 	}
 
 	// Regenerate embedding if content changed
-	contentChanged := script.Content != oldContent ||
-		script.ContentZh != oldContentZh ||
-		script.Title != oldTitle ||
-		script.TitleZh != oldTitleZh
+	contentChanged := script.Content != oldContent || script.Title != oldTitle
 
 	if contentChanged && embeddingService != nil {
 		go func(scriptID uint) {

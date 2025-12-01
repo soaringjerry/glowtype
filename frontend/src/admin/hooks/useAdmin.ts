@@ -587,12 +587,11 @@ export interface CrisisScript {
   id: number;
   tenantId?: number;
   title: string;
-  titleZh?: string;
   content: string;
-  contentZh?: string;
   mode: 'template' | 'reference';
   category?: string; // greeting, empathy, transition, resource, closing
   triggerKeywords?: string; // JSON array
+  triggerExamples?: string; // JSON array
   crisisLevels?: string; // JSON array [1,2,3]
   language: string;
   displayOrder: number;
