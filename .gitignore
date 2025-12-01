@@ -22,3 +22,4 @@ Thumbs.db
 *.log
 logs/
 backend/glowtype-api
+backend/glowtype.db
