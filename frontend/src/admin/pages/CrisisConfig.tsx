@@ -71,12 +71,10 @@ const FIELD_TYPES = [
   { value: 'selfCareTip', label: 'Self Care Tip' },
 ];
 
-const GLOWTYPES = [
-  { code: 'radiant-nebula', name: 'Radiant Nebula' },
-  { code: 'quiet-comet', name: 'Quiet Comet' },
-  { code: 'hidden-aurora', name: 'Hidden Aurora' },
-  { code: 'warm-ember', name: 'Warm Ember' },
-];
+interface GlowtypeOption {
+  code: string;
+  name: string;
+}
 
 export default function CrisisConfig() {
   const { t } = useTranslation('admin');
@@ -97,6 +95,7 @@ export default function CrisisConfig() {
   const [guidance, setGuidance] = useState<CrisisGlowtypeGuidance[]>([]);
   const [scripts, setScripts] = useState<CrisisScript[]>([]);
   const [prompts, setPrompts] = useState<PromptSlot[]>([]);
+  const [glowtypes, setGlowtypes] = useState<GlowtypeOption[]>([]);
 
   // Prompts editing state
   const [editingPromptKey, setEditingPromptKey] = useState<string | null>(null);
@@ -174,9 +173,17 @@ export default function CrisisConfig() {
     if (data) setPrompts(data);
   };
 
+  const loadGlowtypes = async () => {
+    const data = await api.listGlowtypes();
+    if (data) {
+      // Transform to simple format for dropdowns
+      setGlowtypes(data.map((g: any) => ({ code: g.code, name: g.name || g.code })));
+    }
+  };
+
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([loadOverview(), loadSettings()]);
+    await Promise.all([loadOverview(), loadSettings(), loadGlowtypes()]);
     setLoading(false);
   };
 
@@ -477,6 +484,7 @@ export default function CrisisConfig() {
         {activeTab === 'guidance' && (
           <GuidanceTab
             guidance={guidance}
+            glowtypes={glowtypes}
             glowtypeFilter={guidanceGlowtypeFilter}
             setGlowtypeFilter={setGuidanceGlowtypeFilter}
             onCreate={() => openCreateModal('guidance')}
@@ -507,6 +515,7 @@ export default function CrisisConfig() {
         <EditModal
           type={modalType}
           item={editingItem}
+          glowtypes={glowtypes}
           onClose={() => setModalOpen(false)}
           onSave={handleModalSave}
           saving={saving}
@@ -853,6 +862,7 @@ function PhrasesTab({
 
 function GuidanceTab({
   guidance,
+  glowtypes,
   glowtypeFilter,
   setGlowtypeFilter,
   onCreate,
@@ -860,6 +870,7 @@ function GuidanceTab({
   onDelete,
 }: {
   guidance: CrisisGlowtypeGuidance[];
+  glowtypes: GlowtypeOption[];
   glowtypeFilter?: string;
   setGlowtypeFilter: (v?: string) => void;
   onCreate: () => void;
@@ -877,7 +888,7 @@ function GuidanceTab({
           className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
         >
           <option value="">{t('crisis.filter.allGlowtypes', 'All Glowtypes')}</option>
-          {GLOWTYPES.map((g) => (
+          {glowtypes.map((g) => (
             <option key={g.code} value={g.code}>{g.name}</option>
           ))}
         </select>
@@ -1176,12 +1187,14 @@ function SettingsTab({
 function EditModal({
   type,
   item,
+  glowtypes,
   onClose,
   onSave,
   saving,
 }: {
   type: 'keyword' | 'pattern' | 'resource' | 'phrase' | 'guidance' | 'script' | null;
   item: any;
+  glowtypes: GlowtypeOption[];
   onClose: () => void;
   onSave: (data: any) => void;
   saving: boolean;
@@ -1513,7 +1526,7 @@ function EditModal({
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg"
                       >
                         <option value="">Select...</option>
-                        {GLOWTYPES.map((g) => (
+                        {glowtypes.map((g) => (
                           <option key={g.code} value={g.code}>{g.name}</option>
                         ))}
                       </select>
