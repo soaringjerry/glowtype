@@ -23,7 +23,7 @@ import {
   MessageSquare,
   Info,
 } from 'lucide-react';
-import { useAdminApi } from '../hooks/useAdmin';
+import { useAdminApi, useAdminAuth } from '../hooks/useAdmin';
 import type {
   CrisisConfigOverview,
   CrisisSettings,
@@ -79,6 +79,8 @@ interface GlowtypeOption {
 export default function CrisisConfig() {
   const { t } = useTranslation('admin');
   const api = useAdminApi();
+  const { currentUser } = useAdminAuth();
+  const canResetData = currentUser?.effectivePermissions?.includes('data.reset') ?? false;
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -376,14 +378,16 @@ export default function CrisisConfig() {
               {t('crisis.configVersion', 'Version')}: {overview.configVersion}
             </span>
           )}
-          <button
-            onClick={handleResetAll}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
-          >
-            <RotateCcw className={`w-4 h-4 ${saving ? 'animate-spin' : ''}`} />
-            {t('common.resetAll', 'Reset All')}
-          </button>
+          {canResetData && (
+            <button
+              onClick={handleResetAll}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition disabled:opacity-50"
+            >
+              <RotateCcw className={`w-4 h-4 ${saving ? 'animate-spin' : ''}`} />
+              {t('common.resetAll', 'Reset All')}
+            </button>
+          )}
           <button
             onClick={loadAll}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"

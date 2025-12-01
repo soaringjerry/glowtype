@@ -43,6 +43,13 @@ func EnsureDefaultCrisisConfig(db *gorm.DB) {
 		SeedCrisisGlowtypeGuidance(db)
 	}
 
+	var scriptCount int64
+	db.Model(&CrisisScriptDB{}).Count(&scriptCount)
+	if scriptCount == 0 {
+		log.Println("[CrisisSeed] Seeding example crisis scripts...")
+		SeedCrisisScripts(db)
+	}
+
 	// Ensure settings exist
 	_, _ = GetCrisisSettings(db, nil)
 }
@@ -339,4 +346,130 @@ func SeedCrisisGlowtypeGuidance(db *gorm.DB) int {
 
 	db.Create(&guidance)
 	return len(guidance)
+}
+
+// SeedCrisisScripts populates example conversation scripts
+func SeedCrisisScripts(db *gorm.DB) int {
+	scripts := []CrisisScriptDB{
+		// Greeting - Template
+		{
+			Title:     "Opening with Validation",
+			TitleZh:   "开场验证",
+			Mode:      "template",
+			Category:  "greeting",
+			Content:   "I can hear that you're going through something really difficult right now. Thank you for sharing this with me. I'm here to listen.",
+			ContentZh: "我能感受到你现在正在经历一些非常困难的事情。感谢你愿意和我分享。我在这里倾听。",
+			IsActive:  true,
+		},
+		{
+			Title:     "Acknowledging Their Courage",
+			TitleZh:   "肯定勇气",
+			Mode:      "template",
+			Category:  "greeting",
+			Content:   "It takes courage to talk about these feelings. I'm glad you're here, and I want you to know that your feelings matter.",
+			ContentZh: "谈论这些感受需要勇气。我很高兴你在这里，我想让你知道你的感受很重要。",
+			IsActive:  true,
+		},
+
+		// Empathy - Template
+		{
+			Title:     "Reflecting Pain",
+			TitleZh:   "反映痛苦",
+			Mode:      "template",
+			Category:  "empathy",
+			Content:   "That sounds incredibly heavy to carry. It makes sense that you're feeling overwhelmed right now.",
+			ContentZh: "听起来你承受着很大的压力。你现在感到不堪重负是完全可以理解的。",
+			IsActive:  true,
+		},
+		{
+			Title:     "Validating Without Fixing",
+			TitleZh:   "验证而非修复",
+			Mode:      "template",
+			Category:  "empathy",
+			Content:   "I hear you. What you're feeling is real, and it's okay to not be okay right now.",
+			ContentZh: "我听到了。你的感受是真实的，现在不好也没关系。",
+			IsActive:  true,
+		},
+		{
+			Title:     "Normalizing Their Experience",
+			TitleZh:   "正常化体验",
+			Mode:      "template",
+			Category:  "empathy",
+			Content:   "Many people have moments where everything feels too much. You're not alone in feeling this way.",
+			ContentZh: "很多人都会有感觉一切都太难的时刻。你并不孤单。",
+			IsActive:  true,
+		},
+
+		// Transition - Reference
+		{
+			Title:     "Moving to Resources",
+			TitleZh:   "转向资源",
+			Mode:      "reference",
+			Category:  "transition",
+			Content:   "While I'm here to listen, there are also people who specialize in helping with exactly what you're going through. Would it be okay if I share some resources that might help?",
+			ContentZh: "虽然我在这里倾听，但也有一些专门帮助处理你正在经历的事情的人。我可以分享一些可能有帮助的资源吗？",
+			IsActive:  true,
+		},
+		{
+			Title:     "Gentle Check-in",
+			TitleZh:   "温和确认",
+			Mode:      "template",
+			Category:  "transition",
+			Content:   "How are you feeling right now, in this moment?",
+			ContentZh: "你现在这一刻感觉怎么样？",
+			IsActive:  true,
+		},
+
+		// Resource - Reference
+		{
+			Title:     "Introducing Professional Help",
+			TitleZh:   "介绍专业帮助",
+			Mode:      "reference",
+			Category:  "resource",
+			Content:   "There are trained counselors available 24/7 who really understand what you're going through. They're there to help without any judgment.",
+			ContentZh: "有专业的咨询师全天候待命，他们真正理解你正在经历的事情。他们会在没有任何评判的情况下提供帮助。",
+			IsActive:  true,
+		},
+		{
+			Title:     "Crisis Hotline Introduction",
+			TitleZh:   "危机热线介绍",
+			Mode:      "reference",
+			Category:  "resource",
+			Content:   "Would you be open to calling or texting a support line? They're completely confidential and the people there are trained specifically for moments like this.",
+			ContentZh: "你愿意拨打或发短信到支持热线吗？这是完全保密的，那里的人专门接受过培训来应对这样的时刻。",
+			IsActive:  true,
+		},
+
+		// Closing - Template
+		{
+			Title:     "Affirming Their Worth",
+			TitleZh:   "肯定价值",
+			Mode:      "template",
+			Category:  "closing",
+			Content:   "Remember, your life matters. You matter. And reaching out like this shows incredible strength.",
+			ContentZh: "记住，你的生命很重要。你很重要。像这样寻求帮助显示了不可思议的力量。",
+			IsActive:  true,
+		},
+		{
+			Title:     "Encouraging Small Steps",
+			TitleZh:   "鼓励小步骤",
+			Mode:      "template",
+			Category:  "closing",
+			Content:   "You don't have to figure everything out right now. Just taking it one moment at a time is enough.",
+			ContentZh: "你不必现在就把一切都想清楚。一步一步来就足够了。",
+			IsActive:  true,
+		},
+		{
+			Title:     "Open Door",
+			TitleZh:   "敞开大门",
+			Mode:      "template",
+			Category:  "closing",
+			Content:   "I'm here whenever you want to talk. You're not alone in this.",
+			ContentZh: "只要你想聊，我随时都在。你并不孤单。",
+			IsActive:  true,
+		},
+	}
+
+	db.Create(&scripts)
+	return len(scripts)
 }
