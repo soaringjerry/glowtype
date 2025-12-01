@@ -19,6 +19,9 @@ import {
   Check,
   Filter,
   Globe,
+  Wand2,
+  MessageSquare,
+  Info,
 } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdmin';
 import type {
@@ -29,9 +32,10 @@ import type {
   CrisisResource,
   CrisisForbiddenPhrase,
   CrisisGlowtypeGuidance,
+  PromptSlot,
 } from '../hooks/useAdmin';
 
-type TabType = 'overview' | 'keywords' | 'patterns' | 'resources' | 'phrases' | 'guidance' | 'settings';
+type TabType = 'overview' | 'prompts' | 'keywords' | 'patterns' | 'resources' | 'phrases' | 'guidance' | 'settings';
 
 const CRISIS_LEVELS = [
   { value: 1, label: 'Level 1 - Low', color: 'bg-yellow-100 text-yellow-800' },
@@ -89,6 +93,14 @@ export default function CrisisConfig() {
   const [resources, setResources] = useState<CrisisResource[]>([]);
   const [phrases, setPhrases] = useState<CrisisForbiddenPhrase[]>([]);
   const [guidance, setGuidance] = useState<CrisisGlowtypeGuidance[]>([]);
+  const [prompts, setPrompts] = useState<PromptSlot[]>([]);
+
+  // Prompts editing state
+  const [editingPromptKey, setEditingPromptKey] = useState<string | null>(null);
+  const [editPromptContent, setEditPromptContent] = useState('');
+  const [editPromptActive, setEditPromptActive] = useState(true);
+  const [promptSaveError, setPromptSaveError] = useState<string | null>(null);
+  const [resettingPrompt, setResettingPrompt] = useState<string | null>(null);
 
   // Filters
   const [keywordLevelFilter, setKeywordLevelFilter] = useState<number | undefined>();
@@ -104,6 +116,7 @@ export default function CrisisConfig() {
 
   const tabs: { key: TabType; label: string; icon: any }[] = [
     { key: 'overview', label: t('crisis.tabs.overview', 'Overview'), icon: Shield },
+    { key: 'prompts', label: t('crisis.tabs.prompts', 'AI Prompts'), icon: Wand2 },
     { key: 'keywords', label: t('crisis.tabs.keywords', 'Keywords'), icon: AlertTriangle },
     { key: 'patterns', label: t('crisis.tabs.patterns', 'Exclude Patterns'), icon: Search },
     { key: 'resources', label: t('crisis.tabs.resources', 'Resources'), icon: Phone },
@@ -147,6 +160,11 @@ export default function CrisisConfig() {
     if (data) setGuidance(data);
   };
 
+  const loadPrompts = async () => {
+    const data = await api.listPrompts();
+    if (data) setPrompts(data);
+  };
+
   const loadAll = async () => {
     setLoading(true);
     await Promise.all([loadOverview(), loadSettings()]);
@@ -159,7 +177,8 @@ export default function CrisisConfig() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'keywords') loadKeywords();
+    if (activeTab === 'prompts') loadPrompts();
+    else if (activeTab === 'keywords') loadKeywords();
     else if (activeTab === 'patterns') loadPatterns();
     else if (activeTab === 'resources') loadResources();
     else if (activeTab === 'phrases') loadPhrases();
@@ -187,6 +206,59 @@ export default function CrisisConfig() {
       alert(t('common.resetSuccess', 'Reset complete'));
     }
     setSaving(false);
+  };
+
+  // Prompt handlers
+  const handleEditPrompt = (slot: PromptSlot) => {
+    setEditingPromptKey(slot.key);
+    setEditPromptContent(slot.currentContent);
+    setEditPromptActive(slot.isActive);
+    setPromptSaveError(null);
+  };
+
+  const handleSavePrompt = async () => {
+    if (!editingPromptKey) return;
+    setSaving(true);
+    setPromptSaveError(null);
+    const result = await api.updatePrompt(editingPromptKey, {
+      content: editPromptContent,
+      isActive: editPromptActive,
+    });
+    if (result) {
+      await loadPrompts();
+      setEditingPromptKey(null);
+    } else if (api.error) {
+      setPromptSaveError(api.error);
+    }
+    setSaving(false);
+  };
+
+  const handleResetPrompt = async (key: string) => {
+    if (!confirm(t('prompts.confirmReset', 'Reset this prompt to default?'))) return;
+    setResettingPrompt(key);
+    const result = await api.resetPrompt(key);
+    if (result) {
+      await loadPrompts();
+    }
+    setResettingPrompt(null);
+  };
+
+  const getPromptIcon = (key: string) => {
+    if (key.includes('insight')) return Sparkles;
+    if (key.includes('chat')) return MessageSquare;
+    return Wand2;
+  };
+
+  const getPromptCategory = (key: string) => {
+    if (key.includes('insight')) return t('prompts.category.cosmicInsight', 'Cosmic Insight');
+    if (key.includes('chat')) return t('prompts.category.chat', 'Chat');
+    return t('prompts.category.other', 'Other');
+  };
+
+  const getPromptLanguage = (key: string) => {
+    if (key.endsWith('_en')) return 'EN';
+    if (key.endsWith('_zh')) return 'ZH';
+    return '';
   };
 
   const openCreateModal = (type: typeof modalType) => {
@@ -323,6 +395,27 @@ export default function CrisisConfig() {
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         {activeTab === 'overview' && overview && (
           <OverviewTab overview={overview} />
+        )}
+        {activeTab === 'prompts' && (
+          <PromptsTab
+            prompts={prompts}
+            editingKey={editingPromptKey}
+            editContent={editPromptContent}
+            editActive={editPromptActive}
+            saveError={promptSaveError}
+            saving={saving}
+            resettingKey={resettingPrompt}
+            setEditContent={setEditPromptContent}
+            setEditActive={setEditPromptActive}
+            onEdit={handleEditPrompt}
+            onSave={handleSavePrompt}
+            onCancel={() => setEditingPromptKey(null)}
+            onReset={handleResetPrompt}
+            getIcon={getPromptIcon}
+            getCategory={getPromptCategory}
+            getLanguage={getPromptLanguage}
+            t={t}
+          />
         )}
         {activeTab === 'keywords' && (
           <KeywordsTab
@@ -1369,6 +1462,190 @@ function EditModal({
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+// PromptsTab component for AI prompts management
+function PromptsTab({
+  prompts,
+  editingKey,
+  editContent,
+  editActive,
+  saveError,
+  saving,
+  resettingKey,
+  setEditContent,
+  setEditActive,
+  onEdit,
+  onSave,
+  onCancel,
+  onReset,
+  getIcon,
+  getCategory,
+  getLanguage,
+  t,
+}: {
+  prompts: PromptSlot[];
+  editingKey: string | null;
+  editContent: string;
+  editActive: boolean;
+  saveError: string | null;
+  saving: boolean;
+  resettingKey: string | null;
+  setEditContent: (v: string) => void;
+  setEditActive: (v: boolean) => void;
+  onEdit: (slot: PromptSlot) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onReset: (key: string) => void;
+  getIcon: (key: string) => any;
+  getCategory: (key: string) => string;
+  getLanguage: (key: string) => string;
+  t: any;
+}) {
+  // Filter to only show insight prompts (chat prompts are deprecated)
+  const insightPrompts = prompts.filter(p => p.key.includes('insight'));
+
+  return (
+    <div className="space-y-4">
+      {/* Info banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 flex items-start gap-3">
+        <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-medium">{t('prompts.info.title', 'AI Prompt Configuration')}</p>
+          <p className="mt-1">{t('prompts.info.desc', 'These prompts are used by the Cosmic Insight feature. Chat system prompts are managed internally.')}</p>
+        </div>
+      </div>
+
+      {/* Prompts list */}
+      <div className="space-y-3">
+        {insightPrompts.map((slot) => {
+          const Icon = getIcon(slot.key);
+          const isEditing = editingKey === slot.key;
+
+          return (
+            <div
+              key={slot.key}
+              className={`border rounded-xl overflow-hidden transition-all ${
+                isEditing ? 'border-indigo-300 ring-2 ring-indigo-100' : 'border-gray-200'
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    slot.isActive ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-400'
+                  }`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">{slot.key}</span>
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-600">
+                        {getLanguage(slot.key)}
+                      </span>
+                      {!slot.isActive && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-700">
+                          {t('prompts.inactive', 'Inactive')}
+                        </span>
+                      )}
+                      {slot.isCustomized && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
+                          {t('prompts.modified', 'Modified')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500">{getCategory(slot.key)}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isEditing && (
+                    <>
+                      <button
+                        onClick={() => onEdit(slot)}
+                        className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      {slot.isCustomized && (
+                        <button
+                          onClick={() => onReset(slot.key)}
+                          disabled={resettingKey === slot.key}
+                          className="p-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition disabled:opacity-50"
+                        >
+                          {resettingKey === slot.key ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Content */}
+              {isEditing ? (
+                <div className="p-4 space-y-4">
+                  {saveError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                      {saveError}
+                    </div>
+                  )}
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="w-full h-48 p-3 border border-gray-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-y"
+                    placeholder={t('prompts.placeholder', 'Enter prompt content...')}
+                  />
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editActive}
+                        onChange={(e) => setEditActive(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-gray-700">{t('prompts.active', 'Active')}</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={onCancel}
+                        className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                      >
+                        {t('common.cancel', 'Cancel')}
+                      </button>
+                      <button
+                        onClick={onSave}
+                        disabled={saving}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                        {t('common.save', 'Save')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4">
+                  <pre className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-32">
+                    {slot.currentContent.substring(0, 300)}
+                    {slot.currentContent.length > 300 && '...'}
+                  </pre>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {insightPrompts.length === 0 && (
+        <div className="text-center py-12 text-gray-500">
+          {t('prompts.noPrompts', 'No prompts found')}
+        </div>
+      )}
     </div>
   );
 }

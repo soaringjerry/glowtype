@@ -4,6 +4,7 @@
     "dashboard": "Dashboard",
     "analytics": "Data Analytics",
     "crisis": "Crisis Analytics",
+    "aiCrisisConfig": "AI & Crisis Config",
     "adminUsers": "Admin Accounts",
     "dimensions": "Dimensions",
     "questions": "Quiz Questions",
@@ -11,9 +12,6 @@
     "rules": "Scoring Rules",
     "debugger": "Rule Debugger",
     "results": "Quiz Results",
-    "prompts": "AI Prompts",
-    "aiSettings": "AI Settings",
-    "crisisConfig": "Crisis Config",
     "glowpedia": "Glowpedia",
     "audit": "Audit Log",
     "settings": "Settings",
@@ -685,12 +683,13 @@
     "setupError": "Setup failed, please try again"
   },
   "crisis": {
-    "title": "Crisis Configuration",
-    "subtitle": "Configure crisis detection and response settings",
+    "title": "AI & Crisis Configuration",
+    "subtitle": "Configure AI prompts and crisis detection settings",
     "configVersion": "Version",
     "confirmResetAll": "Reset all crisis config to defaults?",
     "tabs": {
       "overview": "Overview",
+      "prompts": "AI Prompts",
       "keywords": "Keywords",
       "patterns": "Exclude Patterns",
       "resources": "Resources",

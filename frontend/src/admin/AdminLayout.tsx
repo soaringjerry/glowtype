@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   HelpCircle,
   Sparkles,
-  MessageSquare,
   LogOut,
   Menu,
   X,
@@ -21,7 +20,6 @@ import {
   Eye,
   Loader2,
   TrendingUp,
-  Cpu
 } from 'lucide-react';
 import { isReadOnlyRole, userHasPermission, useAdminAuth } from './hooks/useAdmin';
 import type { AdminPermission } from './hooks/useAdmin';
@@ -32,7 +30,6 @@ import Questions from './pages/Questions';
 import Glowtypes from './pages/Glowtypes';
 import Rules from './pages/Rules';
 import RuleDebugger from './pages/RuleDebugger';
-import Prompts from './pages/Prompts';
 import Results from './pages/Results';
 import Glowpedia from './pages/Glowpedia';
 import AdminUsers from './pages/AdminUsers';
@@ -40,7 +37,6 @@ import AuditLogs from './pages/AuditLogs';
 import Analytics from './pages/Analytics';
 import CrisisAnalytics from './pages/CrisisAnalytics';
 import CrisisConfig from './pages/CrisisConfig';
-import AISettings from './pages/AISettings';
 import AdminSettings from './pages/AdminSettings';
 
 export default function AdminLayout() {
@@ -82,28 +78,19 @@ export default function AdminLayout() {
       { path: '/admin/rules', labelKey: 'nav.rules', icon: Settings2, perm: 'rules.write' },
       { path: '/admin/debugger', labelKey: 'nav.debugger', icon: Bug, perm: 'rules.write' },
       { path: '/admin/results', labelKey: 'nav.results', icon: BarChart3, perm: 'results.view' },
-      { path: '/admin/prompts', labelKey: 'nav.prompts', icon: MessageSquare, perm: 'prompts.write' },
       { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles, perm: 'content.write' },
       { path: '/admin/audit', labelKey: 'nav.audit', icon: ScrollText, perm: 'audit.view' },
     ];
     // Filter by permission, then add superadmin-only items
     const filtered = items.filter((item) => userHasPermission(currentUser, item.perm));
-    // AI Settings and Crisis Config are superadmin-only
+    // AI Crisis Config is superadmin-only (includes prompts + crisis detection)
     if (currentUser?.role === 'superadmin') {
-      // Insert after prompts
-      const promptsIdx = filtered.findIndex((item) => item.path === '/admin/prompts');
-      filtered.splice(promptsIdx + 1, 0, {
-        path: '/admin/ai-settings',
-        labelKey: 'nav.aiSettings',
-        icon: Cpu,
-        perm: 'admin.manage' as AdminPermission, // Just for type, not used for filtering
-      });
       // Insert after crisis analytics
       const crisisIdx = filtered.findIndex((item) => item.path === '/admin/crisis');
       if (crisisIdx >= 0) {
         filtered.splice(crisisIdx + 1, 0, {
           path: '/admin/crisis-config',
-          labelKey: 'nav.crisisConfig',
+          labelKey: 'nav.aiCrisisConfig',
           icon: Settings2,
           perm: 'admin.manage' as AdminPermission,
         });
@@ -258,8 +245,6 @@ export default function AdminLayout() {
             <Route path="/admin/rules" element={<Protected perm="rules.write"><Rules /></Protected>} />
             <Route path="/admin/debugger" element={<Protected perm="rules.write"><RuleDebugger /></Protected>} />
             <Route path="/admin/results" element={<Protected perm="results.view"><Results /></Protected>} />
-            <Route path="/admin/prompts" element={<Protected perm="prompts.write"><Prompts /></Protected>} />
-            <Route path="/admin/ai-settings" element={<SuperadminOnly><AISettings /></SuperadminOnly>} />
             <Route path="/admin/glowpedia" element={<Protected perm="content.write"><Glowpedia /></Protected>} />
             <Route path="/admin/audit" element={<Protected perm="audit.view"><AuditLogs /></Protected>} />
             <Route path="/admin/settings" element={<AdminSettings />} />

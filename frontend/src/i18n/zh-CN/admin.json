@@ -4,7 +4,7 @@
     "dashboard": "仪表盘",
     "analytics": "数据分析",
     "crisis": "危机分析",
-    "crisisConfig": "危机配置",
+    "aiCrisisConfig": "AI 危机干预",
     "adminUsers": "管理员账户",
     "dimensions": "维度管理",
     "questions": "题目管理",
@@ -12,8 +12,6 @@
     "rules": "评分规则",
     "debugger": "规则调试",
     "results": "结果记录",
-    "prompts": "AI 提示词",
-    "aiSettings": "AI 配置",
     "glowpedia": "光签管理",
     "audit": "操作审计",
     "settings": "个人设置",
@@ -685,12 +683,13 @@
     "setupError": "设置失败，请重试"
   },
   "crisis": {
-    "title": "危机配置",
-    "subtitle": "配置危机检测和响应设置",
+    "title": "AI 危机干预",
+    "subtitle": "配置 AI 提示词和危机检测设置",
     "configVersion": "版本",
     "confirmResetAll": "确定要重置所有危机配置到默认值吗？",
     "tabs": {
       "overview": "概览",
+      "prompts": "AI 提示词",
       "keywords": "关键词",
       "patterns": "排除模式",
       "resources": "资源",
