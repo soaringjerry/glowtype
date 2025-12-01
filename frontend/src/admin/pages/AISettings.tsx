@@ -69,8 +69,8 @@ export default function AISettings() {
 
     const updateData: Record<string, any> = {
       provider,
-      baseUrl: baseUrl.trim() || undefined,
-      model: model.trim() || undefined,
+      baseUrl: baseUrl.trim(),  // Send empty string to clear, not undefined
+      model: model.trim(),      // Send empty string to clear, not undefined
       isActive,
       rateLimitEnabled,
       rateLimitRequestsPerMin,

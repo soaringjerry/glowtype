@@ -31,8 +31,8 @@ const (
 
 // EmbeddingService handles OpenAI embedding generation and vector operations
 type EmbeddingService struct {
-	apiKey    string
-	apiURL    string
+	envAPIKey string // Fallback from environment
+	envAPIURL string
 	model     string
 	dimension int
 	db        *gorm.DB
@@ -62,14 +62,18 @@ type embeddingResponse struct {
 
 // NewEmbeddingService creates a new embedding service
 func NewEmbeddingService(db *gorm.DB) *EmbeddingService {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		log.Println("[EmbeddingService] Warning: OPENAI_API_KEY not set, embedding generation will fail")
+	// Environment fallback: check AI_API_KEY first, then OPENAI_API_KEY
+	envAPIKey := os.Getenv("AI_API_KEY")
+	if envAPIKey == "" {
+		envAPIKey = os.Getenv("OPENAI_API_KEY")
 	}
 
-	apiURL := os.Getenv("OPENAI_BASE_URL")
-	if apiURL == "" {
-		apiURL = "https://api.openai.com/v1"
+	envAPIURL := os.Getenv("AI_API_URL")
+	if envAPIURL == "" {
+		envAPIURL = os.Getenv("OPENAI_BASE_URL")
+	}
+	if envAPIURL == "" {
+		envAPIURL = "https://api.openai.com/v1"
 	}
 
 	model := os.Getenv("EMBEDDING_MODEL")
@@ -78,8 +82,8 @@ func NewEmbeddingService(db *gorm.DB) *EmbeddingService {
 	}
 
 	return &EmbeddingService{
-		apiKey:    apiKey,
-		apiURL:    apiURL,
+		envAPIKey: envAPIKey,
+		envAPIURL: envAPIURL,
 		model:     model,
 		dimension: EmbeddingDimension,
 		db:        db,
@@ -88,8 +92,8 @@ func NewEmbeddingService(db *gorm.DB) *EmbeddingService {
 
 // GenerateEmbedding calls OpenAI API to generate embedding for text (L2 normalized)
 func (s *EmbeddingService) GenerateEmbedding(text string) ([]float32, error) {
-	if s.apiKey == "" {
-		return nil, fmt.Errorf("OPENAI_API_KEY not configured")
+	if s.envAPIKey == "" {
+		return nil, fmt.Errorf("AI API key not configured (set AI_API_KEY or OPENAI_API_KEY)")
 	}
 
 	if text == "" {
@@ -106,13 +110,13 @@ func (s *EmbeddingService) GenerateEmbedding(text string) ([]float32, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", s.apiURL+"/embeddings", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", s.envAPIURL+"/embeddings", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	req.Header.Set("Authorization", "Bearer "+s.envAPIKey)
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
