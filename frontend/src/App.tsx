@@ -954,6 +954,7 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
   const [showDebug, setShowDebug] = useState(false);
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const [debugLoading, setDebugLoading] = useState(false);
+  const [debugReloadToken, setDebugReloadToken] = useState(0);
   const debugClickCount = useRef(0);
   const debugClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1004,7 +1005,7 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
 
   // Fetch debug info when panel is opened
   useEffect(() => {
-    if (showDebug && sessionId && !debugInfo) {
+    if (showDebug && sessionId) {
       const fetchDebug = async () => {
         setDebugLoading(true);
         try {
@@ -1024,7 +1025,7 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
       };
       fetchDebug();
     }
-  }, [showDebug, sessionId, debugInfo]);
+  }, [showDebug, sessionId, debugReloadToken]);
 
   // Build conversation history for API (exclude intro message, limit to last 10)
   const buildHistory = (): ChatHistoryItem[] => {
@@ -1179,9 +1180,21 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-4 border-b bg-gray-50">
               <h2 className="font-bold text-gray-900">Debug Panel</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setDebugInfo(null);
+                    setDebugReloadToken((x) => x + 1);
+                  }}
+                  className="px-3 py-1.5 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50"
+                  disabled={debugLoading || !sessionId}
+                >
+                  Refresh
+                </button>
               <button onClick={() => setShowDebug(false)} className="p-2 hover:bg-gray-200 rounded-lg">
                 <X size={18} />
               </button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4 text-sm">
               {debugLoading ? (
