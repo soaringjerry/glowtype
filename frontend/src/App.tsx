@@ -907,6 +907,11 @@ interface DebugInfo {
   systemPrompt: string;
   guidanceLoaded: Record<string, boolean>;
   promptLayers: Record<string, string>;
+  lastApiRequest?: {
+    model: string;
+    messages: Array<{ role: string; content: string }>;
+    url: string;
+  };
 }
 
 const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
@@ -1212,6 +1217,18 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
                       {debugInfo.systemPrompt || '(empty)'}
                     </pre>
                   </details>
+
+                  {/* Raw API Request (OpenAI format) */}
+                  {debugInfo.lastApiRequest && (
+                    <details className="bg-blue-50 rounded-xl overflow-hidden">
+                      <summary className="p-4 cursor-pointer font-bold text-blue-800 hover:bg-blue-100">
+                        🔌 Raw API Request (OpenAI JSON)
+                      </summary>
+                      <pre className="p-4 bg-gray-900 text-green-400 text-xs overflow-x-auto whitespace-pre-wrap max-h-[600px]">
+                        {JSON.stringify(debugInfo.lastApiRequest, null, 2)}
+                      </pre>
+                    </details>
+                  )}
                 </>
               ) : (
                 <div className="text-center text-gray-500">

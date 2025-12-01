@@ -199,6 +199,7 @@ type DebugInfo struct {
 	SystemPrompt    string                 `json:"systemPrompt"`
 	GuidanceLoaded  map[string]bool        `json:"guidanceLoaded"`
 	PromptLayers    map[string]string      `json:"promptLayers"`
+	LastAPIRequest  map[string]any         `json:"lastApiRequest,omitempty"` // Raw request sent to AI provider
 }
 
 // GetDebugInfo returns debug information for a session (for admin debugging)
@@ -233,6 +234,7 @@ func (s *ChatService) GetDebugInfo(sessionID string) *DebugInfo {
 		SystemPrompt:   systemPrompt,
 		GuidanceLoaded: guidanceLoaded,
 		PromptLayers:   layers,
+		LastAPIRequest: sessionCtx.LastAPIRequest,
 	}
 }
 
@@ -349,7 +351,7 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 
 	// Provider-backed AI reply
 	if cfg.provider == "openai" && cfg.apiKey != "" {
-		aiReply, err := s.callOpenAIWithSystem(cfg, systemPrompt, req.Message, history)
+		aiReply, err := s.callOpenAIWithSystem(cfg, systemPrompt, req.Message, history, req.SessionID)
 		if err != nil {
 			log.Printf("[ChatService] Reply: OpenAI call failed: %v", err)
 		} else if aiReply != "" {
@@ -413,7 +415,7 @@ func (s *ChatService) logCrisisEvent(sessionID string, ctx *SessionContext, resu
 }
 
 // callOpenAIWithSystem calls OpenAI with a custom system prompt and conversation history
-func (s *ChatService) callOpenAIWithSystem(cfg aiConfig, systemPrompt, message string, history []ChatHistoryItem) (string, error) {
+func (s *ChatService) callOpenAIWithSystem(cfg aiConfig, systemPrompt, message string, history []ChatHistoryItem, sessionID string) (string, error) {
 	messages := []openAIMessage{
 		{Role: "system", Content: systemPrompt},
 	}
@@ -430,6 +432,16 @@ func (s *ChatService) callOpenAIWithSystem(cfg aiConfig, systemPrompt, message s
 
 	// Add current user message
 	messages = append(messages, openAIMessage{Role: "user", Content: message})
+
+	// Store request payload for debugging
+	requestPayload := map[string]any{
+		"model":    cfg.model,
+		"messages": messages,
+		"url":      cfg.baseURL + "/chat/completions",
+	}
+	if sessionID != "" {
+		s.sessionStore.SetLastAPIRequest(sessionID, requestPayload)
+	}
 
 	return s.callOpenAI(cfg, messages)
 }

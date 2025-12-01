@@ -47,6 +47,9 @@ type SessionContext struct {
 
 	// Test data marking
 	IsTest bool `json:"isTest"` // Mark as test data (admin sessions)
+
+	// Debug: last API request payload (for debugging)
+	LastAPIRequest map[string]any `json:"lastApiRequest,omitempty"`
 }
 
 // SessionStore manages in-memory session contexts with automatic cleanup
@@ -180,6 +183,16 @@ func (s *SessionStore) ShouldShowResources(sessionID string) bool {
 	}
 
 	return true
+}
+
+// SetLastAPIRequest stores the last API request payload for debugging
+func (s *SessionStore) SetLastAPIRequest(sessionID string, request map[string]any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if ctx, ok := s.sessions[sessionID]; ok {
+		ctx.LastAPIRequest = request
+	}
 }
 
 // Delete removes a session
