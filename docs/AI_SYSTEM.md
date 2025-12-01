@@ -318,13 +318,145 @@ type SessionContext struct {
 
 ---
 
-## 7. 文件结构
+## 7. RAG 向量检索系统（危机干预脚本）
+
+### 概述
+
+当检测到用户可能处于危机状态时，系统使用 RAG（Retrieval-Augmented Generation）技术从专家编写的危机干预脚本库中检索最相关的脚本，并将其作为参考注入到 AI 的系统提示中。
+
+### 工作流程
+
+```
+用户消息 ──▶ 危机检测 (Level ≥ 2)
+                  │
+                  ▼
+        ┌─────────────────────────────────┐
+        │     EmbeddingService            │
+        │  1. 生成用户消息的向量 (OpenAI)  │
+        │  2. 与脚本库向量计算相似度       │
+        │  3. 返回 Top-K 最相关脚本        │
+        └─────────────────────────────────┘
+                  │
+                  ▼
+        ┌─────────────────────────────────┐
+        │     PromptBuilder               │
+        │  将检索到的脚本注入系统提示      │
+        │  作为"脚本参考层"                │
+        └─────────────────────────────────┘
+                  │
+                  ▼
+             AI 生成回复
+```
+
+### 核心组件
+
+#### 1. 脚本模型 (CrisisScriptDB)
+
+```go
+type CrisisScriptDB struct {
+    ID                uint       // 主键
+    Title             string     // 标题
+    TitleZh           string     // 中文标题
+    Content           string     // 内容
+    ContentZh         string     // 中文内容
+    Mode              string     // template（模板）| reference（参考）
+    Category          string     // greeting, empathy, transition, resource, closing
+    CrisisLevels      string     // JSON数组，如 "[2,3]" 表示适用于 Level 2 和 3
+    Embedding         []byte     // 向量（3072维，BLOB存储）
+    EmbeddingUpdatedAt *time.Time // 向量更新时间
+    IsActive          bool       // 是否启用
+}
+```
+
+#### 2. 向量服务 (EmbeddingService)
+
+| 方法 | 说明 |
+|------|------|
+| `GenerateEmbedding(text)` | 调用 OpenAI API 生成文本向量（L2 归一化） |
+| `UpdateScriptEmbedding(scriptID)` | 为单个脚本生成/更新向量 |
+| `RefreshAllEmbeddings()` | 批量刷新所有活跃脚本的向量 |
+| `RetrieveRelevantScripts(message, language, crisisLevel, topK)` | 检索最相关的脚本 |
+
+#### 3. 向量配置
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 模型 | `text-embedding-3-large` | OpenAI 最新向量模型 |
+| 维度 | 3072 | 向量维度 |
+| 相似度阈值 | 0.3 | 低于此阈值的结果被过滤 |
+| Top-K | 3 | 默认返回前3个最相关脚本 |
+| 存储 | SQLite BLOB | 二进制存储，4字节/维度 |
+
+### 脚本参考层 Prompt
+
+当检测到 Level ≥ 2 的危机时，检索到的脚本会作为"脚本参考层"注入系统提示：
+
+```
+## 脚本参考层
+
+以下是专家编写的危机干预脚本，作为你的参考。根据当前对话情境，可以借鉴其中的表达方式：
+
+### 温柔地确认感受
+当用户表达负面情绪时，首先温柔地确认他们的感受...
+
+### 转介资源的方式
+当需要提及专业帮助时，用温和、非强迫的方式...
+```
+
+### 四步危机干预模式
+
+系统内置的脚本遵循专业的四步干预模式：
+
+| 步骤 | 中文 | 说明 |
+|------|------|------|
+| Listen | 倾听 | 给予空间，不打断 |
+| Empathize | 共情 | 验证感受，不评判 |
+| Confirm | 确认 | 确认安全，评估风险 |
+| Refer | 转介 | 温柔地连接专业资源 |
+
+### 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `AI_API_KEY` | OpenAI API 密钥（优先） | - |
+| `OPENAI_API_KEY` | OpenAI API 密钥（备用） | - |
+| `AI_API_URL` | API 基础 URL（优先） | - |
+| `OPENAI_BASE_URL` | API 基础 URL（备用） | `https://api.openai.com/v1` |
+| `EMBEDDING_MODEL` | 向量模型 | `text-embedding-3-large` |
+
+### API 端点
+
+| 端点 | 方法 | 说明 | 权限 |
+|------|------|------|------|
+| `/api/v1/admin/crisis/scripts` | GET | 获取所有脚本 | Superadmin |
+| `/api/v1/admin/crisis/scripts` | POST | 创建脚本（自动生成向量） | Superadmin |
+| `/api/v1/admin/crisis/scripts/:id` | PUT | 更新脚本（自动更新向量） | Superadmin |
+| `/api/v1/admin/crisis/scripts/embeddings/refresh` | POST | 刷新所有脚本向量 | Superadmin |
+
+### 自动向量生成
+
+- **创建脚本时**：自动在后台生成向量
+- **更新脚本时**：如果内容变化，自动在后台更新向量
+- **手动刷新**：通过 API 批量刷新所有脚本向量
+
+### 管理界面
+
+在管理后台 `/admin/crisis-config` 的"危机脚本"标签页中可以：
+
+1. 查看所有脚本及其向量状态
+2. 添加/编辑/删除脚本
+3. 点击"刷新向量"批量更新所有脚本的向量
+
+---
+
+## 8. 文件结构
 
 ```
 backend/internal/
 ├── services/
 │   ├── chat_service.go        # 聊天服务主逻辑
-│   ├── prompt_builder.go      # 三层 prompt 构建器
+│   ├── prompt_builder.go      # 三层 prompt 构建器（含脚本参考层）
+│   ├── embedding_service.go   # 向量生成与检索服务
 │   ├── crisis_detection.go    # 危机检测服务
 │   ├── crisis_config_loader.go # 危机配置加载器
 │   ├── session_store.go       # 会话上下文管理
@@ -332,9 +464,9 @@ backend/internal/
 ├── handlers/
 │   ├── chat.go                # 聊天 API 处理器
 │   ├── admin.go               # Prompt 管理 API
-│   └── crisis_config.go       # 危机配置 API
+│   └── crisis_config.go       # 危机配置 API（含向量刷新）
 └── database/
-    ├── models.go              # 数据模型定义
+    ├── models.go              # 数据模型定义（含 CrisisScriptDB）
     ├── seed.go                # 默认数据种子
-    └── crisis_seed.go         # 危机配置种子数据
+    └── crisis_seed.go         # 危机配置种子数据（含示例脚本）
 ```

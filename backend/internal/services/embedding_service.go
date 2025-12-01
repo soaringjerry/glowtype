@@ -251,7 +251,7 @@ func DotProduct(a, b []float32) float32 {
 func SerializeEmbedding(embedding []float32) []byte {
 	buf := new(bytes.Buffer)
 	for _, f := range embedding {
-		binary.Write(buf, binary.LittleEndian, f)
+		_ = binary.Write(buf, binary.LittleEndian, f) // Error ignored: bytes.Buffer.Write never fails
 	}
 	return buf.Bytes()
 }
@@ -265,7 +265,7 @@ func DeserializeEmbedding(data []byte) []float32 {
 	result := make([]float32, count)
 	buf := bytes.NewReader(data)
 	for i := 0; i < count; i++ {
-		binary.Read(buf, binary.LittleEndian, &result[i])
+		_ = binary.Read(buf, binary.LittleEndian, &result[i]) // Error ignored: reading from pre-sized buffer
 	}
 	return result
 }
