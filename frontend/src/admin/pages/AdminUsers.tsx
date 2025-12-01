@@ -161,6 +161,7 @@ export default function AdminUsers() {
     { value: 'content_admin', label: t('roles.content_admin') },
     { value: 'data_admin', label: t('roles.data_admin') },
     { value: 'analyst', label: t('roles.analyst') },
+    { value: 'crisis_admin', label: t('roles.crisis_admin') },
     // Only superadmin can create superadmin
     ...(isSuperadmin ? [{ value: 'superadmin' as AdminRole, label: t('roles.superadmin') }] : []),
   ];
