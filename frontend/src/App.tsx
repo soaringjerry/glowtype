@@ -1321,7 +1321,7 @@ const PrivacyView = ({ onBack, lang }: PrivacyViewProps) => {
         <ArrowRight className="rotate-180" size={20} /> {isZh ? '返回' : 'Back'}
       </button>
       <h1 className="text-4xl font-serif text-gray-900 mb-2">{isZh ? '隐私政策' : 'Privacy Policy'}</h1>
-      <p className="text-sm text-gray-400 mb-8">{isZh ? '最后更新：2025年11月27日' : 'Last updated: November 27, 2025'}</p>
+      <p className="text-sm text-gray-400 mb-8">{isZh ? '最后更新：2025年12月01日' : 'Last updated: December 1, 2025'}</p>
 
       <GlassCard className="p-6 md:p-8">
         {isZh ? <PrivacyContentZh /> : <PrivacyContentEn />}
