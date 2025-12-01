@@ -962,7 +962,7 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
     if (data === undefined || data === null) return '(empty)';
     try {
       return JSON.stringify(data, null, 2);
-    } catch (err) {
+    } catch {
       return '(unserializable)';
     }
   };
