@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -141,11 +142,18 @@ func (h *ChatHandler) TrackChatAnalytics(c *gin.Context) {
 
 // DebugSession returns debug information for a chat session
 // GET /api/v1/chat/debug/:sessionId?key=xxx
-// Protected by a simple secret key for remote debugging
+// Protected by a secret key from environment variable
 func (h *ChatHandler) DebugSession(c *gin.Context) {
-	// Check debug key
+	// Check debug key from environment variable
+	expectedKey := os.Getenv("DEBUG_API_KEY")
+	if expectedKey == "" {
+		// Debug endpoint disabled if no key is set
+		c.JSON(http.StatusForbidden, gin.H{"error": "debug endpoint disabled"})
+		return
+	}
+
 	debugKey := c.Query("key")
-	if debugKey != "glowtype_debug_2024" {
+	if debugKey == "" || debugKey != expectedKey {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid debug key"})
 		return
 	}

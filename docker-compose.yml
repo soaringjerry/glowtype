@@ -12,6 +12,7 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - DB_PATH=/data/glowtype.db
       - SEED_DB=${SEED_DB:-true}
+      - DEBUG_API_KEY=${DEBUG_API_KEY:-}
     volumes:
       - glowtype-data:/data
     ports:

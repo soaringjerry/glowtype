@@ -971,7 +971,10 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
       const fetchDebug = async () => {
         setDebugLoading(true);
         try {
-          const res = await fetch(`${getApiBaseUrl()}/chat/debug/${sessionId}?key=glowtype_debug_2024`);
+          // Get debug key from URL parameter
+          const urlParams = new URLSearchParams(window.location.search);
+          const debugKey = urlParams.get('key') || '';
+          const res = await fetch(`${getApiBaseUrl()}/chat/debug/${sessionId}?key=${encodeURIComponent(debugKey)}`);
           if (res.ok) {
             const data = await res.json();
             setDebugInfo(data);
