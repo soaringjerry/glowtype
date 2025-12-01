@@ -919,7 +919,11 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const endOfMsgRef = useRef<HTMLDivElement>(null);
 
-  // Debug panel state (admin only)
+  // Debug panel state - check URL param or admin login
+  const hasDebugAccess = (): boolean => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('debug') === '1' || isAdminLoggedIn();
+  };
   const [showDebug, setShowDebug] = useState(false);
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const [debugLoading, setDebugLoading] = useState(false);
@@ -928,7 +932,7 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
 
   // Secret tap to open debug panel (5 taps on disclaimer text)
   const handleDebugTap = () => {
-    if (!isAdminLoggedIn()) return;
+    if (!hasDebugAccess()) return;
     debugClickCount.current++;
     if (debugClickTimer.current) clearTimeout(debugClickTimer.current);
     debugClickTimer.current = setTimeout(() => { debugClickCount.current = 0; }, 1000);
@@ -946,13 +950,13 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
     });
   }, [lang, glowtypeCode]);
 
-  // Keyboard shortcut for debug panel (Ctrl+Shift+D) - admin only
+  // Keyboard shortcut for debug panel (Ctrl+Shift+D)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Use e.code for reliability across browsers/keyboards
       if (e.ctrlKey && e.shiftKey && (e.code === 'KeyD' || e.key.toLowerCase() === 'd')) {
         e.preventDefault();
-        if (isAdminLoggedIn()) {
+        if (hasDebugAccess()) {
           setShowDebug(prev => !prev);
         }
       }
@@ -1134,8 +1138,8 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
         </p>
       </div>
 
-      {/* Debug Panel - Admin Only (Ctrl+Shift+D or 5x tap on disclaimer) */}
-      {showDebug && isAdminLoggedIn() && (
+      {/* Debug Panel (Ctrl+Shift+D, 5x tap, or ?debug=1 in URL) */}
+      {showDebug && hasDebugAccess() && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-4 border-b bg-gray-50">
