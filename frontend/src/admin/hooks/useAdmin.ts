@@ -1275,7 +1275,7 @@ export const useAdminApi = () => {
       apiCall<{ message: string }>(`/admin/crisis/scripts/${id}`, { method: 'DELETE' }),
 
     // Crisis Reset
-    resetCrisisConfig: (options: { all?: boolean; keywords?: boolean; patterns?: boolean; resources?: boolean; phrases?: boolean; guidance?: boolean }) => {
+    resetCrisisConfig: (options: { all?: boolean; keywords?: boolean; patterns?: boolean; resources?: boolean; phrases?: boolean; guidance?: boolean; scripts?: boolean }) => {
       const query = new URLSearchParams();
       if (options.all) query.set('all', 'true');
       if (options.keywords) query.set('keywords', 'true');
@@ -1283,6 +1283,7 @@ export const useAdminApi = () => {
       if (options.resources) query.set('resources', 'true');
       if (options.phrases) query.set('phrases', 'true');
       if (options.guidance) query.set('guidance', 'true');
+      if (options.scripts) query.set('scripts', 'true');
       return apiCall<{ message: string; results: Record<string, number> }>(`/admin/crisis/reset?${query.toString()}`, { method: 'POST' });
     },
   };

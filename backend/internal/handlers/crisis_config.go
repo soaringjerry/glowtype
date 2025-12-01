@@ -575,6 +575,7 @@ func ResetCrisisConfigHandler(c *gin.Context) {
 	resetResources := c.Query("resources") == "true"
 	resetPhrases := c.Query("phrases") == "true"
 	resetGuidance := c.Query("guidance") == "true"
+	resetScripts := c.Query("scripts") == "true"
 	resetAll := c.Query("all") == "true"
 
 	if resetAll {
@@ -583,6 +584,7 @@ func ResetCrisisConfigHandler(c *gin.Context) {
 		resetResources = true
 		resetPhrases = true
 		resetGuidance = true
+		resetScripts = true
 	}
 
 	results := make(map[string]interface{})
@@ -612,6 +614,11 @@ func ResetCrisisConfigHandler(c *gin.Context) {
 		count := database.SeedCrisisGlowtypeGuidance(db)
 		results["glowtypeGuidance"] = count
 	}
+	if resetScripts {
+		db.Where("1=1").Delete(&database.CrisisScriptDB{})
+		count := database.SeedCrisisScripts(db)
+		results["scripts"] = count
+	}
 
 	incrementCrisisConfigVersion(db)
 
@@ -624,6 +631,7 @@ func ResetCrisisConfigHandler(c *gin.Context) {
 		"resetResources": resetResources,
 		"resetPhrases":   resetPhrases,
 		"resetGuidance":  resetGuidance,
+		"resetScripts":   resetScripts,
 		"results":        results,
 	})
 
