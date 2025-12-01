@@ -13,8 +13,9 @@ A comprehensive guide for using the Glowtype administration panel.
 5. [Quiz Configuration](#5-quiz-configuration)
 6. [AI Configuration](#6-ai-configuration)
 7. [User Management](#7-user-management)
-8. [Analytics & Reports](#8-analytics--reports)
-9. [Personal Settings](#9-personal-settings)
+8. [Audit Logs](#8-audit-logs)
+9. [Analytics & Reports](#9-analytics--reports)
+10. [Personal Settings](#10-personal-settings)
 
 ---
 
@@ -522,9 +523,94 @@ When custom permissions are set, they take precedence over role defaults.
 
 ---
 
-## 8. Analytics & Reports
+## 8. Audit Logs
 
-### 8.1 Quiz Results
+The audit system provides comprehensive logging of all admin operations for accountability and compliance.
+
+### 8.1 Viewing Audit Logs
+
+Navigate to **Audit Log** in the sidebar (requires `audit.view` permission).
+
+**Displayed Information**:
+| Column | Description |
+|--------|-------------|
+| Time | When the action occurred |
+| Admin | Username who performed the action |
+| Risk | Risk level badge (low/medium/high/critical) |
+| Action | Human-readable action name |
+| Path | API endpoint with HTTP method |
+| Status | HTTP status code (green=success, red=error) |
+| IP | Client IP address |
+| Changes | "View diff" button for write operations |
+| Details | Expandable metadata (duration, params, etc.) |
+
+### 8.2 Risk Levels
+
+Operations are classified by sensitivity:
+
+| Level | Color | Examples |
+|-------|-------|----------|
+| **Low** | Gray | Read operations, listing data |
+| **Medium** | Blue | Creating/updating content (questions, glowtypes) |
+| **High** | Orange | Updating scoring rules, AI prompts, crisis config |
+| **Critical** | Red | Password reset, AI settings, reset to defaults, user management |
+
+### 8.3 Change Diff (Before/After)
+
+For write operations (POST/PUT/DELETE), click **"View diff"** to see:
+
+- **Resource Type**: What was modified (e.g., "dimension", "rule")
+- **Resource ID**: Database ID of the modified record
+- **Field Changes**: Side-by-side comparison of before/after values
+
+**Sensitive fields are automatically redacted**:
+- Passwords, tokens, API keys
+- 2FA secrets, recovery codes
+- Any field containing "password", "secret", "token", "apikey"
+
+### 8.4 Integrity Verification (Superadmin Only)
+
+Each audit log entry includes a SHA256 integrity hash calculated from:
+- Admin ID, username, action
+- Method, path, status code
+- Metadata, data diff, risk level
+- Timestamp (RFC3339Nano precision)
+
+**API Endpoint**: `GET /api/v1/admin/audit/verify`
+
+This allows detection of tampered audit records. The verification checks if stored hashes match recomputed values.
+
+### 8.5 What Gets Audited
+
+**All admin API calls** are logged, including:
+
+| Category | Operations |
+|----------|------------|
+| User Management | Create/update/delete admins, password reset, 2FA management |
+| Content | Dimensions, questions, glowtypes, rules, prompts, glowpedia |
+| Configuration | AI settings, crisis config (keywords, resources, scripts) |
+| System | Reset to defaults, login attempts |
+
+**Metadata captured**:
+- Request duration (ms)
+- Path parameters
+- Query parameters
+- Request body (sensitive fields redacted)
+- Response sample
+- Admin role at time of action
+
+### 8.6 Retention & Privacy
+
+- Audit logs are stored indefinitely by default
+- No PII from end users is captured (only admin usernames)
+- IP addresses are logged for security investigation
+- Consider periodic export/archival for compliance needs
+
+---
+
+## 9. Analytics & Reports
+
+### 9.1 Quiz Results
 
 View individual quiz submissions (anonymous).
 
@@ -544,7 +630,7 @@ View individual quiz submissions (anonymous).
 - Device
 - Timestamp
 
-### 8.2 Advanced Analytics
+### 9.2 Advanced Analytics
 
 **Date Range Selection**:
 1. Go to **Analytics**
@@ -565,11 +651,11 @@ View individual quiz submissions (anonymous).
 
 ---
 
-## 9. Personal Settings
+## 10. Personal Settings
 
 Access via your username dropdown > "Settings"
 
-### 9.1 Change Password
+### 10.1 Change Password
 
 1. Enter current password
 2. Enter new password
@@ -580,7 +666,7 @@ Access via your username dropdown > "Settings"
 - Minimum 8 characters
 - Different from current password
 
-### 9.2 Two-Factor Authentication
+### 10.2 Two-Factor Authentication
 
 See [SECURITY.md](./SECURITY.md) for detailed 2FA instructions.
 
@@ -589,7 +675,7 @@ See [SECURITY.md](./SECURITY.md) for detailed 2FA instructions.
 - **Disable 2FA**: Enter current code to confirm
 - **Regenerate Recovery Codes**: Invalidates old codes
 
-### 9.3 Trusted Devices
+### 10.3 Trusted Devices
 
 View and manage devices that skip 2FA:
 
