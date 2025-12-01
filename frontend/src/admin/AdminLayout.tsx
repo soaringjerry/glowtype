@@ -237,7 +237,7 @@ export default function AdminLayout() {
             <Route path="/admin" element={<Protected perm="stats.view"><Dashboard /></Protected>} />
             <Route path="/admin/analytics" element={<Protected perm="stats.view"><Analytics /></Protected>} />
             <Route path="/admin/crisis" element={<Protected perm="stats.view"><CrisisAnalytics /></Protected>} />
-            <Route path="/admin/crisis-config" element={<SuperadminOnly><CrisisConfig /></SuperadminOnly>} />
+            <Route path="/admin/crisis-config" element={<Protected perm="crisis.manage"><CrisisConfig /></Protected>} />
             <Route path="/admin/users" element={<Protected perm="admin.manage"><AdminUsers /></Protected>} />
             <Route path="/admin/dimensions" element={<Protected perm="dimensions.write"><Dimensions /></Protected>} />
             <Route path="/admin/questions" element={<Protected perm="questions.write"><Questions /></Protected>} />
@@ -274,16 +274,3 @@ function Protected({ perm, children }: ProtectedProps) {
   return <>{children}</>;
 }
 
-function SuperadminOnly({ children }: { children: ReactNode }) {
-  const { t } = useTranslation('admin');
-  const { currentUser } = useAdminAuth();
-  if (currentUser?.role !== 'superadmin') {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm p-6 border border-amber-100">
-        <h2 className="text-lg font-semibold text-gray-800 mb-1">{t('accessDenied.title')}</h2>
-        <p className="text-sm text-gray-600">{t('accessDenied.superadminOnly', 'This feature requires superadmin access.')}</p>
-      </div>
-    );
-  }
-  return <>{children}</>;
-}
