@@ -49,6 +49,9 @@ func New(cfg config.Config) *gin.Engine {
 	chatService := services.NewChatService(cfg, db)
 	helpService := services.NewHelpService()
 
+	// Initialize embedding service for crisis script RAG
+	handlers.InitEmbeddingService(db)
+
 	quizHandler := handlers.NewQuizHandler(quizService)
 	glowtypeHandler := handlers.NewGlowtypeHandler(glowtypeService)
 	chatHandler := handlers.NewChatHandler(chatService, db)
@@ -289,6 +292,10 @@ func New(cfg config.Config) *gin.Engine {
 			crisis.POST("/scripts", handlers.CreateCrisisScript)
 			crisis.PUT("/scripts/:id", handlers.UpdateCrisisScript)
 			crisis.DELETE("/scripts/:id", handlers.DeleteCrisisScript)
+
+			// Embeddings management (RAG for script retrieval)
+			crisis.GET("/scripts/embeddings/stats", handlers.GetEmbeddingStats)
+			crisis.POST("/scripts/embeddings/refresh", handlers.RefreshScriptEmbeddings)
 
 			// Reset to defaults (superadmin only - blocked for crisis_admin in handler)
 			crisis.POST("/reset", handlers.ResetCrisisConfigHandler)

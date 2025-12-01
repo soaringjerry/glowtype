@@ -433,6 +433,10 @@ type CrisisScriptDB struct {
 	ApprovedBy   string     `json:"approvedBy"`
 	ApprovedAt   *time.Time `json:"approvedAt"`
 
+	// RAG Embedding (text-embedding-3-large, 3072 dimensions, L2 normalized)
+	Embedding          []byte     `gorm:"type:blob" json:"-"`
+	EmbeddingUpdatedAt *time.Time `json:"embeddingUpdatedAt,omitempty"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

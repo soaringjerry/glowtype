@@ -33,11 +33,12 @@ type ChatService struct {
 	rateLimiter *ipRateLimiter
 
 	// New components for emotion companion features
-	sessionStore   *SessionStore
-	crisisDetector *CrisisDetector
-	resourceSvc    *ResourceService
-	promptBuilder  *PromptBuilder
-	alertService   *CrisisAlertService
+	sessionStore     *SessionStore
+	crisisDetector   *CrisisDetector
+	resourceSvc      *ResourceService
+	promptBuilder    *PromptBuilder
+	alertService     *CrisisAlertService
+	embeddingService *EmbeddingService
 }
 
 // aiConfig holds the effective AI configuration
@@ -104,23 +105,25 @@ func NewChatService(cfg config.Config, db *gorm.DB) *ChatService {
 	resourceSvc := NewResourceServiceWithDB(configLoader)
 	promptBuilder := NewPromptBuilderWithDB(configLoader)
 	alertService := NewCrisisAlertService(db, configLoader)
+	embeddingService := NewEmbeddingService(db)
 
 	log.Printf("[ChatService] Emotion companion components initialized with DB-backed config (hot-reload enabled)")
 
 	return &ChatService{
-		sessions:       make(map[string]time.Time),
-		provider:       provider,
-		envAPIKey:      apiKey,
-		envBaseURL:     baseURL,
-		envModel:       model,
-		client:         &http.Client{Timeout: 30 * time.Second},
-		db:             db,
-		rateLimiter:    newIPRateLimiter(),
-		sessionStore:   sessionStore,
-		crisisDetector: crisisDetector,
-		resourceSvc:    resourceSvc,
-		promptBuilder:  promptBuilder,
-		alertService:   alertService,
+		sessions:         make(map[string]time.Time),
+		provider:         provider,
+		envAPIKey:        apiKey,
+		envBaseURL:       baseURL,
+		envModel:         model,
+		client:           &http.Client{Timeout: 30 * time.Second},
+		db:               db,
+		rateLimiter:      newIPRateLimiter(),
+		sessionStore:     sessionStore,
+		crisisDetector:   crisisDetector,
+		resourceSvc:      resourceSvc,
+		promptBuilder:    promptBuilder,
+		alertService:     alertService,
+		embeddingService: embeddingService,
 	}
 }
 
@@ -347,7 +350,19 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 		resourcesDeclined = sessionCtx.ResourceDeclined
 	}
 
-	systemPrompt := s.promptBuilder.BuildSystemPrompt(glowtypeCtx, crisisResult.Level, resourcesDeclined)
+	// Retrieve relevant crisis scripts via RAG (on every message)
+	var relevantScripts []database.CrisisScriptDB
+	if s.embeddingService != nil {
+		scripts, err := s.embeddingService.RetrieveRelevantScripts(req.Message, req.Language, crisisResult.Level, 3)
+		if err != nil {
+			log.Printf("[ChatService] Script retrieval failed: %v", err)
+		} else if len(scripts) > 0 {
+			relevantScripts = scripts
+			log.Printf("[ChatService] Retrieved %d relevant scripts for message", len(scripts))
+		}
+	}
+
+	systemPrompt := s.promptBuilder.BuildSystemPromptWithScripts(glowtypeCtx, crisisResult.Level, resourcesDeclined, relevantScripts)
 
 	// Provider-backed AI reply
 	if cfg.provider == "openai" && cfg.apiKey != "" {

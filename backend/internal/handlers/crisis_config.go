@@ -1,14 +1,24 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/soaringjerry/glowtype/internal/audit"
 	"github.com/soaringjerry/glowtype/internal/database"
+	"github.com/soaringjerry/glowtype/internal/services"
 	"gorm.io/gorm"
 )
+
+// embeddingService is the global embedding service instance
+var embeddingService *services.EmbeddingService
+
+// InitEmbeddingService initializes the embedding service
+func InitEmbeddingService(db *gorm.DB) {
+	embeddingService = services.NewEmbeddingService(db)
+}
 
 // ============ Crisis Keywords ============
 
@@ -673,6 +683,15 @@ func CreateCrisisScript(c *gin.Context) {
 		return
 	}
 
+	// Async generate embedding for RAG
+	if embeddingService != nil {
+		go func(scriptID uint) {
+			if err := embeddingService.UpdateScriptEmbedding(scriptID); err != nil {
+				log.Printf("[CrisisScript] Failed to generate embedding for script %d: %v", scriptID, err)
+			}
+		}(script.ID)
+	}
+
 	incrementCrisisConfigVersion(db)
 	c.JSON(http.StatusCreated, script)
 }
@@ -682,16 +701,26 @@ func UpdateCrisisScript(c *gin.Context) {
 	db := database.GetDB()
 	id := c.Param("id")
 
-	var script database.CrisisScriptDB
-	if err := db.First(&script, id).Error; err != nil {
+	var oldScript database.CrisisScriptDB
+	if err := db.First(&oldScript, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Script not found"})
 		return
 	}
 
+	// Store old content to check if it changed
+	oldContent := oldScript.Content
+	oldContentZh := oldScript.ContentZh
+	oldTitle := oldScript.Title
+	oldTitleZh := oldScript.TitleZh
+
+	var script database.CrisisScriptDB
 	if err := c.ShouldBindJSON(&script); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Preserve ID
+	script.ID = oldScript.ID
 
 	// Validate mode
 	if script.Mode != "template" && script.Mode != "reference" {
@@ -701,6 +730,20 @@ func UpdateCrisisScript(c *gin.Context) {
 	if err := db.Save(&script).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Regenerate embedding if content changed
+	contentChanged := script.Content != oldContent ||
+		script.ContentZh != oldContentZh ||
+		script.Title != oldTitle ||
+		script.TitleZh != oldTitleZh
+
+	if contentChanged && embeddingService != nil {
+		go func(scriptID uint) {
+			if err := embeddingService.UpdateScriptEmbedding(scriptID); err != nil {
+				log.Printf("[CrisisScript] Failed to update embedding for script %d: %v", scriptID, err)
+			}
+		}(script.ID)
 	}
 
 	incrementCrisisConfigVersion(db)
@@ -719,6 +762,46 @@ func DeleteCrisisScript(c *gin.Context) {
 
 	incrementCrisisConfigVersion(db)
 	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
+}
+
+// RefreshScriptEmbeddings regenerates embeddings for all active scripts
+func RefreshScriptEmbeddings(c *gin.Context) {
+	if embeddingService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Embedding service not initialized"})
+		return
+	}
+
+	success, failed, err := embeddingService.RefreshAllEmbeddings()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": success,
+		"failed":  failed,
+		"message": "Embeddings refreshed",
+	})
+}
+
+// GetEmbeddingStats returns embedding statistics
+func GetEmbeddingStats(c *gin.Context) {
+	if embeddingService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Embedding service not initialized"})
+		return
+	}
+
+	total, withEmbedding, err := embeddingService.GetEmbeddingStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total":         total,
+		"withEmbedding": withEmbedding,
+		"coverage":      float64(withEmbedding) / float64(total) * 100,
+	})
 }
 
 // ============ Helper Functions ============

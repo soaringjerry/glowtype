@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/soaringjerry/glowtype/internal/database"
 )
 
 // GlowtypeContext contains personalization data for prompt building
@@ -314,6 +316,11 @@ func (p *PromptBuilder) LoadForbidden(path string) error {
 
 // BuildSystemPrompt constructs the complete three-layer system prompt
 func (p *PromptBuilder) BuildSystemPrompt(ctx GlowtypeContext, crisisLevel int, resourcesDeclined bool) string {
+	return p.BuildSystemPromptWithScripts(ctx, crisisLevel, resourcesDeclined, nil)
+}
+
+// BuildSystemPromptWithScripts constructs the system prompt with optional script reference layer
+func (p *PromptBuilder) BuildSystemPromptWithScripts(ctx GlowtypeContext, crisisLevel int, resourcesDeclined bool, scripts []database.CrisisScriptDB) string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
@@ -330,7 +337,71 @@ func (p *PromptBuilder) BuildSystemPrompt(ctx GlowtypeContext, crisisLevel int, 
 	// Layer 3: Guidance Layer (Micro-interventions)
 	parts = append(parts, p.buildGuidanceLayer(ctx))
 
+	// Layer 4: Script Reference Layer (RAG-retrieved conversation scripts)
+	if len(scripts) > 0 {
+		parts = append(parts, p.buildScriptReferenceLayer(ctx.Language, scripts))
+	}
+
 	return strings.Join(parts, "\n\n")
+}
+
+// buildScriptReferenceLayer builds the script reference layer from RAG-retrieved scripts
+func (p *PromptBuilder) buildScriptReferenceLayer(language string, scripts []database.CrisisScriptDB) string {
+	isZH := strings.HasPrefix(strings.ToLower(language), "zh")
+
+	var sb strings.Builder
+
+	if isZH {
+		sb.WriteString("## 参考脚本层（仅供参考，不要照搬）\n\n")
+		sb.WriteString("以下是与用户当前情绪相关的专家对话参考。这些是指导方向，不是必须逐字使用的模板。\n")
+		sb.WriteString("请根据对话情境自然地融入这些元素，保持你温暖陪伴者的角色。\n\n")
+
+		for i, script := range scripts {
+			sb.WriteString(fmt.Sprintf("### 参考 %d: %s\n", i+1, script.TitleZh))
+			if script.TitleZh == "" {
+				sb.WriteString(fmt.Sprintf("### 参考 %d: %s\n", i+1, script.Title))
+			}
+
+			// Use Chinese content if available, otherwise English
+			content := script.ContentZh
+			if content == "" {
+				content = script.Content
+			}
+			sb.WriteString(content)
+			sb.WriteString("\n\n")
+		}
+
+		sb.WriteString("### 使用指南\n")
+		sb.WriteString("- 这些是参考方向，不是必须照搬的话术\n")
+		sb.WriteString("- 根据对话上下文自然融入相关元素\n")
+		sb.WriteString("- 保持简短（2-3句），不要一次说太多\n")
+		sb.WriteString("- 优先倾听和确认，再考虑引导\n")
+	} else {
+		sb.WriteString("## SCRIPT REFERENCE LAYER (For reference only, do not copy verbatim)\n\n")
+		sb.WriteString("Below are expert conversation references relevant to the user's current emotional state. These are guidance, not templates to follow word-for-word.\n")
+		sb.WriteString("Naturally incorporate these elements based on conversation context while maintaining your warm companion role.\n\n")
+
+		for i, script := range scripts {
+			title := script.Title
+			if isZH && script.TitleZh != "" {
+				title = script.TitleZh
+			}
+			sb.WriteString(fmt.Sprintf("### Reference %d: %s\n", i+1, title))
+
+			// Use English content by default
+			content := script.Content
+			sb.WriteString(content)
+			sb.WriteString("\n\n")
+		}
+
+		sb.WriteString("### Usage Guidelines\n")
+		sb.WriteString("- These are reference directions, not scripts to copy verbatim\n")
+		sb.WriteString("- Naturally incorporate relevant elements based on conversation context\n")
+		sb.WriteString("- Keep responses SHORT (2-3 sentences), don't say too much at once\n")
+		sb.WriteString("- Prioritize listening and validation before guiding\n")
+	}
+
+	return sb.String()
 }
 
 // buildSafetyLayer builds the safety layer prompt
