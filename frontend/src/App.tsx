@@ -923,6 +923,20 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
   const [showDebug, setShowDebug] = useState(false);
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   const [debugLoading, setDebugLoading] = useState(false);
+  const debugClickCount = useRef(0);
+  const debugClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Secret tap to open debug panel (5 taps on disclaimer text)
+  const handleDebugTap = () => {
+    if (!isAdminLoggedIn()) return;
+    debugClickCount.current++;
+    if (debugClickTimer.current) clearTimeout(debugClickTimer.current);
+    debugClickTimer.current = setTimeout(() => { debugClickCount.current = 0; }, 1000);
+    if (debugClickCount.current >= 5) {
+      debugClickCount.current = 0;
+      setShowDebug(prev => !prev);
+    }
+  };
 
   useEffect(() => { endOfMsgRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isTyping]);
 
@@ -935,7 +949,8 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
   // Keyboard shortcut for debug panel (Ctrl+Shift+D) - admin only
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      // Use e.code for reliability across browsers/keyboards
+      if (e.ctrlKey && e.shiftKey && (e.code === 'KeyD' || e.key.toLowerCase() === 'd')) {
         e.preventDefault();
         if (isAdminLoggedIn()) {
           setShowDebug(prev => !prev);
@@ -1111,12 +1126,15 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
             <ArrowRight size={18} />
           </button>
         </form>
-        <p className="text-center text-[10px] text-gray-300 mt-2">
+        <p
+          className="text-center text-[10px] text-gray-300 mt-2 select-none cursor-default"
+          onClick={handleDebugTap}
+        >
           {lang === 'zh' ? 'AI 可能会出错 · 隐私保护' : 'AI can make mistakes · Private'}
         </p>
       </div>
 
-      {/* Debug Panel - Admin Only (Ctrl+Shift+D to toggle) */}
+      {/* Debug Panel - Admin Only (Ctrl+Shift+D or 5x tap on disclaimer) */}
       {showDebug && isAdminLoggedIn() && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
