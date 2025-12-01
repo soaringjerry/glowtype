@@ -57,6 +57,7 @@ func InitDB(cfg config.Config) *gorm.DB {
 		&CrisisResourceDB{},
 		&CrisisForbiddenPhraseDB{},
 		&CrisisGlowtypeGuidanceDB{},
+		&CrisisScriptDB{},
 		&CrisisSettingsDB{},
 		&AIPromptDB{},
 		&BookChapterDB{},
