@@ -1312,7 +1312,7 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
                             {JSON.stringify(debugInfo.lastApiRequest, null, 2)}
                           </pre>
                         </div>
-                        {debugInfo.lastApiRequest.body && (
+                        {debugInfo.lastApiRequest.body !== undefined && (
                           <div>
                             <div className="text-[11px] text-gray-300 mb-1">Request body sent to provider</div>
                             <pre className="bg-black/30 border border-gray-800 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-[400px]">
