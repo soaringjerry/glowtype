@@ -312,7 +312,7 @@ func (s *EmbeddingService) RetrieveRelevantScripts(
 	language string,
 	crisisLevel int,
 	topK int,
-) ([]database.CrisisScriptDB, error) {
+) ([]ScoredScript, error) {
 	if topK <= 0 {
 		topK = DefaultTopK
 	}
@@ -391,9 +391,9 @@ func (s *EmbeddingService) RetrieveRelevantScripts(
 	}
 
 	// Return top K
-	result := make([]database.CrisisScriptDB, 0, topK)
+	result := make([]ScoredScript, 0, topK)
 	for i := 0; i < topK && i < len(scored); i++ {
-		result = append(result, scored[i].Script)
+		result = append(result, scored[i])
 	}
 
 	log.Printf("[EmbeddingService] Retrieved %d scripts for level=%d, lang=%s (from %d candidates)",

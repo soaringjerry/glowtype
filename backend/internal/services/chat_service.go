@@ -197,12 +197,13 @@ func (s *ChatService) CreateSession(req models.ChatSessionRequest) models.ChatSe
 
 // DebugInfo contains debug information for a chat session
 type DebugInfo struct {
-	SessionID       string                 `json:"sessionId"`
-	SessionContext  *SessionContext        `json:"sessionContext"`
-	SystemPrompt    string                 `json:"systemPrompt"`
-	GuidanceLoaded  map[string]bool        `json:"guidanceLoaded"`
-	PromptLayers    map[string]string      `json:"promptLayers"`
-	LastAPIRequest  map[string]any         `json:"lastApiRequest,omitempty"` // Raw request sent to AI provider
+	SessionID      string            `json:"sessionId"`
+	SessionContext *SessionContext   `json:"sessionContext"`
+	SystemPrompt   string            `json:"systemPrompt"`
+	GuidanceLoaded map[string]bool   `json:"guidanceLoaded"`
+	PromptLayers   map[string]string `json:"promptLayers"`
+	LastAPIRequest map[string]any    `json:"lastApiRequest,omitempty"` // Raw request sent to AI provider
+	LastRAG        *RAGDebugInfo     `json:"lastRag,omitempty"`        // Last RAG retrieval details
 }
 
 // GetDebugInfo returns debug information for a session (for admin debugging)
@@ -238,6 +239,7 @@ func (s *ChatService) GetDebugInfo(sessionID string) *DebugInfo {
 		GuidanceLoaded: guidanceLoaded,
 		PromptLayers:   layers,
 		LastAPIRequest: sessionCtx.LastAPIRequest,
+		LastRAG:        sessionCtx.LastRAG,
 	}
 }
 
@@ -352,14 +354,56 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 
 	// Retrieve relevant crisis scripts via RAG (on every message)
 	var relevantScripts []database.CrisisScriptDB
+	var ragDebug *RAGDebugInfo
 	if s.embeddingService != nil {
-		scripts, err := s.embeddingService.RetrieveRelevantScripts(req.Message, req.Language, crisisResult.Level, 3)
+		scoredScripts, err := s.embeddingService.RetrieveRelevantScripts(req.Message, req.Language, crisisResult.Level, 3)
 		if err != nil {
 			log.Printf("[ChatService] Script retrieval failed: %v", err)
-		} else if len(scripts) > 0 {
-			relevantScripts = scripts
-			log.Printf("[ChatService] Retrieved %d relevant scripts for message", len(scripts))
+		} else if len(scoredScripts) > 0 {
+			relevantScripts = make([]database.CrisisScriptDB, 0, len(scoredScripts))
+			var ragScripts []RAGScriptDebug
+			for _, scored := range scoredScripts {
+				relevantScripts = append(relevantScripts, scored.Script)
+
+				// Parse trigger keywords for debug (best-effort)
+				var keywords []string
+				if scored.Script.TriggerKeywords != "" {
+					if err := json.Unmarshal([]byte(scored.Script.TriggerKeywords), &keywords); err != nil {
+						keywords = nil
+					}
+				}
+
+				ragScripts = append(ragScripts, RAGScriptDebug{
+					ID:              scored.Script.ID,
+					Title:           scored.Script.Title,
+					TitleZh:         scored.Script.TitleZh,
+					Language:        scored.Script.Language,
+					CrisisLevels:    scored.Script.CrisisLevels,
+					Score:           scored.Score,
+					TriggerKeywords: keywords,
+				})
+			}
+
+			ragDebug = &RAGDebugInfo{
+				Message:     req.Message,
+				Language:    req.Language,
+				CrisisLevel: crisisResult.Level,
+				Retrieved:   ragScripts,
+			}
+
+			log.Printf("[ChatService] Retrieved %d relevant scripts for message", len(scoredScripts))
+		} else {
+			ragDebug = &RAGDebugInfo{
+				Message:     req.Message,
+				Language:    req.Language,
+				CrisisLevel: crisisResult.Level,
+				Retrieved:   nil,
+			}
 		}
+	}
+
+	if hasSessionCtx && ragDebug != nil {
+		s.sessionStore.SetLastRAG(req.SessionID, ragDebug)
 	}
 
 	systemPrompt := s.promptBuilder.BuildSystemPromptWithScripts(glowtypeCtx, crisisResult.Level, resourcesDeclined, relevantScripts)
@@ -448,11 +492,28 @@ func (s *ChatService) callOpenAIWithSystem(cfg aiConfig, systemPrompt, message s
 	// Add current user message
 	messages = append(messages, openAIMessage{Role: "user", Content: message})
 
-	// Store request payload for debugging
-	requestPayload := map[string]any{
+	// Build and store the exact API request payload for debugging (sanitize auth header)
+	requestBody := map[string]any{
 		"model":    cfg.model,
 		"messages": messages,
-		"url":      cfg.baseURL + "/chat/completions",
+	}
+	authPreview := "Bearer ***"
+	if cfg.apiKey != "" {
+		// Keep only last 6 chars to help identify which key is used without leaking it
+		if len(cfg.apiKey) > 6 {
+			authPreview = fmt.Sprintf("Bearer ***%s", cfg.apiKey[len(cfg.apiKey)-6:])
+		} else {
+			authPreview = "Bearer ***"
+		}
+	}
+	requestPayload := map[string]any{
+		"url":    cfg.baseURL + "/chat/completions",
+		"method": http.MethodPost,
+		"headers": map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": authPreview,
+		},
+		"body": requestBody,
 	}
 	if sessionID != "" {
 		s.sessionStore.SetLastAPIRequest(sessionID, requestPayload)

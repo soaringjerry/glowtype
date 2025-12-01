@@ -895,6 +895,31 @@ interface ChatMessage {
   resources?: CrisisResource[];
 }
 
+interface ApiDebugRequest {
+  url?: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: any;
+  [key: string]: any;
+}
+
+interface RagScriptDebug {
+  id: number;
+  title: string;
+  titleZh?: string;
+  language?: string;
+  crisisLevels?: string;
+  score?: number;
+  triggerKeywords?: string[];
+}
+
+interface RagDebugInfo {
+  message: string;
+  language: string;
+  crisisLevel: number;
+  retrieved: RagScriptDebug[];
+}
+
 interface DebugInfo {
   sessionId: string;
   sessionContext: {
@@ -907,11 +932,8 @@ interface DebugInfo {
   systemPrompt: string;
   guidanceLoaded: Record<string, boolean>;
   promptLayers: Record<string, string>;
-  lastApiRequest?: {
-    model: string;
-    messages: Array<{ role: string; content: string }>;
-    url: string;
-  };
+  lastApiRequest?: ApiDebugRequest;
+  lastRag?: RagDebugInfo;
 }
 
 const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
@@ -1218,15 +1240,87 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
                     </pre>
                   </details>
 
+                  {/* RAG Retrieval */}
+                  {debugInfo.lastRag && (
+                    <details className="bg-teal-50 rounded-xl overflow-hidden">
+                      <summary className="p-4 cursor-pointer font-bold text-teal-800 hover:bg-teal-100">
+                        🧠 RAG Retrieval (vector search)
+                      </summary>
+                      <div className="p-4 space-y-3 text-teal-900 text-sm">
+                        <div className="text-xs text-teal-700">
+                          Message → embedding → vector search → top scripts (stored for prompt layer)
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-xs">
+                          <span className="px-2 py-1 bg-white border border-teal-100 rounded-lg">
+                            Message: <code className="bg-teal-100 px-1 rounded">{debugInfo.lastRag.message || '(empty)'}</code>
+                          </span>
+                          <span className="px-2 py-1 bg-white border border-teal-100 rounded-lg">
+                            Lang: <code className="bg-teal-100 px-1 rounded">{debugInfo.lastRag.language}</code>
+                          </span>
+                          <span className="px-2 py-1 bg-white border border-teal-100 rounded-lg">
+                            Crisis Level: <code className="bg-teal-100 px-1 rounded">{debugInfo.lastRag.crisisLevel}</code>
+                          </span>
+                          <span className="px-2 py-1 bg-white border border-teal-100 rounded-lg">
+                            Retrieved: <code className="bg-teal-100 px-1 rounded">{debugInfo.lastRag.retrieved?.length || 0}</code>
+                          </span>
+                        </div>
+                        {debugInfo.lastRag.retrieved && debugInfo.lastRag.retrieved.length > 0 ? (
+                          <div className="grid md:grid-cols-2 gap-3">
+                            {debugInfo.lastRag.retrieved.map((script) => (
+                              <div key={script.id} className="bg-white border border-teal-100 rounded-lg p-3 shadow-sm">
+                                <div className="flex items-center justify-between text-xs text-teal-800 mb-1">
+                                  <span className="font-semibold">#{script.id}</span>
+                                  {typeof script.score === 'number' && (
+                                    <span className="px-2 py-0.5 bg-teal-100 rounded-full font-mono">
+                                      score: {script.score.toFixed(3)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-sm font-bold text-gray-900">
+                                  {debugInfo.lastRag?.language?.startsWith('zh') && script.titleZh
+                                    ? script.titleZh
+                                    : script.title}
+                                </div>
+                                <div className="text-xs text-gray-600 mt-1">
+                                  Lang: {script.language || 'n/a'} · Levels: {script.crisisLevels || 'all'}
+                                </div>
+                                {script.triggerKeywords && script.triggerKeywords.length > 0 && (
+                                  <div className="mt-2 text-[11px] text-gray-700">
+                                    Keywords: {script.triggerKeywords.join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-teal-700">No scripts retrieved for this message.</div>
+                        )}
+                      </div>
+                    </details>
+                  )}
+
                   {/* Raw API Request (OpenAI format) */}
                   {debugInfo.lastApiRequest && (
                     <details className="bg-blue-50 rounded-xl overflow-hidden">
                       <summary className="p-4 cursor-pointer font-bold text-blue-800 hover:bg-blue-100">
-                        🔌 Raw API Request (OpenAI JSON)
+                        🔌 Raw API Request (full JSON sent to AI)
                       </summary>
-                      <pre className="p-4 bg-gray-900 text-green-400 text-xs overflow-x-auto whitespace-pre-wrap max-h-[600px]">
-                        {JSON.stringify(debugInfo.lastApiRequest, null, 2)}
-                      </pre>
+                      <div className="p-4 bg-gray-900 text-xs text-green-100 space-y-3">
+                        <div>
+                          <div className="text-[11px] text-gray-300 mb-1">Full payload (method, headers, body)</div>
+                          <pre className="bg-black/30 border border-gray-800 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-[400px]">
+                            {JSON.stringify(debugInfo.lastApiRequest, null, 2)}
+                          </pre>
+                        </div>
+                        {debugInfo.lastApiRequest.body && (
+                          <div>
+                            <div className="text-[11px] text-gray-300 mb-1">Request body sent to provider</div>
+                            <pre className="bg-black/30 border border-gray-800 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-[400px]">
+                              {JSON.stringify(debugInfo.lastApiRequest.body, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
                     </details>
                   )}
                 </>

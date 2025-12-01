@@ -15,10 +15,10 @@ const (
 
 // Session TTL and limits
 const (
-	SessionTTL               = 60 * time.Minute // 60 min (teens type slow / switch apps)
-	MaxHistoryLength         = 10               // Max messages to keep in history
-	CleanupInterval          = 5 * time.Minute  // Background cleanup interval
-	MaxResourceShowPerSession = 2               // Max times to show resources per session
+	SessionTTL                = 60 * time.Minute // 60 min (teens type slow / switch apps)
+	MaxHistoryLength          = 10               // Max messages to keep in history
+	CleanupInterval           = 5 * time.Minute  // Background cleanup interval
+	MaxResourceShowPerSession = 2                // Max times to show resources per session
 )
 
 // SessionContext holds rich context for a chat session
@@ -50,6 +50,28 @@ type SessionContext struct {
 
 	// Debug: last API request payload (for debugging)
 	LastAPIRequest map[string]any `json:"lastApiRequest,omitempty"`
+
+	// Debug: last RAG retrieval info
+	LastRAG *RAGDebugInfo `json:"lastRag,omitempty"`
+}
+
+// RAGDebugInfo captures retrieval details for the last message
+type RAGDebugInfo struct {
+	Message     string           `json:"message"`
+	Language    string           `json:"language"`
+	CrisisLevel int              `json:"crisisLevel"`
+	Retrieved   []RAGScriptDebug `json:"retrieved"`
+}
+
+// RAGScriptDebug summarizes an individual retrieved script
+type RAGScriptDebug struct {
+	ID              uint     `json:"id"`
+	Title           string   `json:"title"`
+	TitleZh         string   `json:"titleZh,omitempty"`
+	Language        string   `json:"language,omitempty"`
+	CrisisLevels    string   `json:"crisisLevels,omitempty"`
+	Score           float32  `json:"score"`
+	TriggerKeywords []string `json:"triggerKeywords,omitempty"`
 }
 
 // SessionStore manages in-memory session contexts with automatic cleanup
@@ -192,6 +214,16 @@ func (s *SessionStore) SetLastAPIRequest(sessionID string, request map[string]an
 
 	if ctx, ok := s.sessions[sessionID]; ok {
 		ctx.LastAPIRequest = request
+	}
+}
+
+// SetLastRAG stores details about the latest RAG retrieval
+func (s *SessionStore) SetLastRAG(sessionID string, info *RAGDebugInfo) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if ctx, ok := s.sessions[sessionID]; ok {
+		ctx.LastRAG = info
 	}
 }
 
