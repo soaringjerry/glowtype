@@ -899,8 +899,8 @@ interface ApiDebugRequest {
   url?: string;
   method?: string;
   headers?: Record<string, string>;
-  body?: any;
-  [key: string]: any;
+  body?: unknown;
+  [key: string]: unknown;
 }
 
 interface RagScriptDebug {
