@@ -139,9 +139,17 @@ func (h *ChatHandler) TrackChatAnalytics(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
-// DebugSession returns debug information for a chat session (admin only)
-// GET /api/chat/debug/:sessionId
+// DebugSession returns debug information for a chat session
+// GET /api/v1/chat/debug/:sessionId?key=xxx
+// Protected by a simple secret key for remote debugging
 func (h *ChatHandler) DebugSession(c *gin.Context) {
+	// Check debug key
+	debugKey := c.Query("key")
+	if debugKey != "glowtype_debug_2024" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid debug key"})
+		return
+	}
+
 	sessionID := c.Param("sessionId")
 	if sessionID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing sessionId"})

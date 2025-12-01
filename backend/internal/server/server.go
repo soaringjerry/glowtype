@@ -75,6 +75,9 @@ func New(cfg config.Config) *gin.Engine {
 
 		// Public prompts endpoint (for AI features)
 		api.GET("/prompts", handlers.GetPublicPrompts)
+
+		// Chat debug endpoint (protected by secret key, not admin auth)
+		api.GET("/chat/debug/:sessionId", chatHandler.DebugSession)
 	}
 
 	// Admin routes
@@ -99,9 +102,6 @@ func New(cfg config.Config) *gin.Engine {
 		admin.GET("/2fa/devices", handlers.ListTrustedDevicesHandler)
 		admin.DELETE("/2fa/devices/:id", handlers.RevokeTrustedDeviceHandler)
 		admin.DELETE("/2fa/devices", handlers.RevokeAllTrustedDevicesHandler)
-
-		// Chat debug endpoint (admin only)
-		admin.GET("/chat/debug/:sessionId", chatHandler.DebugSession)
 
 		// Admin user management
 		adminUsers := admin.Group("/")

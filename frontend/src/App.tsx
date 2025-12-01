@@ -971,12 +971,7 @@ const ChatView = ({ onEnd, lang, onCrisis, glowtypeCode }: ChatViewProps) => {
       const fetchDebug = async () => {
         setDebugLoading(true);
         try {
-          const token = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
-          const res = await fetch(`${getApiBaseUrl()}/admin/chat/debug/${sessionId}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+          const res = await fetch(`${getApiBaseUrl()}/chat/debug/${sessionId}?key=glowtype_debug_2024`);
           if (res.ok) {
             const data = await res.json();
             setDebugInfo(data);
