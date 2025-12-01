@@ -76,7 +76,11 @@
     "reset2FA": "Reset 2FA",
     "2faReset": "Reset 2FA for {{user}}",
     "2faRequired": "Required 2FA for {{user}}",
-    "2faUnrequired": "Removed 2FA requirement for {{user}}"
+    "2faUnrequired": "Removed 2FA requirement for {{user}}",
+    "passwordManagement": "Password Management",
+    "resetPassword": "Reset Password",
+    "newPasswordPlaceholder": "New password (min 8 chars)",
+    "passwordReset": "Password reset successfully"
   },
   "audit": {
     "title": "Audit Log",

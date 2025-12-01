@@ -76,7 +76,11 @@
     "reset2FA": "重置2FA",
     "2faReset": "已重置 {{user}} 的两步验证",
     "2faRequired": "已要求 {{user}} 启用两步验证",
-    "2faUnrequired": "已取消 {{user}} 的两步验证要求"
+    "2faUnrequired": "已取消 {{user}} 的两步验证要求",
+    "passwordManagement": "密码管理",
+    "resetPassword": "重置密码",
+    "newPasswordPlaceholder": "新密码 (至少8位)",
+    "passwordReset": "密码已重置"
   },
   "audit": {
     "title": "操作审计",

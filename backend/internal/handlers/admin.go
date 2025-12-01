@@ -766,6 +766,71 @@ func UpdateAdminUser(c *gin.Context) {
 	})
 }
 
+// ResetAdminPassword allows super admin to reset another admin's password.
+func ResetAdminPassword(c *gin.Context) {
+	current, ok := getAdminFromContext(c)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid admin id"})
+		return
+	}
+
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	if strings.TrimSpace(req.Password) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is required"})
+		return
+	}
+	if len(req.Password) < 8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password must be at least 8 characters"})
+		return
+	}
+
+	var target database.AdminUser
+	if err := database.GetDB().First(&target, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Admin not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Prevent resetting own password (use ChangePasswordHandler instead)
+	if target.ID == current.ID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Use the change password feature for your own account"})
+		return
+	}
+
+	hash, err := services.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	if err := database.GetDB().Model(&target).Update("password_hash", hash).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Set("auditMetadata", map[string]any{
+		"targetUser": target.Username,
+		"targetId":   target.ID,
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
+}
+
 // ListAuditLogs returns recent admin audit logs (super admin only).
 func ListAuditLogs(c *gin.Context) {
 	limit := 200

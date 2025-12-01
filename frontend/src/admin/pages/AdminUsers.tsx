@@ -134,7 +134,7 @@ function PermissionSelector({
 export default function AdminUsers() {
   const { t } = useTranslation('admin');
   const { currentUser } = useAdminAuth();
-  const { listAdmins, createAdmin, updateAdmin, manageUser2FA, loading, error } = useAdminApi();
+  const { listAdmins, createAdmin, updateAdmin, manageUser2FA, resetAdminPassword, loading, error } = useAdminApi();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [form, setForm] = useState<NewAdminForm>({
     username: '',
@@ -149,6 +149,8 @@ export default function AdminUsers() {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [showCreatePermissions, setShowCreatePermissions] = useState(false);
   const [managing2FAId, setManaging2FAId] = useState<number | null>(null);
+  const [resetPasswordId, setResetPasswordId] = useState<number | null>(null);
+  const [newPassword, setNewPassword] = useState('');
 
   const canManage = useMemo(() => userHasPermission(currentUser, 'admin.manage'), [currentUser]);
   const readOnly = isReadOnlyRole(currentUser?.role);
@@ -251,6 +253,22 @@ export default function AdminUsers() {
       );
     }
     setManaging2FAId(null);
+  };
+
+  // Handle password reset for a user
+  const handleResetPassword = async (adminId: number) => {
+    if (!newPassword || newPassword.length < 8) {
+      setSuccess(null);
+      return;
+    }
+    setSavingId(adminId);
+    const result = await resetAdminPassword(adminId, newPassword);
+    if (result) {
+      setSuccess(t('adminUsers.passwordReset', '密码已重置'));
+      setResetPasswordId(null);
+      setNewPassword('');
+    }
+    setSavingId(null);
   };
 
   const handleDraftRoleChange = (admin: AdminUser, role: AdminRole) => {
@@ -757,6 +775,62 @@ export default function AdminUsers() {
                                 </button>
                               )}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Password Reset Section - Superadmin only */}
+                        {isSuperadmin && !isSelf(admin.id) && (
+                          <div className="border-t border-gray-200 pt-4 mt-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <KeyRound className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm font-medium text-gray-700">
+                                {t('adminUsers.passwordManagement', '密码管理')}
+                              </span>
+                            </div>
+
+                            {resetPasswordId === admin.id ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="password"
+                                  value={newPassword}
+                                  onChange={(e) => setNewPassword(e.target.value)}
+                                  placeholder={t('adminUsers.newPasswordPlaceholder', '新密码 (至少8位)')}
+                                  className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetPassword(admin.id)}
+                                  disabled={savingId === admin.id || newPassword.length < 8}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50"
+                                >
+                                  {savingId === admin.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Save className="w-3 h-3" />
+                                  )}
+                                  {t('common.save', '保存')}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setResetPasswordId(null);
+                                    setNewPassword('');
+                                  }}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                                >
+                                  {t('common.cancel', '取消')}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setResetPasswordId(admin.id)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                {t('adminUsers.resetPassword', '重置密码')}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

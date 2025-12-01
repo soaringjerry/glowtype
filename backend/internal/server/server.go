@@ -110,7 +110,8 @@ func New(cfg config.Config) *gin.Engine {
 			adminUsers.GET("/users", handlers.ListAdminUsers)
 			adminUsers.POST("/users", handlers.CreateAdminUser)
 			adminUsers.PUT("/users/:id", handlers.UpdateAdminUser)
-			adminUsers.PUT("/users/:id/2fa", handlers.ManageUser2FAHandler) // Superadmin 2FA management
+			adminUsers.PUT("/users/:id/password", handlers.ResetAdminPassword) // Superadmin password reset
+			adminUsers.PUT("/users/:id/2fa", handlers.ManageUser2FAHandler)    // Superadmin 2FA management
 		}
 
 		// Audit

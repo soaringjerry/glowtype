@@ -1169,6 +1169,10 @@ export const useAdminApi = () => {
     manageUser2FA: (userId: number, data: { forceEnabled?: boolean; reset?: boolean }) =>
       apiCall<AdminUser>(`/admin/users/${userId}/2fa`, { method: 'PUT', body: JSON.stringify(data) }),
 
+    // Reset Admin Password (superadmin only)
+    resetAdminPassword: (userId: number, password: string) =>
+      apiCall<{ message: string }>(`/admin/users/${userId}/password`, { method: 'PUT', body: JSON.stringify({ password }) }),
+
     // Change Password
     changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
       apiCall<{ success: boolean; message: string }>('/admin/me/password', {
