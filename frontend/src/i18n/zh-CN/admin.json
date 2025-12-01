@@ -23,6 +23,7 @@
     "content_admin": "内容管理员",
     "data_admin": "数据管理员",
     "analyst": "分析员",
+    "crisis_admin": "危机管理员",
     "viewer": "只读管理员"
   },
   "accessDenied": {
@@ -695,6 +696,7 @@
       "resources": "资源",
       "phrases": "禁用语",
       "guidance": "光格指导",
+      "scripts": "对话脚本",
       "settings": "设置"
     },
     "filter": {
@@ -709,6 +711,7 @@
       "resources": "资源",
       "phrases": "禁用语",
       "guidance": "光格指导",
+      "scripts": "对话脚本",
       "hotReloadNote": "热更新已启用",
       "hotReloadDesc": "此处所做的更改将立即生效，无需重启服务器。"
     },
@@ -724,6 +727,8 @@
       "enableKeyword": "启用关键词检测",
       "enablePattern": "启用模式检测",
       "enableML": "启用 ML 检测（未来功能）",
+      "enableGlowtypeGuidance": "启用光格指导",
+      "enableGlowtypeGuidanceHint": "启用后，AI 回复将根据用户的光格类型进行个性化调整",
       "session": "会话设置",
       "sessionTTL": "会话有效期（分钟）",
       "maxHistory": "最大历史消息数",
@@ -732,6 +737,30 @@
       "enableL3Alert": "启用 Level 3 告警",
       "alertEmail": "告警邮箱",
       "alertWebhook": "告警 Webhook URL"
+    },
+    "script": {
+      "title": "标题",
+      "titleZh": "标题（中文）",
+      "content": "内容",
+      "contentZh": "内容（中文）",
+      "mode": "模式",
+      "modeTemplate": "模板",
+      "modeReference": "参考",
+      "modeTemplateHint": "AI 直接发送此脚本，不做修改",
+      "modeReferenceHint": "AI 将此作为参考知识（RAG）",
+      "category": "分类",
+      "triggerKeywords": "触发关键词",
+      "triggerKeywordsHint": "逗号分隔的触发关键词",
+      "crisisLevels": "危机级别",
+      "crisisLevelsHint": "逗号分隔的级别（1,2,3）",
+      "language": "语言",
+      "displayOrder": "显示顺序",
+      "approvedBy": "审核人",
+      "approvedAt": "审核时间",
+      "add": "添加脚本",
+      "edit": "编辑脚本",
+      "empty": "暂无脚本，点击「添加脚本」创建。",
+      "confirmDelete": "确定要删除此脚本吗？"
     }
   }
 }

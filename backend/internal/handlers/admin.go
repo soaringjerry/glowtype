@@ -40,6 +40,7 @@ const (
 	PermStatsView    Permission = "stats.view"
 	PermResultsView  Permission = "results.view"
 	PermResetData    Permission = "data.reset"
+	PermCrisisManage Permission = "crisis.manage"
 )
 
 // AllPermissions lists all available permissions for UI/validation
@@ -55,6 +56,7 @@ var AllPermissions = []Permission{
 	PermStatsView,
 	PermResultsView,
 	PermResetData,
+	PermCrisisManage,
 }
 
 // RolePermissionTemplates defines default permissions for each role (used as templates)
@@ -87,6 +89,12 @@ var RolePermissionTemplates = map[string]map[Permission]struct{}{
 		PermStatsView,
 		PermResultsView,
 		PermAuditView,
+	),
+	// Crisis Admin: can manage all crisis config but NO import/export/reset
+	database.AdminRoleCrisis: permissionSet(
+		PermCrisisManage,
+		PermPrompts,
+		PermStatsView,
 	),
 	// Viewer: read-only access to most areas (NO admin.manage, NO audit.view)
 	database.AdminRoleViewer: permissionSet(
@@ -855,6 +863,7 @@ func isValidAdminRole(role string) bool {
 		database.AdminRoleContent,
 		database.AdminRoleData,
 		database.AdminRoleAnalyst,
+		database.AdminRoleCrisis,
 		database.AdminRoleViewer:
 		return true
 	default:

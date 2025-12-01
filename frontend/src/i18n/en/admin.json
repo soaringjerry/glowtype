@@ -23,6 +23,7 @@
     "content_admin": "Content Admin",
     "data_admin": "Data Admin",
     "analyst": "Analyst",
+    "crisis_admin": "Crisis Admin",
     "viewer": "Read-only Admin"
   },
   "accessDenied": {
@@ -695,6 +696,7 @@
       "resources": "Resources",
       "phrases": "Forbidden Phrases",
       "guidance": "Glowtype Guidance",
+      "scripts": "Scripts",
       "settings": "Settings"
     },
     "filter": {
@@ -709,6 +711,7 @@
       "resources": "Resources",
       "phrases": "Forbidden Phrases",
       "guidance": "Glowtype Guidance",
+      "scripts": "Scripts",
       "hotReloadNote": "Hot Reload Enabled",
       "hotReloadDesc": "Changes made here will take effect immediately without server restart."
     },
@@ -724,6 +727,8 @@
       "enableKeyword": "Enable keyword detection",
       "enablePattern": "Enable pattern detection",
       "enableML": "Enable ML detection (future)",
+      "enableGlowtypeGuidance": "Enable Glowtype Guidance",
+      "enableGlowtypeGuidanceHint": "When enabled, AI responses will be personalized based on user's Glowtype",
       "session": "Session Settings",
       "sessionTTL": "Session TTL (minutes)",
       "maxHistory": "Max history messages",
@@ -732,6 +737,30 @@
       "enableL3Alert": "Enable Level 3 alerts",
       "alertEmail": "Alert email",
       "alertWebhook": "Alert webhook URL"
+    },
+    "script": {
+      "title": "Title",
+      "titleZh": "Title (Chinese)",
+      "content": "Content",
+      "contentZh": "Content (Chinese)",
+      "mode": "Mode",
+      "modeTemplate": "Template",
+      "modeReference": "Reference",
+      "modeTemplateHint": "AI sends this script directly without modification",
+      "modeReferenceHint": "AI uses this as reference knowledge (RAG)",
+      "category": "Category",
+      "triggerKeywords": "Trigger Keywords",
+      "triggerKeywordsHint": "Comma-separated keywords that trigger this script",
+      "crisisLevels": "Crisis Levels",
+      "crisisLevelsHint": "Comma-separated levels (1,2,3)",
+      "language": "Language",
+      "displayOrder": "Display Order",
+      "approvedBy": "Approved By",
+      "approvedAt": "Approved At",
+      "add": "Add Script",
+      "edit": "Edit Script",
+      "empty": "No scripts yet. Click \"Add Script\" to create one.",
+      "confirmDelete": "Are you sure you want to delete this script?"
     }
   }
 }

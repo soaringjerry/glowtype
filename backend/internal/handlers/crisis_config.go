@@ -527,7 +527,14 @@ func GetCrisisConfigOverview(c *gin.Context) {
 // ============ Reset to Defaults ============
 
 // ResetCrisisConfigHandler resets all crisis config to defaults from JSON files
+// Note: crisis_admin role is NOT allowed to reset
 func ResetCrisisConfigHandler(c *gin.Context) {
+	// Block crisis_admin from resetting
+	if isCrisisAdminRole(c) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Reset not allowed for crisis_admin role"})
+		return
+	}
+
 	db := database.GetDB()
 
 	// Get what to reset from query params
@@ -582,7 +589,114 @@ func ResetCrisisConfigHandler(c *gin.Context) {
 	})
 }
 
+// ============ Crisis Scripts (Expert-reviewed conversation scripts) ============
+
+// ListCrisisScripts returns all crisis scripts
+func ListCrisisScripts(c *gin.Context) {
+	db := database.GetDB()
+
+	var scripts []database.CrisisScriptDB
+	query := db.Order("display_order, category, title")
+
+	if mode := c.Query("mode"); mode != "" {
+		query = query.Where("mode = ?", mode)
+	}
+	if category := c.Query("category"); category != "" {
+		query = query.Where("category = ?", category)
+	}
+	if lang := c.Query("language"); lang != "" {
+		query = query.Where("language = ?", lang)
+	}
+	if active := c.Query("active"); active != "" {
+		query = query.Where("is_active = ?", active == "true")
+	}
+
+	if err := query.Find(&scripts).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, scripts)
+}
+
+// CreateCrisisScript creates a new crisis script
+func CreateCrisisScript(c *gin.Context) {
+	db := database.GetDB()
+
+	var script database.CrisisScriptDB
+	if err := c.ShouldBindJSON(&script); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate mode
+	if script.Mode != "template" && script.Mode != "reference" {
+		script.Mode = "reference"
+	}
+
+	if err := db.Create(&script).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	incrementCrisisConfigVersion(db)
+	c.JSON(http.StatusCreated, script)
+}
+
+// UpdateCrisisScript updates an existing crisis script
+func UpdateCrisisScript(c *gin.Context) {
+	db := database.GetDB()
+	id := c.Param("id")
+
+	var script database.CrisisScriptDB
+	if err := db.First(&script, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Script not found"})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&script); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate mode
+	if script.Mode != "template" && script.Mode != "reference" {
+		script.Mode = "reference"
+	}
+
+	if err := db.Save(&script).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	incrementCrisisConfigVersion(db)
+	c.JSON(http.StatusOK, script)
+}
+
+// DeleteCrisisScript deletes a crisis script
+func DeleteCrisisScript(c *gin.Context) {
+	db := database.GetDB()
+	id := c.Param("id")
+
+	if err := db.Delete(&database.CrisisScriptDB{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	incrementCrisisConfigVersion(db)
+	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
+}
+
 // ============ Helper Functions ============
+
+// isCrisisAdminRole checks if the user has crisis_admin role
+func isCrisisAdminRole(c *gin.Context) bool {
+	admin, ok := getAdminFromContext(c)
+	if !ok {
+		return false
+	}
+	return admin.Role == database.AdminRoleCrisis
+}
 
 func incrementCrisisConfigVersion(db *gorm.DB) {
 	db.Model(&database.CrisisSettingsDB{}).

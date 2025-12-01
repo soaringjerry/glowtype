@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getApiBaseUrl } from '../../api/baseUrl';
 
-export type AdminRole = 'superadmin' | 'admin' | 'content_admin' | 'data_admin' | 'analyst' | 'viewer';
+export type AdminRole = 'superadmin' | 'admin' | 'content_admin' | 'data_admin' | 'analyst' | 'crisis_admin' | 'viewer';
 export type AdminPermission =
   | 'admin.manage'
   | 'audit.view'
@@ -13,7 +13,8 @@ export type AdminPermission =
   | 'content.write'
   | 'stats.view'
   | 'results.view'
-  | 'data.reset';
+  | 'data.reset'
+  | 'crisis.manage';
 
 // All available permissions for UI
 export const ALL_PERMISSIONS: AdminPermission[] = [
@@ -28,6 +29,7 @@ export const ALL_PERMISSIONS: AdminPermission[] = [
   'stats.view',
   'results.view',
   'data.reset',
+  'crisis.manage',
 ];
 
 // Permission display names for UI
@@ -43,6 +45,7 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   'stats.view': '统计查看',
   'results.view': '结果查看',
   'data.reset': '数据重置',
+  'crisis.manage': '危机配置管理',
 };
 
 // Role display names
@@ -52,6 +55,7 @@ export const ROLE_LABELS: Record<AdminRole, string> = {
   content_admin: '内容管理员',
   data_admin: '数据管理员',
   analyst: '分析师',
+  crisis_admin: '危机干预管理员',
   viewer: '只读用户',
 };
 
@@ -79,6 +83,12 @@ const ROLE_PERMISSION_TEMPLATES: Record<AdminRole, AdminPermission[]> = {
     'results.view',
   ],
   analyst: ['stats.view', 'results.view', 'audit.view'],
+  // Crisis Admin: can manage all crisis config but NO import/export/reset
+  crisis_admin: [
+    'crisis.manage',
+    'prompts.write',
+    'stats.view',
+  ],
   // Viewer: read-only, NO admin.manage, NO audit.view
   viewer: [
     'dimensions.write',
@@ -491,6 +501,7 @@ export interface CrisisSettings {
   enableKeywordDetection: boolean;
   enablePatternDetection: boolean;
   enableMLDetection: boolean;
+  enableGlowtypeGuidance: boolean;
   level3AlertEnabled: boolean;
   level3AlertEmail: string;
   level3AlertWebhook: string;
@@ -562,6 +573,26 @@ export interface CrisisGlowtypeGuidance {
   content: string;
   displayOrder: number;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrisisScript {
+  id: number;
+  tenantId?: number;
+  title: string;
+  titleZh?: string;
+  content: string;
+  contentZh?: string;
+  mode: 'template' | 'reference';
+  category?: string; // greeting, empathy, transition, resource, closing
+  triggerKeywords?: string; // JSON array
+  crisisLevels?: string; // JSON array [1,2,3]
+  language: string;
+  displayOrder: number;
+  isActive: boolean;
+  approvedBy?: string;
+  approvedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1215,6 +1246,23 @@ export const useAdminApi = () => {
       apiCall<CrisisGlowtypeGuidance>(`/admin/crisis/guidance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteCrisisGuidance: (id: number) =>
       apiCall<{ message: string }>(`/admin/crisis/guidance/${id}`, { method: 'DELETE' }),
+
+    // Crisis Scripts (expert-reviewed conversation scripts)
+    listCrisisScripts: (params?: { mode?: string; category?: string; language?: string; active?: boolean }) => {
+      const query = new URLSearchParams();
+      if (params?.mode) query.set('mode', params.mode);
+      if (params?.category) query.set('category', params.category);
+      if (params?.language) query.set('language', params.language);
+      if (params?.active !== undefined) query.set('active', params.active.toString());
+      const qs = query.toString();
+      return apiCall<CrisisScript[]>(`/admin/crisis/scripts${qs ? `?${qs}` : ''}`);
+    },
+    createCrisisScript: (data: Partial<CrisisScript>) =>
+      apiCall<CrisisScript>('/admin/crisis/scripts', { method: 'POST', body: JSON.stringify(data) }),
+    updateCrisisScript: (id: number, data: Partial<CrisisScript>) =>
+      apiCall<CrisisScript>(`/admin/crisis/scripts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCrisisScript: (id: number) =>
+      apiCall<{ message: string }>(`/admin/crisis/scripts/${id}`, { method: 'DELETE' }),
 
     // Crisis Reset
     resetCrisisConfig: (options: { all?: boolean; keywords?: boolean; patterns?: boolean; resources?: boolean; phrases?: boolean; guidance?: boolean }) => {

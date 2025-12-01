@@ -237,9 +237,9 @@ func New(cfg config.Config) *gin.Engine {
 			reset.POST("/glowpedia/reset", handlers.ResetGlowpediaHandler)
 		}
 
-		// Crisis Configuration (superadmin only for now)
+		// Crisis Configuration (superadmin and crisis_admin can access)
 		crisis := admin.Group("/crisis")
-		crisis.Use(handlers.RequireSuperAdmin())
+		crisis.Use(handlers.RequirePermission(handlers.PermCrisisManage))
 		{
 			// Overview and settings
 			crisis.GET("/overview", handlers.GetCrisisConfigOverview)
@@ -278,7 +278,13 @@ func New(cfg config.Config) *gin.Engine {
 			crisis.PUT("/guidance/:id", handlers.UpdateCrisisGlowtypeGuidance)
 			crisis.DELETE("/guidance/:id", handlers.DeleteCrisisGlowtypeGuidance)
 
-			// Reset to defaults
+			// Scripts CRUD (expert-reviewed conversation scripts)
+			crisis.GET("/scripts", handlers.ListCrisisScripts)
+			crisis.POST("/scripts", handlers.CreateCrisisScript)
+			crisis.PUT("/scripts/:id", handlers.UpdateCrisisScript)
+			crisis.DELETE("/scripts/:id", handlers.DeleteCrisisScript)
+
+			// Reset to defaults (superadmin only - blocked for crisis_admin in handler)
 			crisis.POST("/reset", handlers.ResetCrisisConfigHandler)
 		}
 	}

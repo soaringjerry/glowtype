@@ -32,10 +32,12 @@ import type {
   CrisisResource,
   CrisisForbiddenPhrase,
   CrisisGlowtypeGuidance,
+  CrisisScript,
   PromptSlot,
 } from '../hooks/useAdmin';
+import { FileText } from 'lucide-react';
 
-type TabType = 'overview' | 'prompts' | 'keywords' | 'patterns' | 'resources' | 'phrases' | 'guidance' | 'settings';
+type TabType = 'overview' | 'prompts' | 'keywords' | 'patterns' | 'resources' | 'phrases' | 'guidance' | 'scripts' | 'settings';
 
 const CRISIS_LEVELS = [
   { value: 1, label: 'Level 1 - Low', color: 'bg-yellow-100 text-yellow-800' },
@@ -93,6 +95,7 @@ export default function CrisisConfig() {
   const [resources, setResources] = useState<CrisisResource[]>([]);
   const [phrases, setPhrases] = useState<CrisisForbiddenPhrase[]>([]);
   const [guidance, setGuidance] = useState<CrisisGlowtypeGuidance[]>([]);
+  const [scripts, setScripts] = useState<CrisisScript[]>([]);
   const [prompts, setPrompts] = useState<PromptSlot[]>([]);
 
   // Prompts editing state
@@ -111,7 +114,7 @@ export default function CrisisConfig() {
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'keyword' | 'pattern' | 'resource' | 'phrase' | 'guidance' | null>(null);
+  const [modalType, setModalType] = useState<'keyword' | 'pattern' | 'resource' | 'phrase' | 'guidance' | 'script' | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
 
   const tabs: { key: TabType; label: string; icon: any }[] = [
@@ -122,6 +125,7 @@ export default function CrisisConfig() {
     { key: 'resources', label: t('crisis.tabs.resources', 'Resources'), icon: Phone },
     { key: 'phrases', label: t('crisis.tabs.phrases', 'Forbidden Phrases'), icon: MessageSquareOff },
     { key: 'guidance', label: t('crisis.tabs.guidance', 'Glowtype Guidance'), icon: Sparkles },
+    { key: 'scripts', label: t('crisis.tabs.scripts', 'Scripts'), icon: FileText },
     { key: 'settings', label: t('crisis.tabs.settings', 'Settings'), icon: Settings },
   ];
 
@@ -160,6 +164,11 @@ export default function CrisisConfig() {
     if (data) setGuidance(data);
   };
 
+  const loadScripts = async () => {
+    const data = await api.listCrisisScripts();
+    if (data) setScripts(data);
+  };
+
   const loadPrompts = async () => {
     const data = await api.listPrompts();
     if (data) setPrompts(data);
@@ -183,6 +192,7 @@ export default function CrisisConfig() {
     else if (activeTab === 'resources') loadResources();
     else if (activeTab === 'phrases') loadPhrases();
     else if (activeTab === 'guidance') loadGuidance();
+    else if (activeTab === 'scripts') loadScripts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, keywordLevelFilter, keywordLangFilter, resourceCountryFilter, phraseLangFilter, guidanceGlowtypeFilter]);
 
@@ -281,6 +291,7 @@ export default function CrisisConfig() {
     else if (type === 'resource') result = await api.deleteCrisisResource(id);
     else if (type === 'phrase') result = await api.deleteCrisisPhrase(id);
     else if (type === 'guidance') result = await api.deleteCrisisGuidance(id);
+    else if (type === 'script') result = await api.deleteCrisisScript(id);
 
     if (result) {
       await loadOverview();
@@ -289,6 +300,7 @@ export default function CrisisConfig() {
       else if (type === 'resource') await loadResources();
       else if (type === 'phrase') await loadPhrases();
       else if (type === 'guidance') await loadGuidance();
+      else if (type === 'script') await loadScripts();
     }
   };
 
@@ -321,6 +333,11 @@ export default function CrisisConfig() {
         ? await api.updateCrisisGuidance(editingItem.id, data)
         : await api.createCrisisGuidance(data);
       if (result) await loadGuidance();
+    } else if (modalType === 'script') {
+      result = editingItem
+        ? await api.updateCrisisScript(editingItem.id, data)
+        : await api.createCrisisScript(data);
+      if (result) await loadScripts();
     }
 
     if (result) {
@@ -465,6 +482,14 @@ export default function CrisisConfig() {
             onCreate={() => openCreateModal('guidance')}
             onEdit={(item) => openEditModal('guidance', item)}
             onDelete={(id) => handleDelete('guidance', id)}
+          />
+        )}
+        {activeTab === 'scripts' && (
+          <ScriptsTab
+            scripts={scripts}
+            onCreate={() => openCreateModal('script')}
+            onEdit={(item) => openEditModal('script', item)}
+            onDelete={(id) => handleDelete('script', id)}
           />
         )}
         {activeTab === 'settings' && settings && (
@@ -892,6 +917,104 @@ function GuidanceTab({
   );
 }
 
+function ScriptsTab({
+  scripts,
+  onCreate,
+  onEdit,
+  onDelete,
+}: {
+  scripts: CrisisScript[];
+  onCreate: () => void;
+  onEdit: (item: CrisisScript) => void;
+  onDelete: (id: number) => void;
+}) {
+  const { t } = useTranslation('admin');
+
+  return (
+    <div className="space-y-4">
+      {/* Info banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 flex items-start gap-3">
+        <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-medium">Expert-Reviewed Conversation Scripts</p>
+          <p className="mt-1">
+            <strong>Template mode:</strong> AI sends directly without modification.
+            <strong className="ml-2">Reference mode:</strong> AI uses as knowledge base (RAG).
+          </p>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={onCreate}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition"
+        >
+          <Plus className="w-4 h-4" />
+          {t('crisis.script.add', 'Add Script')}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {scripts.map((s) => (
+          <div key={s.id} className="p-4 bg-gray-50 rounded-xl">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                    s.mode === 'template'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {s.mode === 'template' ? t('crisis.script.modeTemplate', 'Template') : t('crisis.script.modeReference', 'Reference')}
+                  </span>
+                  <span className="text-xs text-gray-400">{s.language?.toUpperCase() || 'ZH'}</span>
+                  {s.category && (
+                    <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">{s.category}</span>
+                  )}
+                  {!s.isActive && (
+                    <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">Inactive</span>
+                  )}
+                </div>
+                <div className="font-medium text-gray-900">{s.title}</div>
+                {s.titleZh && s.titleZh !== s.title && (
+                  <div className="text-sm text-gray-600">{s.titleZh}</div>
+                )}
+                <div className="text-sm text-gray-500 mt-1 line-clamp-2">{s.content}</div>
+                {s.triggerKeywords && (
+                  <div className="text-xs text-gray-400 mt-2">
+                    Triggers: {s.triggerKeywords}
+                  </div>
+                )}
+                {s.crisisLevels && (
+                  <div className="text-xs text-gray-400">
+                    Levels: {s.crisisLevels}
+                  </div>
+                )}
+                {s.approvedBy && (
+                  <div className="text-xs text-green-600 mt-1">
+                    ✓ Approved by {s.approvedBy}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-1 ml-4">
+                <button onClick={() => onEdit(s)} className="p-1 text-gray-400 hover:text-purple-500">
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => onDelete(s.id)} className="p-1 text-gray-400 hover:text-red-500">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {scripts.length === 0 && (
+        <div className="text-center py-8 text-gray-400">{t('crisis.script.empty', 'No scripts yet. Click "Add Script" to create one.')}</div>
+      )}
+    </div>
+  );
+}
+
 function SettingsTab({
   settings,
   setSettings,
@@ -942,6 +1065,20 @@ function SettingsTab({
             />
             <span>{t('crisis.settings.enableML', 'Enable ML detection (future)')}</span>
           </label>
+          <div className="pt-2 border-t border-gray-200 mt-2">
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={settings.enableGlowtypeGuidance !== false}
+                onChange={(e) => update('enableGlowtypeGuidance', e.target.checked)}
+                className="rounded text-purple-500"
+              />
+              <div>
+                <span className="block">{t('crisis.settings.enableGlowtypeGuidance', 'Enable Glowtype Guidance')}</span>
+                <span className="text-xs text-gray-500">{t('crisis.settings.enableGlowtypeGuidanceHint', 'When enabled, AI responses will be personalized based on user\'s Glowtype')}</span>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -1043,7 +1180,7 @@ function EditModal({
   onSave,
   saving,
 }: {
-  type: 'keyword' | 'pattern' | 'resource' | 'phrase' | 'guidance' | null;
+  type: 'keyword' | 'pattern' | 'resource' | 'phrase' | 'guidance' | 'script' | null;
   item: any;
   onClose: () => void;
   onSave: (data: any) => void;
@@ -1428,6 +1565,136 @@ function EditModal({
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg"
                     />
+                  </div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive !== false}
+                      onChange={(e) => update('isActive', e.target.checked)}
+                      className="rounded"
+                    />
+                    <span className="text-sm">Active</span>
+                  </label>
+                </>
+              )}
+
+              {type === 'script' && (
+                <>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.title', 'Title')} *</label>
+                    <input
+                      type="text"
+                      value={formData.title || ''}
+                      onChange={(e) => update('title', e.target.value)}
+                      required
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.titleZh', 'Title (Chinese)')}</label>
+                    <input
+                      type="text"
+                      value={formData.titleZh || ''}
+                      onChange={(e) => update('titleZh', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.mode', 'Mode')} *</label>
+                      <select
+                        value={formData.mode || 'reference'}
+                        onChange={(e) => update('mode', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                      >
+                        <option value="template">{t('crisis.script.modeTemplate', 'Template')} - AI sends directly</option>
+                        <option value="reference">{t('crisis.script.modeReference', 'Reference')} - RAG knowledge</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.language', 'Language')}</label>
+                      <select
+                        value={formData.language || 'zh'}
+                        onChange={(e) => update('language', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                      >
+                        {LANGUAGES.map((l) => (
+                          <option key={l.value} value={l.value}>{l.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.content', 'Content')} *</label>
+                    <textarea
+                      value={formData.content || ''}
+                      onChange={(e) => update('content', e.target.value)}
+                      required
+                      rows={5}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.contentZh', 'Content (Chinese)')}</label>
+                    <textarea
+                      value={formData.contentZh || ''}
+                      onChange={(e) => update('contentZh', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.category', 'Category')}</label>
+                    <input
+                      type="text"
+                      value={formData.category || ''}
+                      onChange={(e) => update('category', e.target.value)}
+                      placeholder="e.g., empathy, validation, referral"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.triggerKeywords', 'Trigger Keywords')}</label>
+                      <input
+                        type="text"
+                        value={formData.triggerKeywords || ''}
+                        onChange={(e) => update('triggerKeywords', e.target.value)}
+                        placeholder="comma-separated"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.crisisLevels', 'Crisis Levels')}</label>
+                      <input
+                        type="text"
+                        value={formData.crisisLevels || ''}
+                        onChange={(e) => update('crisisLevels', e.target.value)}
+                        placeholder="e.g., 1,2,3"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.displayOrder', 'Display Order')}</label>
+                      <input
+                        type="number"
+                        value={formData.displayOrder || 0}
+                        onChange={(e) => update('displayOrder', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">{t('crisis.script.approvedBy', 'Approved By')}</label>
+                      <input
+                        type="text"
+                        value={formData.approvedBy || ''}
+                        onChange={(e) => update('approvedBy', e.target.value)}
+                        placeholder="Expert name"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                      />
+                    </div>
                   </div>
                   <label className="flex items-center gap-2">
                     <input

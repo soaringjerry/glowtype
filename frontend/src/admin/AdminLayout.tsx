@@ -81,10 +81,10 @@ export default function AdminLayout() {
       { path: '/admin/glowpedia', labelKey: 'nav.glowpedia', icon: Sparkles, perm: 'content.write' },
       { path: '/admin/audit', labelKey: 'nav.audit', icon: ScrollText, perm: 'audit.view' },
     ];
-    // Filter by permission, then add superadmin-only items
+    // Filter by permission, then add superadmin/crisis_admin-only items
     const filtered = items.filter((item) => userHasPermission(currentUser, item.perm));
-    // AI Crisis Config is superadmin-only (includes prompts + crisis detection)
-    if (currentUser?.role === 'superadmin') {
+    // AI Crisis Config is accessible to superadmin and crisis_admin
+    if (currentUser?.role === 'superadmin' || currentUser?.role === 'crisis_admin') {
       // Insert after crisis analytics
       const crisisIdx = filtered.findIndex((item) => item.path === '/admin/crisis');
       if (crisisIdx >= 0) {
@@ -92,7 +92,7 @@ export default function AdminLayout() {
           path: '/admin/crisis-config',
           labelKey: 'nav.aiCrisisConfig',
           icon: Settings2,
-          perm: 'admin.manage' as AdminPermission,
+          perm: 'crisis.manage' as AdminPermission,
         });
       }
     }

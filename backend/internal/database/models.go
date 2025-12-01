@@ -407,6 +407,40 @@ func (CrisisGlowtypeGuidanceDB) TableName() string {
 	return "crisis_glowtype_guidance"
 }
 
+// CrisisScriptDB stores expert-reviewed conversation scripts for crisis intervention
+type CrisisScriptDB struct {
+	ID       uint  `gorm:"primaryKey" json:"id"`
+	TenantID *uint `gorm:"index" json:"tenantId"`
+
+	// Basic info
+	Title     string `gorm:"not null" json:"title"`
+	TitleZh   string `json:"titleZh"`
+	Content   string `gorm:"type:text;not null" json:"content"`
+	ContentZh string `gorm:"type:text" json:"contentZh"`
+
+	// Script config
+	Mode            string `gorm:"default:reference;not null;index" json:"mode"` // template | reference
+	Category        string `gorm:"index" json:"category"`                        // greeting, empathy, transition, resource, closing
+	TriggerKeywords string `gorm:"type:text" json:"triggerKeywords"`             // JSON array
+
+	// Applicability
+	CrisisLevels string `json:"crisisLevels"` // JSON array: [1,2,3]
+	Language     string `gorm:"default:zh;index" json:"language"`
+
+	// Management
+	DisplayOrder int        `gorm:"default:0" json:"displayOrder"`
+	IsActive     bool       `gorm:"default:true;index" json:"isActive"`
+	ApprovedBy   string     `json:"approvedBy"`
+	ApprovedAt   *time.Time `json:"approvedAt"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (CrisisScriptDB) TableName() string {
+	return "crisis_scripts"
+}
+
 // CrisisSettingsDB stores global crisis detection settings
 type CrisisSettingsDB struct {
 	ID       uint  `gorm:"primaryKey" json:"id"`
@@ -426,6 +460,9 @@ type CrisisSettingsDB struct {
 	Level3AlertWebhook  string `json:"level3AlertWebhook"` // Slack/Discord webhook
 	DailyDigestEnabled  bool   `gorm:"default:false" json:"dailyDigestEnabled"`
 	DailyDigestEmail    string `json:"dailyDigestEmail"`
+
+	// Feature toggles
+	EnableGlowtypeGuidance bool `gorm:"default:true" json:"enableGlowtypeGuidance"` // Include glowtype-specific guidance in AI prompts
 
 	// Version tracking for hot-reload
 	ConfigVersion int       `gorm:"default:1" json:"configVersion"`
@@ -457,6 +494,7 @@ func GetCrisisSettings(db *gorm.DB, tenantID *uint) (*CrisisSettingsDB, error) {
 				EnableMLDetection:          false,
 				Level3AlertEnabled:         false,
 				DailyDigestEnabled:         false,
+				EnableGlowtypeGuidance:     true,
 				ConfigVersion:              1,
 			}
 			if err := db.Create(&settings).Error; err != nil {
@@ -586,6 +624,7 @@ const (
 	AdminRoleContent  = "content_admin"
 	AdminRoleData     = "data_admin"
 	AdminRoleAnalyst  = "analyst"
+	AdminRoleCrisis   = "crisis_admin"
 	AdminRoleViewer   = "viewer"
 )
 
