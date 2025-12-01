@@ -242,6 +242,35 @@ func (s *EmbeddingService) RefreshAllEmbeddings() (int, int, error) {
 	return success, failed, nil
 }
 
+// GenerateMissingEmbeddings only generates embeddings for scripts that don't have them
+func (s *EmbeddingService) GenerateMissingEmbeddings() (int, int, error) {
+	var scripts []database.CrisisScriptDB
+	if err := s.db.Where("is_active = ? AND embedding IS NULL", true).Find(&scripts).Error; err != nil {
+		return 0, 0, fmt.Errorf("failed to fetch scripts without embeddings: %w", err)
+	}
+
+	if len(scripts) == 0 {
+		return 0, 0, nil
+	}
+
+	success := 0
+	failed := 0
+
+	for _, script := range scripts {
+		if err := s.UpdateScriptEmbedding(script.ID); err != nil {
+			log.Printf("[EmbeddingService] Failed to generate embedding for script %d: %v", script.ID, err)
+			failed++
+		} else {
+			success++
+		}
+		// Rate limit: wait 100ms between requests
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	log.Printf("[EmbeddingService] Generated missing embeddings: %d success, %d failed", success, failed)
+	return success, failed, nil
+}
+
 // NormalizeL2 normalizes a vector to unit length (L2 norm = 1)
 func NormalizeL2(v []float32) []float32 {
 	var sum float64

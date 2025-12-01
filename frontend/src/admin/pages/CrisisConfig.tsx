@@ -77,7 +77,7 @@ interface GlowtypeOption {
 }
 
 export default function CrisisConfig() {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
   const api = useAdminApi();
   const { currentUser } = useAdminAuth();
   const canResetData = currentUser?.effectivePermissions?.includes('data.reset') ?? false;
@@ -117,6 +117,10 @@ export default function CrisisConfig() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'keyword' | 'pattern' | 'resource' | 'phrase' | 'guidance' | 'script' | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
+
+  // Embedding stats state
+  const [embeddingStats, setEmbeddingStats] = useState<{ total: number; withEmbedding: number; percentage: number } | null>(null);
+  const [refreshingEmbeddings, setRefreshingEmbeddings] = useState(false);
 
   const tabs: { key: TabType; label: string; icon: any }[] = [
     { key: 'overview', label: t('crisis.tabs.overview', 'Overview'), icon: Shield },
@@ -170,6 +174,21 @@ export default function CrisisConfig() {
     if (data) setScripts(data);
   };
 
+  const loadEmbeddingStats = async () => {
+    const data = await api.getEmbeddingStats();
+    if (data) setEmbeddingStats(data);
+  };
+
+  const handleRefreshEmbeddings = async () => {
+    setRefreshingEmbeddings(true);
+    const result = await api.refreshEmbeddings();
+    if (result) {
+      // Reload stats after refresh
+      await loadEmbeddingStats();
+    }
+    setRefreshingEmbeddings(false);
+  };
+
   const loadPrompts = async () => {
     const data = await api.listPrompts();
     if (data) setPrompts(data);
@@ -179,7 +198,12 @@ export default function CrisisConfig() {
     const data = await api.listGlowtypes();
     if (data) {
       // Transform to simple format for dropdowns
-      setGlowtypes(data.map((g: any) => ({ code: g.code, name: g.name || g.code })));
+      setGlowtypes(
+        data.map((g: any) => ({
+          code: g.typeCode,
+          name: (i18n.language.startsWith('zh') ? g.nameZh : g.nameEn) || g.nameZh || g.nameEn || g.typeCode,
+        }))
+      );
     }
   };
 
@@ -201,7 +225,10 @@ export default function CrisisConfig() {
     else if (activeTab === 'resources') loadResources();
     else if (activeTab === 'phrases') loadPhrases();
     else if (activeTab === 'guidance') loadGuidance();
-    else if (activeTab === 'scripts') loadScripts();
+    else if (activeTab === 'scripts') {
+      loadScripts();
+      loadEmbeddingStats();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, keywordLevelFilter, keywordLangFilter, resourceCountryFilter, phraseLangFilter, guidanceGlowtypeFilter]);
 
@@ -502,6 +529,9 @@ export default function CrisisConfig() {
             onCreate={() => openCreateModal('script')}
             onEdit={(item) => openEditModal('script', item)}
             onDelete={(id) => handleDelete('script', id)}
+            embeddingStats={embeddingStats}
+            onRefreshEmbeddings={handleRefreshEmbeddings}
+            refreshingEmbeddings={refreshingEmbeddings}
           />
         )}
         {activeTab === 'settings' && settings && (
@@ -937,16 +967,62 @@ function ScriptsTab({
   onCreate,
   onEdit,
   onDelete,
+  embeddingStats,
+  onRefreshEmbeddings,
+  refreshingEmbeddings,
 }: {
   scripts: CrisisScript[];
   onCreate: () => void;
   onEdit: (item: CrisisScript) => void;
   onDelete: (id: number) => void;
+  embeddingStats: { total: number; withEmbedding: number; percentage: number } | null;
+  onRefreshEmbeddings: () => void;
+  refreshingEmbeddings: boolean;
 }) {
   const { t } = useTranslation('admin');
 
   return (
     <div className="space-y-4">
+      {/* Embedding status banner */}
+      {embeddingStats && embeddingStats.total > 0 && (
+        <div className={`rounded-xl p-4 text-sm flex items-center justify-between ${
+          embeddingStats.withEmbedding === embeddingStats.total
+            ? 'bg-green-50 border border-green-200 text-green-700'
+            : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              embeddingStats.withEmbedding === embeddingStats.total ? 'bg-green-100' : 'bg-yellow-100'
+            }`}>
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-medium">
+                {t('crisis.script.embeddingStatus', 'RAG Embedding Status')}
+              </p>
+              <p className="text-xs mt-0.5">
+                {embeddingStats.withEmbedding}/{embeddingStats.total} {t('crisis.script.scriptsVectorized', 'scripts vectorized')}
+                {embeddingStats.withEmbedding < embeddingStats.total && (
+                  <span className="ml-2">
+                    ({embeddingStats.total - embeddingStats.withEmbedding} {t('crisis.script.pending', 'pending')})
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          {embeddingStats.withEmbedding < embeddingStats.total && (
+            <button
+              onClick={onRefreshEmbeddings}
+              disabled={refreshingEmbeddings}
+              className="flex items-center gap-2 px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 rounded-lg transition text-yellow-800 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshingEmbeddings ? 'animate-spin' : ''}`} />
+              {refreshingEmbeddings ? t('common.processing', 'Processing...') : t('crisis.script.generateEmbeddings', 'Generate')}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Info banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 flex items-start gap-3">
         <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />

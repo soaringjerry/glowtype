@@ -18,6 +18,18 @@ var embeddingService *services.EmbeddingService
 // InitEmbeddingService initializes the embedding service
 func InitEmbeddingService(db *gorm.DB) {
 	embeddingService = services.NewEmbeddingService(db)
+
+	// Async generate missing embeddings on startup
+	if embeddingService != nil {
+		go func() {
+			success, failed, err := embeddingService.GenerateMissingEmbeddings()
+			if err != nil {
+				log.Printf("[EmbeddingService] Failed to generate missing embeddings: %v", err)
+			} else if success > 0 || failed > 0 {
+				log.Printf("[EmbeddingService] Startup embedding generation: %d success, %d failed", success, failed)
+			}
+		}()
+	}
 }
 
 // ============ Crisis Keywords ============
@@ -618,6 +630,18 @@ func ResetCrisisConfigHandler(c *gin.Context) {
 		db.Where("1=1").Delete(&database.CrisisScriptDB{})
 		count := database.SeedCrisisScripts(db)
 		results["scripts"] = count
+
+		// Async generate embeddings for seeded scripts
+		if embeddingService != nil {
+			go func() {
+				success, failed, err := embeddingService.RefreshAllEmbeddings()
+				if err != nil {
+					log.Printf("[CrisisReset] Failed to generate embeddings: %v", err)
+				} else {
+					log.Printf("[CrisisReset] Generated embeddings: %d success, %d failed", success, failed)
+				}
+			}()
+		}
 	}
 
 	incrementCrisisConfigVersion(db)

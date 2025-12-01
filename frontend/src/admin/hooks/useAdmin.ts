@@ -1273,6 +1273,12 @@ export const useAdminApi = () => {
     deleteCrisisScript: (id: number) =>
       apiCall<{ message: string }>(`/admin/crisis/scripts/${id}`, { method: 'DELETE' }),
 
+    // Script Embeddings (RAG)
+    getEmbeddingStats: () =>
+      apiCall<{ total: number; withEmbedding: number; percentage: number }>('/admin/crisis/scripts/embeddings/stats'),
+    refreshEmbeddings: () =>
+      apiCall<{ success: number; failed: number; message: string }>('/admin/crisis/scripts/embeddings/refresh', { method: 'POST' }),
+
     // Crisis Reset
     resetCrisisConfig: (options: { all?: boolean; keywords?: boolean; patterns?: boolean; resources?: boolean; phrases?: boolean; guidance?: boolean; scripts?: boolean }) => {
       const query = new URLSearchParams();
