@@ -37,6 +37,8 @@ import AuditLogs from './pages/AuditLogs';
 import Analytics from './pages/Analytics';
 import CrisisAnalytics from './pages/CrisisAnalytics';
 import CrisisConfig from './pages/CrisisConfig';
+import Prompts from './pages/Prompts';
+import AISettings from './pages/AISettings';
 import AdminSettings from './pages/AdminSettings';
 
 export default function AdminLayout() {
@@ -83,17 +85,31 @@ export default function AdminLayout() {
     ];
     // Filter by permission, then add superadmin/crisis_admin-only items
     const filtered = items.filter((item) => userHasPermission(currentUser, item.perm));
-    // AI Crisis Config is accessible to superadmin and crisis_admin
+    // AI Crisis Config, Prompts and AI Settings are accessible to superadmin and crisis_admin
     if (currentUser?.role === 'superadmin' || currentUser?.role === 'crisis_admin') {
       // Insert after crisis analytics
       const crisisIdx = filtered.findIndex((item) => item.path === '/admin/crisis');
       if (crisisIdx >= 0) {
-        filtered.splice(crisisIdx + 1, 0, {
-          path: '/admin/crisis-config',
-          labelKey: 'nav.aiCrisisConfig',
-          icon: Settings2,
-          perm: 'crisis.manage' as AdminPermission,
-        });
+        filtered.splice(crisisIdx + 1, 0,
+          {
+            path: '/admin/crisis-config',
+            labelKey: 'nav.aiCrisisConfig',
+            icon: Settings2,
+            perm: 'crisis.manage' as AdminPermission,
+          },
+          {
+            path: '/admin/prompts',
+            labelKey: 'nav.prompts',
+            icon: Eye,
+            perm: 'crisis.manage' as AdminPermission,
+          },
+          {
+            path: '/admin/ai-settings',
+            labelKey: 'nav.aiSettings',
+            icon: Settings,
+            perm: 'crisis.manage' as AdminPermission,
+          }
+        );
       }
     }
     return filtered;
@@ -238,6 +254,8 @@ export default function AdminLayout() {
             <Route path="/admin/analytics" element={<Protected perm="stats.view"><Analytics /></Protected>} />
             <Route path="/admin/crisis" element={<Protected perm="stats.view"><CrisisAnalytics /></Protected>} />
             <Route path="/admin/crisis-config" element={<Protected perm="crisis.manage"><CrisisConfig /></Protected>} />
+            <Route path="/admin/prompts" element={<Protected perm="crisis.manage"><Prompts /></Protected>} />
+            <Route path="/admin/ai-settings" element={<Protected perm="crisis.manage"><AISettings /></Protected>} />
             <Route path="/admin/users" element={<Protected perm="admin.manage"><AdminUsers /></Protected>} />
             <Route path="/admin/dimensions" element={<Protected perm="dimensions.write"><Dimensions /></Protected>} />
             <Route path="/admin/questions" element={<Protected perm="questions.write"><Questions /></Protected>} />

@@ -5,6 +5,8 @@
     "analytics": "数据分析",
     "crisis": "危机分析",
     "aiCrisisConfig": "AI 危机干预",
+    "prompts": "AI 提示词",
+    "aiSettings": "AI 模型设置",
     "adminUsers": "管理员账户",
     "dimensions": "维度管理",
     "questions": "题目管理",
