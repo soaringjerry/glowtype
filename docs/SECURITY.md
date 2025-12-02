@@ -122,7 +122,7 @@ Glowtype implements TOTP (Time-based One-Time Password) for two-factor authentic
 2. A QR code will be displayed
 
 **Step 3: Scan QR Code**
-1. Open your authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.)
+1. Open your authenticator app (Google Authenticator, Authy, 1Password, etc. - avoid Microsoft Authenticator; it does not support SHA-256 TOTP)
 2. Scan the QR code or manually enter the secret key
 3. The app will start generating 6-digit codes
 

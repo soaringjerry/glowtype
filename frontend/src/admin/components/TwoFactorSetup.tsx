@@ -139,7 +139,7 @@ export const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({
               {t('twoFactor.howToSetup', '如何设置？')}
             </h3>
             <ol className="text-gray-400 text-xs space-y-1 list-decimal list-inside">
-              <li>{t('twoFactor.step1', '在手机上下载验证器应用（推荐 Google Authenticator 或 Microsoft Authenticator）')}</li>
+              <li>{t('twoFactor.step1', '在手机上下载验证器应用（推荐 Google Authenticator、Authy 等，避免 Microsoft Authenticator：不支持 SHA-256）')}</li>
               <li>{t('twoFactor.step2', '打开验证器应用，点击"+"添加账户')}</li>
               <li>{t('twoFactor.step3', '扫描下方二维码，或手动输入密钥')}</li>
               <li>{t('twoFactor.step4', '输入应用中显示的6位验证码完成设置')}</li>

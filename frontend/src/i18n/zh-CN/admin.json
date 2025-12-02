@@ -684,7 +684,7 @@
     "whatIs2FA": "什么是两步验证？",
     "whatIs2FADesc": "两步验证为您的账户添加额外的安全保护。登录时除了密码，还需要输入手机上验证器应用生成的动态验证码。",
     "howToSetup": "如何设置？",
-    "step1": "在手机上下载验证器应用（推荐 Google Authenticator 或 Microsoft Authenticator）",
+    "step1": "在手机上下载验证器应用（推荐 Google Authenticator、Authy 等，避免使用 Microsoft Authenticator，因其不支持 SHA-256）",
     "step2": "打开验证器应用，点击「+」添加账户",
     "step3": "扫描下方二维码，或手动输入密钥",
     "step4": "输入应用中显示的6位验证码完成设置",
