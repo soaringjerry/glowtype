@@ -766,6 +766,11 @@
     "script": {
       "title": "标题",
       "content": "内容",
+      "embeddingStatus": "向量化状态",
+      "scriptsVectorized": "条脚本已向量化",
+      "pending": "待处理",
+      "generateEmbeddings": "生成向量",
+      "allVectorized": "所有向量已完成",
       "mode": "模式",
       "modeTemplate": "模板",
       "modeReference": "参考",
