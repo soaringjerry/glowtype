@@ -76,7 +76,9 @@ func NewPromptTemplateManager(db *gorm.DB) *PromptTemplateManager {
 		activeStatus: make(map[string]bool),
 		defaults:     buildDefaultTemplates(),
 	}
-	m.LoadFromDB()
+	if err := m.LoadFromDB(); err != nil {
+		log.Printf("[PromptTemplateManager] Initial load failed: %v, will use defaults", err)
+	}
 	return m
 }
 

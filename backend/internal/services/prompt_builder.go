@@ -332,7 +332,9 @@ func (p *PromptBuilder) BuildSystemPromptWithScripts(ctx GlowtypeContext, crisis
 
 	// Hot-reload templates if using DB config
 	if p.useDBConfig && p.templateMgr != nil {
-		p.templateMgr.Reload()
+		if err := p.templateMgr.Reload(); err != nil {
+			log.Printf("[PromptBuilder] Template reload failed: %v", err)
+		}
 	}
 
 	// If template manager is available, use template-based rendering
