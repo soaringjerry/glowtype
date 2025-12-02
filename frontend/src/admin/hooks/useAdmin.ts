@@ -462,6 +462,37 @@ export interface PromptSlot {
   id?: number;
 }
 
+export interface PromptHistory {
+  id: number;
+  promptId: number;
+  content: string;
+  version: number;
+  changedBy: string;
+  changeMsg: string;
+  createdAt: string;
+}
+
+export interface PromptVariable {
+  name: string;
+  type: string;
+  description: string;
+}
+
+export interface PromptTemplateInfo {
+  variables: PromptVariable[];
+  syntax: Record<string, string>;
+}
+
+export interface PromptValidateResponse {
+  valid: boolean;
+  error?: string;
+}
+
+export interface PromptPreviewResponse {
+  rendered: string;
+  sampleData: Record<string, unknown>;
+}
+
 // AI Settings (provider, model, API key)
 export interface AISettings {
   id: number;
@@ -1018,10 +1049,21 @@ export const useAdminApi = () => {
 
   // Prompts (fixed slots - can update/reset but not create/delete)
   const listPrompts = () => apiCall<PromptSlot[]>('/admin/prompts');
-  const updatePrompt = (keyOrId: string | number, data: { content: string; isActive?: boolean }) =>
+  const updatePrompt = (keyOrId: string | number, data: { content: string; isActive?: boolean; changeMsg?: string }) =>
     apiCall(`/admin/prompts/${keyOrId}`, { method: 'PUT', body: JSON.stringify(data) });
   const resetPrompt = (key: string) =>
     apiCall<{ success: boolean; message: string }>(`/admin/prompts/${key}/reset`, { method: 'POST' });
+  const validatePrompt = (content: string) =>
+    apiCall<PromptValidateResponse>('/admin/prompts/validate', { method: 'POST', body: JSON.stringify({ content }) });
+  const previewPrompt = (content: string) =>
+    apiCall<PromptPreviewResponse>('/admin/prompts/preview', { method: 'POST', body: JSON.stringify({ content }) });
+  const getPromptVariables = () => apiCall<PromptTemplateInfo>('/admin/prompts/variables');
+  const getPromptHistory = (key: string) => apiCall<PromptHistory[]>(`/admin/prompts/${key}/history`);
+  const rollbackPrompt = (key: string, historyId: number) =>
+    apiCall<{ success: boolean; message: string; restoredVersion: number; newVersion: number }>(
+      `/admin/prompts/${key}/rollback`,
+      { method: 'POST', body: JSON.stringify({ historyId }) }
+    );
 
   // Stats
   const getStatsOverview = () => apiCall<any>('/admin/stats/overview');
@@ -1109,6 +1151,11 @@ export const useAdminApi = () => {
     listPrompts,
     updatePrompt,
     resetPrompt,
+    validatePrompt,
+    previewPrompt,
+    getPromptVariables,
+    getPromptHistory,
+    rollbackPrompt,
     // Stats
     getStatsOverview,
     getDailyStats,

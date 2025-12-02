@@ -188,6 +188,11 @@ func New(cfg config.Config) *gin.Engine {
 			prompts.GET("/prompts", handlers.ListPrompts)
 			prompts.PUT("/prompts/:id", handlers.UpdatePrompt)
 			prompts.POST("/prompts/:key/reset", handlers.ResetPrompt)
+			prompts.POST("/prompts/validate", handlers.ValidatePromptTemplate)
+			prompts.POST("/prompts/preview", handlers.PreviewPromptTemplate)
+			prompts.GET("/prompts/variables", handlers.GetPromptVariables)
+			prompts.GET("/prompts/:key/history", handlers.GetPromptHistory)
+			prompts.POST("/prompts/:key/rollback", handlers.RollbackPrompt)
 		}
 
 		// AI Settings (API key, model config - superadmin only)

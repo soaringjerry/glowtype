@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/soaringjerry/glowtype/internal/database"
+	"gorm.io/gorm"
 )
 
 // GlowtypeContext contains personalization data for prompt building
@@ -57,6 +58,9 @@ type PromptBuilder struct {
 	// DB-backed config
 	configLoader *CrisisConfigLoader
 	useDBConfig  bool
+
+	// Template manager for DB-backed templates
+	templateMgr *PromptTemplateManager
 }
 
 // NewPromptBuilder creates a new prompt builder
@@ -93,18 +97,19 @@ func NewPromptBuilder(guidancePath, forbiddenPath string) *PromptBuilder {
 }
 
 // NewPromptBuilderWithDB creates a prompt builder using database-backed configuration
-func NewPromptBuilderWithDB(loader *CrisisConfigLoader) *PromptBuilder {
+func NewPromptBuilderWithDB(loader *CrisisConfigLoader, db *gorm.DB) *PromptBuilder {
 	p := &PromptBuilder{
 		guidance:     make(map[string]GlowtypeGuidance),
 		alternatives: make(map[string]string),
 		configLoader: loader,
 		useDBConfig:  true,
+		templateMgr:  NewPromptTemplateManager(db),
 	}
 
 	// Sync from DB
 	p.syncFromDBConfig()
 
-	log.Printf("[PromptBuilder] Initialized with DB-backed config")
+	log.Printf("[PromptBuilder] Initialized with DB-backed config and template manager")
 	return p
 }
 
@@ -316,14 +321,122 @@ func (p *PromptBuilder) LoadForbidden(path string) error {
 
 // BuildSystemPrompt constructs the complete three-layer system prompt
 func (p *PromptBuilder) BuildSystemPrompt(ctx GlowtypeContext, crisisLevel int, resourcesDeclined bool) string {
-	return p.BuildSystemPromptWithScripts(ctx, crisisLevel, resourcesDeclined, nil)
+	return p.BuildSystemPromptWithScripts(ctx, crisisLevel, resourcesDeclined, nil, nil)
 }
 
 // BuildSystemPromptWithScripts constructs the system prompt with optional script reference layer
-func (p *PromptBuilder) BuildSystemPromptWithScripts(ctx GlowtypeContext, crisisLevel int, resourcesDeclined bool, scripts []database.CrisisScriptDB) string {
+// Note: resources parameter accepts []ResourceData for simplicity
+func (p *PromptBuilder) BuildSystemPromptWithScripts(ctx GlowtypeContext, crisisLevel int, resourcesDeclined bool, scripts []database.CrisisScriptDB, resources []ResourceData) string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
+	// Hot-reload templates if using DB config
+	if p.useDBConfig && p.templateMgr != nil {
+		p.templateMgr.Reload()
+	}
+
+	// If template manager is available, use template-based rendering
+	if p.templateMgr != nil {
+		return p.buildSystemPromptFromTemplates(ctx, crisisLevel, resourcesDeclined, scripts, resources)
+	}
+
+	// Fallback to legacy hardcoded method
+	return p.buildSystemPromptLegacy(ctx, crisisLevel, resourcesDeclined, scripts)
+}
+
+// buildSystemPromptFromTemplates builds system prompt using DB templates
+func (p *PromptBuilder) buildSystemPromptFromTemplates(ctx GlowtypeContext, crisisLevel int, resourcesDeclined bool, scripts []database.CrisisScriptDB, resources []ResourceData) string {
+	// Build template data
+	data := p.buildTemplateData(ctx, crisisLevel, resourcesDeclined, scripts, resources)
+
+	lang := "en"
+	if strings.HasPrefix(strings.ToLower(ctx.Language), "zh") {
+		lang = "zh"
+	}
+
+	var parts []string
+
+	// Layer 1: Safety (always present)
+	if content, err := p.templateMgr.Render("chat_safety_layer_"+lang, data); err == nil {
+		parts = append(parts, content)
+	} else {
+		log.Printf("[PromptBuilder] Safety layer template error: %v, using fallback", err)
+		parts = append(parts, p.buildSafetyLayer(ctx.Language, crisisLevel, resourcesDeclined))
+	}
+
+	// Layer 2: Understanding (if glowtype known)
+	if ctx.Code != "" {
+		if content, err := p.templateMgr.Render("chat_understanding_layer_"+lang, data); err == nil {
+			parts = append(parts, content)
+		} else {
+			log.Printf("[PromptBuilder] Understanding layer template error: %v, using fallback", err)
+			parts = append(parts, p.buildUnderstandingLayer(ctx))
+		}
+	}
+
+	// Layer 3: Guidance
+	if content, err := p.templateMgr.Render("chat_guidance_layer_"+lang, data); err == nil {
+		parts = append(parts, content)
+	} else {
+		log.Printf("[PromptBuilder] Guidance layer template error: %v, using fallback", err)
+		parts = append(parts, p.buildGuidanceLayer(ctx))
+	}
+
+	// Layer 4: Scripts (if RAG returned any)
+	if len(scripts) > 0 {
+		if content, err := p.templateMgr.Render("chat_script_layer_"+lang, data); err == nil {
+			parts = append(parts, content)
+		} else {
+			log.Printf("[PromptBuilder] Script layer template error: %v, using fallback", err)
+			parts = append(parts, p.buildScriptReferenceLayer(ctx.Language, scripts))
+		}
+	}
+
+	// Layer 5: Resources (if available and not declined)
+	if len(resources) > 0 && !resourcesDeclined {
+		if content, err := p.templateMgr.Render("chat_resources_layer_"+lang, data); err == nil {
+			parts = append(parts, content)
+		}
+		// No fallback for resources layer - it's new
+	}
+
+	return strings.Join(parts, "\n\n")
+}
+
+// buildTemplateData constructs the data object for template rendering
+func (p *PromptBuilder) buildTemplateData(ctx GlowtypeContext, crisisLevel int, resourcesDeclined bool, scripts []database.CrisisScriptDB, resources []ResourceData) PromptTemplateData {
+	data := PromptTemplateData{
+		GlowtypeName:      ctx.LocalizedName,
+		GlowtypeCode:      ctx.Code,
+		ResourcesDeclined: resourcesDeclined,
+		CrisisLevel:       crisisLevel,
+		Language:          ctx.Language,
+	}
+
+	// Add guidance data
+	if guidance, exists := p.guidance[ctx.Code]; exists {
+		data.EnergyStyle = guidance.EnergyStyle
+		data.ExpressionStyle = guidance.ExpressionStyle
+		data.Metaphors = guidance.Metaphors
+		data.SelfCareTips = guidance.SelfCareTips
+	}
+
+	// Add scripts
+	for _, s := range scripts {
+		data.Scripts = append(data.Scripts, ScriptData{
+			Title:   s.Title,
+			Content: s.Content,
+		})
+	}
+
+	// Add resources directly (already in correct format)
+	data.Resources = resources
+
+	return data
+}
+
+// buildSystemPromptLegacy is the original hardcoded method (fallback)
+func (p *PromptBuilder) buildSystemPromptLegacy(ctx GlowtypeContext, crisisLevel int, resourcesDeclined bool, scripts []database.CrisisScriptDB) string {
 	var parts []string
 
 	// Layer 1: Safety Layer (Always first, highest priority)

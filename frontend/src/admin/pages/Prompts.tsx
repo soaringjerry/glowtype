@@ -12,10 +12,14 @@ import {
   Edit2,
   Check,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  Eye,
+  History,
+  Code2,
+  CheckCircle2
 } from 'lucide-react';
 import { useAdminApi } from '../hooks/useAdmin';
-import type { PromptSlot } from '../hooks/useAdmin';
+import type { PromptSlot, PromptHistory, PromptTemplateInfo } from '../hooks/useAdmin';
 
 export default function Prompts() {
   const { t } = useTranslation('admin');
@@ -28,6 +32,22 @@ export default function Prompts() {
   const [resetting, setResetting] = useState<string | null>(null);
   const [resettingAll, setResettingAll] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // New states for template features
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<{ valid: boolean; error?: string } | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewResult, setPreviewResult] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [templateInfo, setTemplateInfo] = useState<PromptTemplateInfo | null>(null);
+  const [showVariables, setShowVariables] = useState(false);
+
+  // History states
+  const [historyKey, setHistoryKey] = useState<string | null>(null);
+  const [history, setHistory] = useState<PromptHistory[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [rollingBack, setRollingBack] = useState(false);
+
   const api = useAdminApi();
 
   const handleResetAll = async () => {
@@ -119,6 +139,79 @@ export default function Prompts() {
     setEditingKey(null);
     setEditContent('');
     setSaveError(null);
+    setValidationResult(null);
+    setPreviewResult(null);
+    setShowPreview(false);
+    setShowVariables(false);
+  };
+
+  // Validate template syntax
+  const handleValidate = async () => {
+    setValidating(true);
+    setValidationResult(null);
+    const result = await api.validatePrompt(editContent);
+    if (result) {
+      setValidationResult(result);
+    }
+    setValidating(false);
+  };
+
+  // Preview rendered template
+  const handlePreview = async () => {
+    setPreviewing(true);
+    setPreviewResult(null);
+    const result = await api.previewPrompt(editContent);
+    if (result) {
+      setPreviewResult(result.rendered);
+      setShowPreview(true);
+    } else if (api.error) {
+      setSaveError(api.error);
+    }
+    setPreviewing(false);
+  };
+
+  // Load template variables info
+  const loadTemplateInfo = async () => {
+    if (!templateInfo) {
+      const info = await api.getPromptVariables();
+      if (info) {
+        setTemplateInfo(info);
+      }
+    }
+    setShowVariables(!showVariables);
+  };
+
+  // Load history for a prompt
+  const handleShowHistory = async (key: string) => {
+    setHistoryKey(key);
+    setLoadingHistory(true);
+    const data = await api.getPromptHistory(key);
+    if (data) {
+      setHistory(data);
+    }
+    setLoadingHistory(false);
+  };
+
+  // Rollback to a specific version
+  const handleRollback = async (historyId: number) => {
+    if (!historyKey) return;
+    if (!confirm(t('prompts.confirmRollback'))) return;
+
+    setRollingBack(true);
+    const result = await api.rollbackPrompt(historyKey, historyId);
+    if (result?.success) {
+      await loadPrompts();
+      setHistoryKey(null);
+      setHistory([]);
+    } else if (api.error) {
+      alert(api.error);
+    }
+    setRollingBack(false);
+  };
+
+  const closeHistory = () => {
+    setHistoryKey(null);
+    setHistory([]);
   };
 
   if (loading) {
@@ -182,7 +275,7 @@ export default function Prompts() {
       {/* Edit Modal */}
       {editingKey && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800 text-lg">{t('prompts.editTitle')}</h3>
@@ -210,18 +303,110 @@ export default function Prompts() {
               })()}
 
               <div className="space-y-4">
+                {/* Template Variables Reference */}
+                <div>
+                  <button
+                    onClick={loadTemplateInfo}
+                    className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 transition"
+                  >
+                    <Code2 className="w-4 h-4" />
+                    {showVariables ? t('prompts.hideVariables') : t('prompts.showVariables')}
+                  </button>
+
+                  {showVariables && templateInfo && (
+                    <div className="mt-2 p-4 bg-purple-50 rounded-xl border border-purple-100 text-sm">
+                      <h4 className="font-medium text-purple-800 mb-2">{t('prompts.availableVariables')}</h4>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {templateInfo.variables.map((v) => (
+                          <div key={v.name} className="text-purple-700">
+                            <code className="bg-purple-100 px-1 rounded">{`{{.${v.name}}}`}</code>
+                            <span className="text-xs text-purple-500 ml-2">{v.type}</span>
+                            <p className="text-xs text-gray-600 mt-0.5">{v.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <h4 className="font-medium text-purple-800 mb-2">{t('prompts.syntaxExamples')}</h4>
+                      <div className="space-y-1">
+                        {Object.entries(templateInfo.syntax).map(([name, example]) => (
+                          <div key={name} className="text-purple-700">
+                            <span className="text-xs text-gray-600">{name}:</span>{' '}
+                            <code className="bg-purple-100 px-1 rounded text-xs">{example}</code>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {t('prompts.content')}
                   </label>
                   <textarea
                     value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
+                    onChange={(e) => {
+                      setEditContent(e.target.value);
+                      setValidationResult(null);
+                    }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none font-mono text-sm"
                     rows={12}
                     placeholder={t('prompts.editPlaceholder')}
                   />
                 </div>
+
+                {/* Validate & Preview buttons */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleValidate}
+                    disabled={validating}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition disabled:opacity-50"
+                  >
+                    {validating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    {t('prompts.validate')}
+                  </button>
+                  <button
+                    onClick={handlePreview}
+                    disabled={previewing}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition disabled:opacity-50"
+                  >
+                    {previewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                    {t('prompts.preview')}
+                  </button>
+
+                  {validationResult && (
+                    <span className={`text-sm flex items-center gap-1 ${validationResult.valid ? 'text-green-600' : 'text-red-600'}`}>
+                      {validationResult.valid ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          {t('prompts.validTemplate')}
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-4 h-4" />
+                          {validationResult.error}
+                        </>
+                      )}
+                    </span>
+                  )}
+                </div>
+
+                {/* Preview Panel */}
+                {showPreview && previewResult && (
+                  <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-green-800">{t('prompts.previewTitle')}</h4>
+                      <button
+                        onClick={() => setShowPreview(false)}
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-white p-3 rounded-lg max-h-64 overflow-y-auto">
+                      {previewResult}
+                    </pre>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2">
                   <input
@@ -320,6 +505,13 @@ export default function Prompts() {
                       </div>
 
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleShowHistory(slot.key)}
+                          className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition"
+                          title={t('prompts.viewHistory')}
+                        >
+                          <History className="w-4 h-4" />
+                        </button>
                         {slot.isCustomized && (
                           <button
                             onClick={() => handleReset(slot.key)}
@@ -394,6 +586,87 @@ export default function Prompts() {
           <p className="mt-1">{t('prompts.successNoteBody')}</p>
         </div>
       </div>
+
+      {/* History Modal */}
+      {historyKey && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-800 text-lg flex items-center gap-2">
+                  <History className="w-5 h-5" />
+                  {t('prompts.historyTitle')}
+                </h3>
+                <button
+                  onClick={closeHistory}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-3 mb-4">
+                <code className="text-sm text-gray-600">{historyKey}</code>
+              </div>
+
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {t('prompts.noHistory')}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {history.map((item) => (
+                    <div key={item.id} className="border border-gray-200 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                            v{item.version}
+                          </span>
+                          {item.changedBy && (
+                            <span className="text-xs text-gray-500">
+                              by {item.changedBy}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {new Date(item.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleRollback(item.id)}
+                          disabled={rollingBack}
+                          className="flex items-center gap-1 px-3 py-1 text-sm bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition disabled:opacity-50"
+                        >
+                          {rollingBack ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-3 h-3" />
+                          )}
+                          {t('prompts.rollback')}
+                        </button>
+                      </div>
+                      {item.changeMsg && (
+                        <p className="text-sm text-gray-600 mb-2">{item.changeMsg}</p>
+                      )}
+                      <details className="mt-2">
+                        <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                          {t('prompts.showContent')}
+                        </summary>
+                        <pre className="mt-2 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
+                          {item.content}
+                        </pre>
+                      </details>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

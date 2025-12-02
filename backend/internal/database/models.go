@@ -539,6 +539,21 @@ func (AIPromptDB) TableName() string {
 	return "ai_prompts"
 }
 
+// AIPromptHistoryDB stores version history for AI prompts
+type AIPromptHistoryDB struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	PromptID  uint      `gorm:"index;not null" json:"promptId"`
+	Content   string    `gorm:"type:text;not null" json:"content"`
+	Version   int       `gorm:"not null" json:"version"`
+	ChangedBy string    `json:"changedBy"`
+	ChangeMsg string    `json:"changeMsg"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func (AIPromptHistoryDB) TableName() string {
+	return "ai_prompt_history"
+}
+
 // ============ Glowpedia (光签) ============
 
 // BookChapterDB represents a chapter/category in Glowpedia

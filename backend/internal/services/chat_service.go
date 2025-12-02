@@ -103,7 +103,7 @@ func NewChatService(cfg config.Config, db *gorm.DB) *ChatService {
 	// ResourceService and PromptBuilder now use the shared config loader
 	configLoader := crisisDetector.GetConfigLoader()
 	resourceSvc := NewResourceServiceWithDB(configLoader)
-	promptBuilder := NewPromptBuilderWithDB(configLoader)
+	promptBuilder := NewPromptBuilderWithDB(configLoader, db)
 	alertService := NewCrisisAlertService(db, configLoader)
 	embeddingService := NewEmbeddingService(db)
 
@@ -420,7 +420,18 @@ func (s *ChatService) Reply(req models.ChatMessageRequest) models.ChatMessageRes
 		s.sessionStore.SetLastRAG(req.SessionID, ragDebug)
 	}
 
-	systemPrompt := s.promptBuilder.BuildSystemPromptWithScripts(glowtypeCtx, crisisResult.Level, resourcesDeclined, relevantScripts)
+	// Get resources for prompt template (always, so AI knows available resources)
+	var promptResources []ResourceData
+	promptSvcResources := s.resourceSvc.GetResources(req.Language, "", crisisResult.Level)
+	for _, r := range promptSvcResources {
+		promptResources = append(promptResources, ResourceData{
+			Name:  r.Name,
+			Phone: r.Phone,
+			URL:   r.URL,
+		})
+	}
+
+	systemPrompt := s.promptBuilder.BuildSystemPromptWithScripts(glowtypeCtx, crisisResult.Level, resourcesDeclined, relevantScripts, promptResources)
 
 	// Provider-backed AI reply
 	if cfg.provider == "openai" && cfg.apiKey != "" {

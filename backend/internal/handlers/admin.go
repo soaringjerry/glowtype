@@ -2058,12 +2058,33 @@ func UpdatePrompt(c *gin.Context) {
 
 	// Parse update request
 	var req struct {
-		Content  string `json:"content"`
-		IsActive *bool  `json:"isActive,omitempty"`
+		Content   string `json:"content"`
+		IsActive  *bool  `json:"isActive,omitempty"`
+		ChangeMsg string `json:"changeMsg,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	db := database.GetDB()
+
+	// Save current version to history before updating
+	if prompt.Content != req.Content {
+		changedBy := ""
+		if user, exists := c.Get("admin_user"); exists {
+			if admin, ok := user.(*database.AdminUser); ok {
+				changedBy = admin.Username
+			}
+		}
+		history := database.AIPromptHistoryDB{
+			PromptID:  prompt.ID,
+			Content:   prompt.Content,
+			Version:   prompt.Version,
+			ChangedBy: changedBy,
+			ChangeMsg: req.ChangeMsg,
+		}
+		db.Create(&history)
 	}
 
 	// Update fields
@@ -2073,7 +2094,7 @@ func UpdatePrompt(c *gin.Context) {
 	}
 	prompt.Version++
 
-	if err := database.GetDB().Save(&prompt).Error; err != nil {
+	if err := db.Save(&prompt).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -2134,6 +2155,151 @@ func GetPublicPrompts(c *gin.Context) {
 		result[p.Key] = p.Content
 	}
 	c.JSON(http.StatusOK, result)
+}
+
+// ValidatePromptTemplate validates template syntax
+func ValidatePromptTemplate(c *gin.Context) {
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	mgr := services.NewPromptTemplateManager(database.GetDB())
+	if err := mgr.ValidateTemplate(req.Content); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"valid": false,
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"valid": true,
+	})
+}
+
+// PreviewPromptTemplate renders a template with sample data
+func PreviewPromptTemplate(c *gin.Context) {
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	mgr := services.NewPromptTemplateManager(database.GetDB())
+	rendered, sampleData, err := mgr.PreviewTemplate(req.Content)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":      err.Error(),
+			"sampleData": sampleData,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"rendered":   rendered,
+		"sampleData": sampleData,
+	})
+}
+
+// GetPromptVariables returns available template variables and syntax
+func GetPromptVariables(c *gin.Context) {
+	mgr := services.NewPromptTemplateManager(database.GetDB())
+	c.JSON(http.StatusOK, gin.H{
+		"variables": mgr.GetAvailableVariables(),
+		"syntax":    mgr.GetTemplateSyntax(),
+	})
+}
+
+// GetPromptHistory returns the version history for a prompt
+func GetPromptHistory(c *gin.Context) {
+	key := c.Param("key")
+
+	// Find the prompt first
+	var prompt database.AIPromptDB
+	if err := database.GetDB().Where("key = ?", key).First(&prompt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Prompt not found"})
+		return
+	}
+
+	// Get history records
+	var history []database.AIPromptHistoryDB
+	if err := database.GetDB().
+		Where("prompt_id = ?", prompt.ID).
+		Order("version DESC").
+		Find(&history).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, history)
+}
+
+// RollbackPrompt restores a prompt to a specific version from history
+func RollbackPrompt(c *gin.Context) {
+	key := c.Param("key")
+
+	var req struct {
+		HistoryID uint `json:"historyId" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Find the prompt
+	var prompt database.AIPromptDB
+	if err := database.GetDB().Where("key = ?", key).First(&prompt).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Prompt not found"})
+		return
+	}
+
+	// Record before state for audit
+	audit.SetBeforeState(c, "ai_prompt", prompt.ID, prompt)
+
+	// Find the history record
+	var historyRecord database.AIPromptHistoryDB
+	if err := database.GetDB().
+		Where("id = ? AND prompt_id = ?", req.HistoryID, prompt.ID).
+		First(&historyRecord).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "History record not found"})
+		return
+	}
+
+	// Save current version to history before rollback
+	db := database.GetDB()
+	newHistory := database.AIPromptHistoryDB{
+		PromptID:  prompt.ID,
+		Content:   prompt.Content,
+		Version:   prompt.Version,
+		ChangedBy: "rollback",
+		ChangeMsg: fmt.Sprintf("Before rollback to version %d", historyRecord.Version),
+	}
+	db.Create(&newHistory)
+
+	// Rollback to the historical content
+	prompt.Content = historyRecord.Content
+	prompt.Version++
+
+	if err := db.Save(&prompt).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Record after state for audit
+	audit.SetAfterState(c, prompt)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":         true,
+		"message":         fmt.Sprintf("Rolled back to version %d", historyRecord.Version),
+		"restoredVersion": historyRecord.Version,
+		"newVersion":      prompt.Version,
+	})
 }
 
 // ============ AI Settings ============
