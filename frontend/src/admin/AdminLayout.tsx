@@ -85,9 +85,8 @@ export default function AdminLayout() {
     ];
     // Filter by permission, then add superadmin/crisis_admin-only items
     const filtered = items.filter((item) => userHasPermission(currentUser, item.perm));
-    // AI Crisis Config, Prompts and AI Settings are accessible to superadmin and crisis_admin
+    // AI Crisis Config and Prompts are accessible to superadmin and crisis_admin
     if (currentUser?.role === 'superadmin' || currentUser?.role === 'crisis_admin') {
-      // Insert after crisis analytics
       const crisisIdx = filtered.findIndex((item) => item.path === '/admin/crisis');
       if (crisisIdx >= 0) {
         filtered.splice(crisisIdx + 1, 0,
@@ -102,14 +101,20 @@ export default function AdminLayout() {
             labelKey: 'nav.prompts',
             icon: Eye,
             perm: 'crisis.manage' as AdminPermission,
-          },
-          {
-            path: '/admin/ai-settings',
-            labelKey: 'nav.aiSettings',
-            icon: Settings,
-            perm: 'crisis.manage' as AdminPermission,
           }
         );
+      }
+    }
+    // AI Settings (API key, model, rate limit) is superadmin only
+    if (currentUser?.role === 'superadmin') {
+      const promptsIdx = filtered.findIndex((item) => item.path === '/admin/prompts');
+      if (promptsIdx >= 0) {
+        filtered.splice(promptsIdx + 1, 0, {
+          path: '/admin/ai-settings',
+          labelKey: 'nav.aiSettings',
+          icon: Settings,
+          perm: 'crisis.manage' as AdminPermission,
+        });
       }
     }
     return filtered;
